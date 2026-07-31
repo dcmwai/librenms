@@ -1,0 +1,1467 @@
+--  *****************************************************************
+--  DLINKES-IP-EXT-MIB.mib : IP Extension MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+DLINKES-IP-EXT-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        NOTIFICATION-TYPE,
+        IpAddress,
+        Integer32,
+        Unsigned32
+            FROM SNMPv2-SMI
+        RowStatus,
+        TruthValue,
+        DisplayString,
+        MacAddress
+            FROM SNMPv2-TC
+        MODULE-COMPLIANCE,
+	    OBJECT-GROUP
+		    FROM SNMPv2-CONF        
+        InetPortNumber,
+        InetAddressType,
+        InetAddress,  
+        InetAddressIPv4,     
+        InetAddressIPv6,
+        InetAddressPrefixLength
+            FROM INET-ADDRESS-MIB
+        InterfaceIndex, InterfaceIndexOrZero
+            FROM IF-MIB       
+        dlinkCommon			
+			FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsIpExtMIB MODULE-IDENTITY
+        LAST-UPDATED "201706130000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+                "        D-Link Corporation
+
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:     +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+                "
+        DESCRIPTION
+            "This MIB is an extension to the standard IP-MIB."
+        REVISION "201706130000Z"
+        DESCRIPTION
+            "Initial version of this MIB."
+        ::= { dlinkCommon 75 }
+
+-- -----------------------------------------------------------------------------
+    esIpExtMIBNotifications      OBJECT IDENTIFIER ::= { dlinkEsIpExtMIB 0 }
+    esIpExtMIBObjects            OBJECT IDENTIFIER ::= { dlinkEsIpExtMIB 1 }
+    esIpExtMIBConformance        OBJECT IDENTIFIER ::= { dlinkEsIpExtMIB 2 }
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtGratuitousARPTrap  NOTIFICATION-TYPE
+        OBJECTS   {
+
+                    esIpExtGratuitousARPIpAddr,
+                    esIpExtGratuitousARPMacAddr,
+                    esIpExtGratuitousARPPortNumber,
+                    esIpExtIfCfgIfIndex
+                  }
+        STATUS  current
+        DESCRIPTION
+           "This trap is sent when there is an IP address conflict."
+        ::={esIpExtMIBNotifications 1}
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtGenArpMgmt  OBJECT IDENTIFIER ::={esIpExtMIBObjects 1}   
+    
+    esIpExtClearArpCacheAll OBJECT-TYPE
+        SYNTAX          INTEGER	    {   
+			clear(1),
+			noOp(2)
+		}
+		MAX-ACCESS      read-write
+		STATUS current
+		DESCRIPTION
+			"This object is used to clear all dynamic ARP entries from the
+			table when set to 'clear'.
+			No action is taken if this object is set to 'noOp'.
+			When read, the value 'noOp' is returned."
+		DEFVAL      { noOp }	
+		::= { esIpExtGenArpMgmt 1 }
+	 
+     esIpExtClearArpCacheByIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the interface on which
+            the dynamic ARP entries will be cleared.
+            When read, a value of 0 is returned."                     
+        ::= { esIpExtGenArpMgmt 2 }                           
+
+    esIpExtTotalArpEntries OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the total number of ARP entries."
+        ::= { esIpExtGenArpMgmt 3 }
+	
+    esIpExtArpTable    OBJECT-TYPE    
+        SYNTAX          SEQUENCE OF EsIpExtArpEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+             "A table provides indicates the total number of ARP entries in VRF."         
+        ::= { esIpExtGenArpMgmt 4 }
+    
+    esIpExtArpEntry OBJECT-TYPE  
+       SYNTAX          EsIpExtArpEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current   
+        DESCRIPTION
+             "A row in this table is the VRF name and ARP Total in the esIpExtArpTable."   
+        INDEX  { 
+            esIpExtVrfName
+        }
+        ::= { esIpExtArpTable 1 }
+            
+    EsIpExtArpEntry ::= SEQUENCE {      
+        esIpExtVrfName                DisplayString,  
+        esIpExtTotalArp		     Unsigned32         
+        }  
+    
+    esIpExtVrfName OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS     	read-only
+        STATUS          current
+	   DESCRIPTION	
+           "This object indicates the VRF name."
+        ::= { esIpExtArpEntry 1 }
+         
+    esIpExtTotalArp OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the total number of ARP entries in VRF."
+        ::= { esIpExtArpEntry 2 }
+        
+-- ----------------------------------------------------------------------------- 
+    esIpExtGratuitousArpMgmt  OBJECT IDENTIFIER ::={ esIpExtMIBObjects 2 }
+
+    esIpExtGratuitousARPSendRequestEnabled OBJECT-TYPE
+        SYNTAX          TruthValue                   
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to enable/disable transmission of gratuitous
+            ARP request.
+            The device will send out the packet when an IP interface becomes 
+            link up or when the IP address of an interface is configured or 
+            modified."                
+        DEFVAL { false }
+        ::={ esIpExtGratuitousArpMgmt 1}
+     
+    esIpExtGratuitousARPLearningEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS  current
+        DESCRIPTION
+            "This object is used to enable/disable learning of an ARP entry in
+            the ARP cache based on the received gratuitous ARP packet. If the 
+            device receives a gratuitous ARP request/reply packet and the 
+            sender's IP address is in its ARP table, it should update the
+            ARP entry.
+            "
+        DEFVAL { true }
+        ::={ esIpExtGratuitousArpMgmt 2}
+     
+     esIpExtGratuitousARPDadReplyEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS  current
+        DESCRIPTION
+           "This object is used to enable/disable sending of gratuitous ARP request 
+             while duplicate IP address is detected."
+        DEFVAL { false }
+        ::={ esIpExtGratuitousArpMgmt 3}
+
+      esIpExtGratuitousARPTrapEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS  current
+        DESCRIPTION
+            "This indicates the state of the gratuitous ARP trap. The switch can
+            trap the IP conflict events to inform the administrator.
+            By default, the trap is disabled."
+        DEFVAL { false }
+        ::={esIpExtGratuitousArpMgmt 4}
+  
+     esIpExtGratuitousARPNotifyInfo  OBJECT IDENTIFIER ::= {esIpExtGratuitousArpMgmt 5 }
+               
+       esIpExtGratuitousARPIpAddr       OBJECT-TYPE
+            SYNTAX      IpAddress
+            MAX-ACCESS  accessible-for-notify
+            STATUS  current
+            DESCRIPTION
+            "A duplicate IP address with the switch already exists."
+            ::={esIpExtGratuitousARPNotifyInfo 1}
+
+       esIpExtGratuitousARPMacAddr     OBJECT-TYPE
+            SYNTAX    MacAddress
+            MAX-ACCESS accessible-for-notify
+            STATUS  current
+            DESCRIPTION
+               "This object is the MAC address of the device which has 
+               	the duplicate IP address."
+            ::={esIpExtGratuitousARPNotifyInfo 2}
+
+       esIpExtGratuitousARPPortNumber   OBJECT-TYPE
+            SYNTAX   DisplayString
+            MAX-ACCESS accessible-for-notify
+            STATUS  current
+            DESCRIPTION
+                "This object is the the port number."
+            ::={esIpExtGratuitousARPNotifyInfo 3}
+
+        
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtIpv6NeighborDiscoverMgmt  OBJECT IDENTIFIER ::={esIpExtMIBObjects 3}   
+    
+    esIpExtClearAllIpv6Neighbors OBJECT-TYPE
+        SYNTAX          INTEGER	    {   
+			clear(1),
+			noOp(2)
+		}
+		MAX-ACCESS      read-write
+		STATUS current
+		DESCRIPTION
+			"This object is used to clear dynamic neighbor cache entries
+            associated with all interfaces when set to 'clear'.
+			No action is taken if this object is set to 'noOp'.
+			When read, the value 'noOp' is returned."
+		DEFVAL      { noOp }	
+		::= { esIpExtIpv6NeighborDiscoverMgmt 1 }
+	 
+     esIpExtClearIpv6NeighborsByIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the interface on which
+            the dynamic neighbor cache entries will be cleared.
+            When read, a value of 0 is returned."                     
+        ::= { esIpExtIpv6NeighborDiscoverMgmt 2 }                           
+
+    esIpExtTotalIpv6Neighbors OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the total number of dynamic neighbor cache
+            entries."
+        ::= { esIpExtIpv6NeighborDiscoverMgmt 3 }
+   
+     esIpExtIpv6OptimisticDadEnabled OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "Indicates the status of optimistic dad."
+        DEFVAL { false }
+        ::= { esIpExtIpv6NeighborDiscoverMgmt 4 }
+        
+-- -----------------------------------------------------------------------------
+    esIpExtInterfaceMgmt         OBJECT IDENTIFIER ::={esIpExtMIBObjects 4}
+    
+    esIpExtIpIfTable    OBJECT-TYPE    
+        SYNTAX          SEQUENCE OF EsIpExtIpIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+             "A table provides the mechanism to create or delete layer 3 interfaces.  
+             It is expected that user first creates a row in this table, followed by 
+             configuring the row in esIpExtIfCfgTable via the corresponding ifIndex.
+             "         
+        ::= { esIpExtInterfaceMgmt 1 }
+    
+    esIpExtIpIfEntry OBJECT-TYPE
+        SYNTAX          EsIpExtIpIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the information of the layer 3 interface.
+            Creating/deleting entries in this table causes corresponding entries 
+            be created/deleted in ifTable/ifXTable."   
+        INDEX  { 
+            esIpExtIpIfType,
+            esIpExtIpIfNumber
+        }
+        ::= { esIpExtIpIfTable 1 }
+            
+    EsIpExtIpIfEntry ::= SEQUENCE {      
+        esIpExtIpIfType                INTEGER,  
+        esIpExtIpIfNumber              Unsigned32,
+        esIpExtIpIfIndex               InterfaceIndex,         
+        esIpExtIpIfRowStatus           RowStatus
+    }
+    
+    esIpExtIpIfType OBJECT-TYPE
+       SYNTAX           INTEGER {						
+            loopback(1),
+            vlan(2),
+            nullInterface(3)
+	   }
+	   MAX-ACCESS	    not-accessible
+	   STATUS		    current
+	   DESCRIPTION	
+           "This object indicates the type of the interface.           
+           'loopback' -	The software only interface which always stays in up status.
+           'vlan'     -	VLAN interface.
+           'nullInterface'     -	NULL interface.
+           "
+        ::= { esIpExtIpIfEntry 1 }
+ 
+     esIpExtIpIfNumber OBJECT-TYPE
+        SYNTAX          Unsigned32 (0 .. 65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the interface ID within the type.
+            "
+        ::= { esIpExtIpIfEntry 2 }
+
+    esIpExtIpIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The ifIndex value of the interface is determined by the agent.
+            "
+        ::= { esIpExtIpIfEntry 3 }
+                                        
+     esIpExtIpIfRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION            
+            "The status of this conceptual row." 
+        ::= { esIpExtIpIfEntry 99 }    
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtIfCfgTableNumber     OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in the esIpExtIfCfgTable."
+        ::= { esIpExtInterfaceMgmt 2 }
+        
+    esIpExtIfCfgTable    OBJECT-TYPE    
+        SYNTAX          SEQUENCE OF EsIpExtIfCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table contains extended per-interface information."            
+        ::= { esIpExtInterfaceMgmt 3 }
+        
+    esIpExtIfCfgEntry OBJECT-TYPE
+        SYNTAX          EsIpExtIfCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION    
+            "A row in this table is created as a side effect of row addition
+            in the esIpExtIpIfTable.
+            " 
+        INDEX  { esIpExtIfCfgIfIndex }
+        ::= { esIpExtIfCfgTable 1 }
+            
+    EsIpExtIfCfgEntry ::= SEQUENCE {        
+        esIpExtIfCfgIfIndex                 InterfaceIndex,  
+        esIpExtIfCfgDhcpEnabled             TruthValue,
+        esIpExtIfCfgArpTimeout              Unsigned32,
+        esIpExtIfCfgProxyArpEnabled         TruthValue,            
+        esIpExtIfCfgLocalProxyArpEnabled    TruthValue,
+        esIpExtIfCfgDirectedBcastEnabled    TruthValue,
+        esIpExtIfCfgDirectedBcastAcl        DisplayString,
+        esIpExtIfCfgGratuitousARPSendInterval        Unsigned32,
+        esIpExtIfCfgIpMtu                   Unsigned32,
+        esIpExtIfCfgDADTransmits            Unsigned32,
+        esIpExtIfCfgElevationArpEnabled     TruthValue        
+    }
+       
+    esIpExtIfCfgIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The ifIndex value of the interface.
+            "
+        ::= { esIpExtIfCfgEntry 1 }
+                                   
+    esIpExtIfCfgDhcpEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+             "The object indicates whether acquire an IP address configuration
+             on the interface from the DHCP protocol."   
+        DEFVAL { false }  
+        ::= { esIpExtIfCfgEntry 2 }
+    
+    esIpExtIfCfgArpTimeout OBJECT-TYPE
+        SYNTAX          Unsigned32 (0 | 1..65535)
+        UNITS           "minutes"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION            
+            "This object indicates the ARP aging time in unit of minute for
+            dynamic ARP entries on the corresponding interface. 
+            Setting this variable to 0 the ARP entries will not be aged out." 
+        DEFVAL { 240 }    
+        ::= { esIpExtIfCfgEntry 3 }
+        
+    esIpExtIfCfgProxyArpEnabled     OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The object indicates the state of proxy ARP on the corresponding
+            interface."    
+        DEFVAL          { false } 
+        ::= { esIpExtIfCfgEntry 4 }
+   
+    esIpExtIfCfgLocalProxyArpEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The object indicates the state of local proxy ARP on the
+            corresponding interface."    
+        DEFVAL          { false }  
+        ::= { esIpExtIfCfgEntry 5 }
+
+    esIpExtIfCfgDirectedBcastEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The object indicates the state of the conversion of IP directed
+            broadcasts on the corresponding interface."    
+        DEFVAL          { false }  
+        ::= { esIpExtIfCfgEntry 6 } 
+
+    esIpExtIfCfgDirectedBcastAcl  OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE  (0..32))
+	    MAX-ACCESS      read-write
+	    STATUS          current
+	    DESCRIPTION
+	        "The object indicates the name of a standard IP access list."
+	    ::= { esIpExtIfCfgEntry 7 }
+	    
+	esIpExtIfCfgGratuitousARPSendInterval OBJECT-TYPE
+        SYNTAX          Unsigned32 (0 | 1..3600)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION            
+            "This object indicates the interval of regularly sending the 
+            gratuitous ARP request message in unit of second on the 
+            corresponding interface.
+            A value of zero indicates the gratuitous ARP will not be regularly 
+            sent."            
+        DEFVAL { 0 }    
+        ::= { esIpExtIfCfgEntry 8 }      
+     
+     esIpExtIfCfgIpMtu      OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION            
+            "The MTU is the largest size of the IP datagram which may be transferred 
+            using a specific data link connection. The MTU value is a design parameter 
+            of a LAN and is a mutually agreed value (i.e. both ends of a link agree to 
+            use the same specific value) for most WAN links.
+            The MTU range is based on the chip of the current device."               
+        DEFVAL { 1500 }    
+        ::= { esIpExtIfCfgEntry 9 }
+                     
+    esIpExtIfCfgDADTransmits      OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 0..255 )
+        MAX-ACCESS      read-write
+        STATUS          current   
+        DESCRIPTION 
+            "This object indicates the number of Neighbor Solicitations to send
+            during Duplicate Address Detection (DAD).
+            A value of zero indicates DAD is disabled.
+            "
+        DEFVAL { 1 }  
+        ::= { esIpExtIfCfgEntry 10 }   
+        
+       esIpExtIfCfgElevationArpEnabled     OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The object indicates the state of elevation ARP on the corresponding
+            interface."    
+        DEFVAL          { false } 
+        ::= { esIpExtIfCfgEntry 11 }
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtIpAddressTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpExtIpAddressEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table of addressing information relevant to
+            this entity's IP addresses. This is the enhancement of
+            the ipAddressTable in IP-MIB. Creating/deleting entries in this table
+            causes corresponding entries be created/deleted in ipAddressTable."    
+        ::= { esIpExtInterfaceMgmt 4 }
+
+    esIpExtIpAddressEntry OBJECT-TYPE
+        SYNTAX          EsIpExtIpAddressEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The addressing information for one of this entity's IP addresses.
+            "
+        INDEX           {
+            esIpExtIpAddressType,
+            esIpExtIpAddress,
+            esIpExtIpAddressIfIndex
+        } 
+        ::= { esIpExtIpAddressTable 1 }
+
+    EsIpExtIpAddressEntry ::= SEQUENCE {
+        esIpExtIpAddressType             InetAddressType,
+        esIpExtIpAddress                 InetAddress,
+        esIpExtIpAddressIfIndex          InterfaceIndex,
+        esIpExtIpAddressPrefixLength     InetAddressPrefixLength,       
+        esIpExtIpAddressCategory         INTEGER,
+        esIpExtIpAddressRowStatus        RowStatus
+    }
+   
+    esIpExtIpAddressType OBJECT-TYPE
+        SYNTAX          InetAddressType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The Internet address type of entry." 
+        ::= { esIpExtIpAddressEntry 1 }
+
+    esIpExtIpAddress OBJECT-TYPE
+        SYNTAX          InetAddress (SIZE  (1..16))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The IP address to which this entry's addressing
+            information pertains." 
+        ::= { esIpExtIpAddressEntry 2 }
+
+    esIpExtIpAddressIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The ifindex value which uniquely identifies the interface to which
+            this entry is applicable. 
+            " 
+        ::= { esIpExtIpAddressEntry 3 }
+
+    esIpExtIpAddressPrefixLength OBJECT-TYPE
+        SYNTAX          InetAddressPrefixLength
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The length of the prefix associated with the IP address of this
+            entry. 
+            " 
+        ::= { esIpExtIpAddressEntry 4 }
+
+    esIpExtIpAddressCategory OBJECT-TYPE
+        SYNTAX          INTEGER  { 
+            primary(1), 
+            secondary(2),
+            linkLocal(3),
+            eui64(4)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the IP address category of this entry.
+            The 'primary' and 'secondary' are valid for IPv4 address.
+            Although multiple IPv4 addresses can be created for an interface,
+            at most one of these addresses is the primary IPv4 address, and the
+            rest are secondary IPv4 address.  
+            'linkLocal' and 'eui64' are valid for IPv6 address.   
+            'linkLocal' - The IPv6 address is a link local address.
+            'eui64' - The IPv6 address is formed by EUI-64 interface ID.
+                      The corresponding prefix length must be smaller than 64.
+            " 
+        ::= { esIpExtIpAddressEntry 5 }
+
+     esIpExtIpAddressRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is used to manage creation and deletion of rows
+            in this table. 
+            " 
+        ::= { esIpExtIpAddressEntry 99 }
+
+-- -----------------------------------------------------------------------------   
+    esIpExtIpAddrBaseGenPrefixTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpExtAddrBaseGenPrefixEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table allows the configuration of IPv6 address based on a
+            general prefix.
+	        "    
+        ::= { esIpExtInterfaceMgmt 5 }
+
+    esIpExtIpAddrBaseGenPrefixEntry OBJECT-TYPE
+        SYNTAX          EsIpExtAddrBaseGenPrefixEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the association of general prefix for
+            configuring IPv6 address on an interface.
+            "
+        INDEX           {
+            esIpExtIpAddrBasePrefixIfIndex,
+            esIpExtIpAddrBasePrefixName,
+						esIpExtIpAddrBasePrefixSubBits,
+						esIpExtIpAddrBasePrefixLength
+        } 
+        ::= { esIpExtIpAddrBaseGenPrefixTable 1 }
+
+    EsIpExtAddrBaseGenPrefixEntry ::= SEQUENCE {
+        esIpExtIpAddrBasePrefixIfIndex     InterfaceIndex,
+        esIpExtIpAddrBasePrefixName        DisplayString,
+        esIpExtIpAddrBasePrefixSubBits     InetAddressIPv6,        
+        esIpExtIpAddrBasePrefixLength      InetAddressPrefixLength,              
+        esIpExtIpAddrBasePrefixRowStatus   RowStatus
+    }
+   
+    esIpExtIpAddrBasePrefixIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The ifindex value which uniquely identifies the interface to which
+            this entry is applicable. 
+            " 
+        ::= { esIpExtIpAddrBaseGenPrefixEntry 1 }
+
+    esIpExtIpAddrBasePrefixName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE  (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the general prefix name which will be used to configure the IPv6 
+            address on the interface.
+            " 
+        ::= { esIpExtIpAddrBaseGenPrefixEntry 2 }
+
+    esIpExtIpAddrBasePrefixSubBits OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the sub-prefix part and host part of the IPv6 address.
+            " 
+        ::= { esIpExtIpAddrBaseGenPrefixEntry 3 }
+
+    esIpExtIpAddrBasePrefixLength OBJECT-TYPE
+        SYNTAX          InetAddressPrefixLength
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The length of the prefix associated with the IP address of this
+            entry. 
+            " 
+        ::= { esIpExtIpAddrBaseGenPrefixEntry 4 }
+
+     esIpExtIpAddrBasePrefixRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is used to manage creation and deletion of rows
+            in this table. 
+            " 
+        ::= { esIpExtIpAddrBaseGenPrefixEntry 99 }
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtPrefixMgmt         OBJECT IDENTIFIER ::={esIpExtMIBObjects 5}
+    
+    esIpExtIpv6GneralPrefixTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpExtIpv6GneralPrefixEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "This table allows the creation and removal of IPv6 general
+	        prefixes.    
+            "
+        ::= { esIpExtPrefixMgmt 1 }
+    
+    esIpExtIpv6GneralPrefixEntry OBJECT-TYPE
+        SYNTAX          EsIpExtIpv6GneralPrefixEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "An entry consists of information of an IPv6 general prefix."
+        INDEX  { esIpExtGneralPrefixName }
+        ::= { esIpExtIpv6GneralPrefixTable 1 }
+
+    EsIpExtIpv6GneralPrefixEntry ::= SEQUENCE {    
+        esIpExtGneralPrefixName              DisplayString,
+        esIpExtGneralPrefixType              INTEGER, 
+        esIpExtGneralPrefix                  InetAddressIPv6,
+        esIpExtGneralPrefixLength            InetAddressPrefixLength,
+        esIpExtGeneralPrefix6to4IfIndex      InterfaceIndex,       
+        esIpExtGeneralPrefixRowStatus        RowStatus
+    }
+
+    esIpExtGneralPrefixName OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "The ifindex value which uniquely identifies the
+            interface to which this entry is applicable. 
+            " 
+        ::= { esIpExtIpv6GneralPrefixEntry 1 }
+    
+    esIpExtGneralPrefixType OBJECT-TYPE
+        SYNTAX          INTEGER  {
+           normal(1),
+           ipv6ToIpv4(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "This object indicates the type of the prefix configuration.
+            'normal' - This general prefix is configured by esIpExtGneralPrefix
+                       and esIpExtGneralPrefixLength.
+            'ipv6ToIpv4' - The general prefix is configured by the interface 
+                       (esIpExtGeneralPrefix6to4IfIndex) whose IPv4
+                       address will be used to form a general prefix used for
+                       6to4 tunnel.
+            "
+        ::= { esIpExtIpv6GneralPrefixEntry 2 } 
+   
+    esIpExtGneralPrefix OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "This object indicates the prefix of the entry.
+            This object is meaningless when esIpExtGneralPrefixType is not 'normal'.
+            "
+        ::= { esIpExtIpv6GneralPrefixEntry 3 } 
+
+     esIpExtGneralPrefixLength OBJECT-TYPE
+        SYNTAX          InetAddressPrefixLength
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "The length of the prefix associated with the general prefix of this
+            entry. 
+            This object is meaningless when esIpExtGneralPrefixType is not 'normal'.
+            " 
+        ::= { esIpExtIpv6GneralPrefixEntry 4 } 
+
+     esIpExtGeneralPrefix6to4IfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "This object indicates ifIndex of the interface whose IPv4 address
+            will be used to form a general prefix used for 6to4 tunnel.
+            This object is meaningless when esIpExtGneralPrefixType is not 'ipv6ToIpv4'.
+            "
+        ::= { esIpExtIpv6GneralPrefixEntry 5 } 
+
+    esIpExtGeneralPrefixRowStatus OBJECT-TYPE         
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "Used to control the addition and removal of IPv6
+	        general prefixes.
+            "
+        ::= { esIpExtIpv6GneralPrefixEntry 99 }
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtIpv6PrefixTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpExtIpv6PrefixEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "This table allows the creation and removal of IPv6
+	        prefixes to be placed in Prefix Information
+	        options in Router Advertisement messages sent
+	        from the interface.    
+            This is the enhancement of the ipAddressPrefixTable in IP-MIB.           
+	        "
+        ::= { esIpExtPrefixMgmt 2 }
+
+    esIpExtIpv6PrefixEntry OBJECT-TYPE
+        SYNTAX          EsIpExtIpv6PrefixEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "An IPv6 interface prefix entry."
+        INDEX  { 
+            esIpExtIpv6PrefixIfIndex, 
+            esIpExtIpv6Prefix,
+            esIpExtIpv6PrefixLength 
+        }
+        ::= { esIpExtIpv6PrefixTable 1 }
+
+    EsIpExtIpv6PrefixEntry ::= SEQUENCE {    
+        esIpExtIpv6PrefixIfIndex             InterfaceIndex,
+        esIpExtIpv6Prefix                    InetAddressIPv6,
+        esIpExtIpv6PrefixLength              InetAddressPrefixLength,
+        esIpExtIpv6PrefixValidLifetime       Unsigned32,
+        esIpExtIpv6PrefixPreferLifetime      Unsigned32,
+        esIpExtIpv6PrefixOnLinkFlag          TruthValue,    
+        esIpExtIpv6PrefixAutonomousFlag      TruthValue,   
+        esIpExtIpv6PrefixRowStatus           RowStatus
+    }
+    
+    esIpExtIpv6PrefixIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "The ifindex value which uniquely identifies the
+            interface to which this entry is applicable. 
+            " 
+        ::= { esIpExtIpv6PrefixEntry 1 }
+    
+    esIpExtIpv6Prefix OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "The prefix of the entry."
+        ::= { esIpExtIpv6PrefixEntry 2 }
+
+    esIpExtIpv6PrefixLength OBJECT-TYPE
+        SYNTAX          InetAddressPrefixLength
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "The prefix length of the entry."
+        ::= { esIpExtIpv6PrefixEntry 3 }
+ 
+    esIpExtIpv6PrefixValidLifetime OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "This object indicates the valid life time in seconds of the entry. 
+            A value of 4,294,967,295 represents infinity.
+            "
+        DEFVAL { 2592000 }
+        ::= { esIpExtIpv6PrefixEntry 4 }
+
+    esIpExtIpv6PrefixPreferLifetime OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	       "This object indicates the preferred life time in seconds of the entry.
+            A value of 4,294,967,295 represents infinity.
+           "
+        DEFVAL { 604800 }
+        ::= { esIpExtIpv6PrefixEntry 5 }
+
+     esIpExtIpv6PrefixOnLinkFlag OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	       "This object has the value 'true(1)', if this prefix can be
+            used for on-link determination; otherwise, the value is
+            'false(2)'.
+
+            The default for IPv4 prefixes is 'true(1)'."
+        DEFVAL { false }
+        ::= { esIpExtIpv6PrefixEntry 6 }
+
+    esIpExtIpv6PrefixAutonomousFlag OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	       "Autonomous address configuration flag.  When true(1),
+            indicates that this prefix can be used for autonomous
+            address configuration (i.e., can be used to form a local
+            interface address).  If false(2), it is not used to auto-
+            configure a local interface address.
+
+            The default for IPv4 prefixes is 'false(2)'."
+        DEFVAL { true }
+        ::= { esIpExtIpv6PrefixEntry 7 }
+
+    esIpExtIpv6PrefixRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+	        "Used to control the addition and removal of IPv6
+	        interface prefixes for RA messages."
+        ::= { esIpExtIpv6PrefixEntry 99 }
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtDhcpClientMgmt  OBJECT IDENTIFIER ::={ esIpExtMIBObjects 6 }
+    
+    esIpExtDhcpClientIfTable    OBJECT-TYPE    
+        SYNTAX          SEQUENCE OF EsIpExtDhcpClientIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table contains a list of DHCP client configuration of interfaces."            
+        ::= { esIpExtDhcpClientMgmt 1 }
+        
+    esIpExtDhcpClientIfEntry OBJECT-TYPE
+        SYNTAX          EsIpExtDhcpClientIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION    
+            "An entry is created to configure DHCP client per-interface
+            settings to different value from default value. When an entry is
+            deleted, all the settings are reverted to default value." 
+        INDEX  { esIpExtDhcpClientIfIndex }
+        ::= { esIpExtDhcpClientIfTable 1 }
+                       
+    EsIpExtDhcpClientIfEntry ::= SEQUENCE {
+        esIpExtDhcpClientIfIndex             InterfaceIndex,  
+        esIpExtDhcpClientIfClassIdType       INTEGER,
+        esIpExtDhcpClientIfClassIdValue      DisplayString,            
+        esIpExtDhcpClientIfClientIdIfIdx     InterfaceIndex,   
+        esIpExtDhcpClientIfLeaseDay		    Integer32,
+        esIpExtDhcpClientIfLeaseHour    	    Unsigned32,
+        esIpExtDhcpClientIfLeaseMinute       Unsigned32,  
+        esIpExtDhcpClientIfHostName          DisplayString
+    }
+    
+    esIpExtDhcpClientIfIndex  OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+	    MAX-ACCESS      not-accessible
+	    STATUS          current	    
+	    DESCRIPTION
+	        "The ifIndex value of the interface.
+            Only VLAN interfaces are valid interfaces."
+        ::= { esIpExtDhcpClientIfEntry 1 }
+        
+	esIpExtDhcpClientIfClassIdType OBJECT-TYPE
+        SYNTAX INTEGER      {
+            ascii(1),
+            hex(2)            
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The object indicates the type of class id which is defined by
+            esIpExtDhcpClientIfClassIdValue.            
+            The value means :
+            ascii(1)- The esIpExtDhcpClientIfClassIdValue is ascii string.
+            hex(2)  - The esIpExtDhcpClientIfClassIdValue is a string of HEX
+                      number.
+            "
+        ::= { esIpExtDhcpClientIfEntry 2 }
+        
+    esIpExtDhcpClientIfClassIdValue  OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..64))
+	    MAX-ACCESS      read-create
+	    STATUS          current	    
+	    DESCRIPTION
+	        "This object indicates the value of vendor class identifier
+	        (option 60) to be sent with the DHCP DISCOVER message. 
+ 
+             An esIpExtDhcpClientIfClassIdValue value is always interpreted
+             within the context of an esIpExtDhcpClientIfClassIdType value. 
+             If esIpExtDhcpClientIfClassIdType is 'hex', this object is a HEX
+             string value, which is restricted to hexadecimal character set."
+        ::= { esIpExtDhcpClientIfEntry 3 }
+                   
+    esIpExtDhcpClientIfClientIdIfIdx  OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+	    MAX-ACCESS      read-create
+	    STATUS          current
+	    DESCRIPTION	    
+	        "This object indicates ifIndex of the VLAN interface whose
+	        hexadecimal MAC address will be used as the client ID to be
+	        sent with the DISCOVER message.
+            "
+        ::= { esIpExtDhcpClientIfEntry 4 }        
+    
+    esIpExtDhcpClientIfHostName  OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..64))
+	    MAX-ACCESS      read-create
+	    STATUS          current	    
+	    DESCRIPTION
+	        "This object indicates the host name. The host name must start with
+	        a letter, end with a letter or digit, and only with interior 
+	        characters letters, digits, and hyphens.
+	        "
+        ::= { esIpExtDhcpClientIfEntry 5 }
+               
+    esIpExtDhcpClientIfLeaseDay OBJECT-TYPE
+       SYNTAX           Integer32	(-1 | 0..10000)
+       MAX-ACCESS       read-create
+       STATUS           current
+       DESCRIPTION
+            "This object indicates the number of days for the duration of 
+            preferred lease time. Value of -1 indicates that preferred lease
+            time is unspecified. 
+            This value is checked when an IP address is acquired from
+            a DHCP server. "
+       DEFVAL          { -1 }
+       ::= { esIpExtDhcpClientIfEntry 6 }
+
+    esIpExtDhcpClientIfLeaseHour OBJECT-TYPE
+        SYNTAX          Unsigned32	(0..23)
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the number of hours for the duration of preferred
+            lease time."
+        DEFVAL          { 0 }    
+        ::= { esIpExtDhcpClientIfEntry 7 }
+
+    esIpExtDhcpClientIfLeaseMinute OBJECT-TYPE
+        SYNTAX          Unsigned32	(0..59)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of minutes for the duration of preferred
+            lease time."
+        DEFVAL          { 0 }     
+        ::= { esIpExtDhcpClientIfEntry 8 } 
+    
+    esIpExtDhcpClientAutoconfig OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    enabled(1),
+                    disabled(2)
+                }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "Indicates the status of automatically getting the configuration information
+             from a TFTP server connected to the device."
+        ::= { esIpExtDhcpClientMgmt 2 }
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtUdpForwardMgmt  OBJECT IDENTIFIER ::={esIpExtMIBObjects 7} 
+     
+    esIpExtUdpFwdPortTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpExtUdpFwdPortEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current          
+        DESCRIPTION
+            "This table consists of a list of UDP ports to forward UDP packets.
+            "
+        ::= { esIpExtUdpForwardMgmt 1 }
+
+    esIpExtUdpFwdPortEntry OBJECT-TYPE
+        SYNTAX          EsIpExtUdpFwdPortEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION    
+            "An entry is created/deleted to enable/disable forwarding of a
+            specific UDP service type of packets." 
+        INDEX  { esIpExtUdpFwdPortNumber }
+        ::= { esIpExtUdpFwdPortTable 1 }
+                       
+    EsIpExtUdpFwdPortEntry ::= SEQUENCE {
+        esIpExtUdpFwdPortNumber          InetPortNumber,         
+        esIpExtUdpFwdPortRowStatus       RowStatus
+    }
+    
+    esIpExtUdpFwdPortNumber  OBJECT-TYPE
+        SYNTAX          InetPortNumber
+	    MAX-ACCESS      not-accessible
+	    STATUS          current	    
+	    DESCRIPTION
+	        "The UDP port number of the entry.
+            "
+        ::= { esIpExtUdpFwdPortEntry 1 }
+        
+	esIpExtUdpFwdPortRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION            
+            "The status of this conceptual row." 
+        ::= { esIpExtUdpFwdPortEntry 99 }  
+
+-- -----------------------------------------------------------------------------           
+    esIpExtUdpHelperAddrTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpExtUdpHelperAddrEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current          
+        DESCRIPTION
+            "This table consists of a list of target addresses for forwarding of
+            UDP broadcast packets.
+            "
+        ::= { esIpExtUdpForwardMgmt 2 }
+
+     esIpExtUdpHelperAddrEntry OBJECT-TYPE
+        SYNTAX          EsIpExtUdpHelperAddrEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION    
+            "An target IP address for forwarding of the UDP broadcast packet
+            on an interface.
+            " 
+        INDEX  { 
+            esIpExtUdpHelperIfIndex,
+            esIpExtUdpHelperAddrType,
+            esIpExtUdpHelperAddr,
+            esIpExtUdpHelperVrfState,
+            esIpExtUdpHelperVrfName		
+        }
+        ::= { esIpExtUdpHelperAddrTable 1 }
+                       
+    EsIpExtUdpHelperAddrEntry ::= SEQUENCE {
+        esIpExtUdpHelperIfIndex          InterfaceIndex,
+        esIpExtUdpHelperAddrType         InetAddressType,		
+        esIpExtUdpHelperAddr             InetAddress,
+        esIpExtUdpHelperVrfState       	TruthValue,
+        esIpExtUdpHelperVrfName        	DisplayString,		
+        esIpExtUdpHelperAddrRowStatus    RowStatus
+    }
+    
+    esIpExtUdpHelperIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The ifIndex value of the interface on which the entry is configured.
+            Only VLAN interfaces are valid interfaces."
+        ::= { esIpExtUdpHelperAddrEntry 1 }
+ 
+    esIpExtUdpHelperAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The address type of UDP helper address."
+        ::= { esIpExtUdpHelperAddrEntry 2 }
+
+    esIpExtUdpHelperAddr  OBJECT-TYPE
+        SYNTAX          InetAddress
+	    MAX-ACCESS      not-accessible
+	    STATUS          current	    
+	    DESCRIPTION
+	        "An IP address of the server.
+            "
+        ::= { esIpExtUdpHelperAddrEntry 3 }
+		
+    esIpExtUdpHelperVrfState OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+             "This object indicates whether the virtual routing and forwarding (VRF) is configured.
+             If the state is false, the helper address is assumed to be in the same address 
+             space as the interface VRF, otherwise, the target address is in a different VRF, 
+             or in the global address space."              
+        DEFVAL          { false } 
+        ::= { esIpExtUdpHelperAddrEntry 4 }
+  
+    esIpExtUdpHelperVrfName OBJECT-TYPE
+        SYNTAX          DisplayString  (SIZE(0..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of virtual routing and forwarding (VRF).  
+            If this object is a zero length string, the helper address is in
+            global routing and forwarding space."
+        ::= { esIpExtUdpHelperAddrEntry 5 }		
+        
+	esIpExtUdpHelperAddrRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION            
+            "The status of this conceptual row." 
+        ::= { esIpExtUdpHelperAddrEntry 99 }
+
+-- ----------------------------------------------------------------------------- 
+    esIpExtIpv6AutoConfigMgmt  OBJECT IDENTIFIER ::={esIpExtMIBObjects 8}
+	
+	esIpExtIpv6AutoConfigTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF EsIpExtIpv6AutoConfigEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+	    "A list of configurations about SLAAC on an interface."
+        ::= { esIpExtIpv6AutoConfigMgmt 1 }
+
+    esIpExtIpv6AutoConfigEntry OBJECT-TYPE
+        SYNTAX          EsIpExtIpv6AutoConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "An entry in esIpExtIpv6AutoConfigTable containing the information 
+			 about SLAAC on an interface."
+        INDEX  { 
+            esIpExtIpv6AutoConfigIfIndex
+        }
+        ::= { esIpExtIpv6AutoConfigTable 1 }
+
+    EsIpExtIpv6AutoConfigEntry ::= SEQUENCE {    
+        esIpExtIpv6AutoConfigIfIndex      InterfaceIndex,
+        esIpExtIpv6AutoConfigEnabled      TruthValue,    
+        esIpExtIpv6AutoConfigDefault      TruthValue
+    }
+    
+    esIpExtIpv6AutoConfigIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+	        "The ifIndex of the ip interface.
+             Only VLAN interfaces are valid interfaces.
+            " 
+        ::= { esIpExtIpv6AutoConfigEntry 1 }
+
+    esIpExtIpv6AutoConfigEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS  	read-write
+        STATUS  	current
+        DESCRIPTION
+            "The state of IPv6 stateless adddress autoconfig."
+        DEFVAL          { false } 
+        ::= { esIpExtIpv6AutoConfigEntry 2 }
+
+    esIpExtIpv6AutoConfigDefault OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "When this is true(1), a default route will be installed into ipv6
+			 routing table.  When false(2), no default route will be installed."            
+        DEFVAL          { false } 
+        ::= { esIpExtIpv6AutoConfigEntry 3 }			
+
+--  ***************************************************************************	
+--  Conformance
+--  ***************************************************************************			   		
+	esIpExtCompliances OBJECT IDENTIFIER ::= { esIpExtMIBConformance 1 }
+		
+	esIpExtCompliance MODULE-COMPLIANCE
+		STATUS current
+		DESCRIPTION 
+			"The compliance statement for entities which implement the 
+			DLINKES-IP-EXT-MIB."
+		MODULE -- this module
+		MANDATORY-GROUPS { 
+		    esIpExtBasicGroup
+		}	
+		       
+        GROUP       esIpExtBasicIpv6OnlyGroup 
+        DESCRIPTION 
+            "This group is required only if IPv6 is implemented by the agent."
+
+        GROUP       esIpExtGeneralPrefixGroup 
+        DESCRIPTION 
+            "This group is required only if general prefix is implemented by
+            the agent."
+
+        OBJECT          esIpExtGeneralPrefix6to4IfIndex
+	    MIN-ACCESS      read-only
+	    DESCRIPTION
+		    "Create/Write access is required only if the agent supports forming
+            a general prefix for 6to4 tunnel."     
+
+		GROUP       esIpExtGratuitousArpGroup 
+        DESCRIPTION 
+            "This group is required only if Gratuitous ARP feature is
+            implemented by the agent."		
+        
+        GROUP       esIpExtProxyArpGroup 
+        DESCRIPTION 
+            "This group is required only if Proxy ARP feature is
+            implemented by the agent."	
+        
+        OBJECT          esIpExtIfCfgLocalProxyArpEnabled
+	    MIN-ACCESS      read-only
+	    DESCRIPTION
+		    "Create/Write access is required only if the agent supports local 
+		    Proxy ARP."     
+		
+		GROUP       esIpExtDirectedBroadcastGroup 
+        DESCRIPTION 
+            "This group is required only if IP directed broadcast is
+            implemented by the agent."	
+        
+        GROUP       esIpExtDhcpClientGroup 
+        DESCRIPTION 
+            "This group is required only if IP DHCP client is
+            implemented by the agent."
+         
+        GROUP       esIpExtUdpForwardGroup 
+        DESCRIPTION 
+            "This group is required only if UDP forwarder is
+            implemented by the agent." 
+
+        GROUP       esIpExtIpv6AutoConfigGroup 
+        DESCRIPTION 
+            "This group is required only if SLAAC is
+            implemented by the agent." 			
+		::= { esIpExtCompliances 1 }
+		
+	esIpExtGroups OBJECT IDENTIFIER ::= { esIpExtMIBConformance 2 }
+			
+   	esIpExtBasicGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtClearArpCacheAll,
+            esIpExtClearArpCacheByIf, 
+		    esIpExtTotalArpEntries,            
+            esIpExtIpIfIndex,
+            esIpExtIpIfRowStatus,           
+            esIpExtIfCfgTableNumber,
+            esIpExtIfCfgDhcpEnabled,
+		    esIpExtIfCfgArpTimeout,  
+			esIpExtIfCfgIpMtu,
+            esIpExtIpAddressPrefixLength,
+            esIpExtIpAddressCategory,
+            esIpExtIpAddressRowStatus
+		}
+		STATUS current
+		DESCRIPTION 
+				"This group contains the collection of objects related to
+				IP/ARP settings which are not covered by standard IP-MIB."
+		::= { esIpExtGroups 1 }
+         
+    esIpExtBasicIpv6OnlyGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtClearAllIpv6Neighbors, 
+		    esIpExtClearIpv6NeighborsByIf,
+            esIpExtTotalIpv6Neighbors,
+            esIpExtIfCfgDADTransmits
+		}
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to
+			fundamental IPv6 feature."
+		::= { esIpExtGroups 2 }
+
+    esIpExtGeneralPrefixGroup OBJECT-GROUP
+		OBJECTS { 
+            esIpExtIpAddrBasePrefixRowStatus,
+            esIpExtGneralPrefixType,
+            esIpExtGneralPrefix,
+            esIpExtGneralPrefixLength,
+            esIpExtGeneralPrefix6to4IfIndex,
+            esIpExtGeneralPrefixRowStatus            
+		}
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to
+			general prefix configuration."
+		::= { esIpExtGroups 3 }
+
+    esIpExtRaPrefixGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtIpv6Prefix, 
+		    esIpExtIpv6PrefixLength,
+            esIpExtIpv6PrefixValidLifetime,
+            esIpExtIpv6PrefixPreferLifetime,
+            esIpExtIpv6PrefixOnLinkFlag,
+            esIpExtIpv6PrefixAutonomousFlag,
+            esIpExtIpv6PrefixRowStatus         
+		}
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to
+			the configuration of IPv6 prefix which are advertised in RA."
+		::= { esIpExtGroups 4 }
+
+	esIpExtGratuitousArpGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtIfCfgGratuitousARPSendInterval, 
+		    esIpExtGratuitousARPSendRequestEnabled, 
+		    esIpExtGratuitousARPLearningEnabled 
+		}
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to
+			Gratuitous ARP feature."
+		::= { esIpExtGroups 5 }
+		
+	esIpExtProxyArpGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtIfCfgProxyArpEnabled, 
+		    esIpExtIfCfgLocalProxyArpEnabled 
+		}
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to Proxy
+			ARP."
+		::= { esIpExtGroups 6 }
+		
+	esIpExtDirectedBroadcastGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtIfCfgDirectedBcastEnabled, 
+		    esIpExtIfCfgDirectedBcastAcl 
+		}
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to IP
+			directed broadcasts feature."
+		::= { esIpExtGroups 7 }
+					
+	esIpExtDhcpClientGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtDhcpClientIfClassIdType, 
+		    esIpExtDhcpClientIfClassIdValue, 
+		    esIpExtDhcpClientIfClientIdIfIdx, 
+		    esIpExtDhcpClientIfHostName, 
+			esIpExtDhcpClientIfLeaseDay, 
+			esIpExtDhcpClientIfLeaseHour, 
+			esIpExtDhcpClientIfLeaseMinute }
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to DHCP
+			client."
+		::= { esIpExtGroups 8 }
+
+    esIpExtUdpForwardGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtUdpFwdPortRowStatus, 
+		    esIpExtUdpHelperAddrRowStatus
+        }
+		STATUS current
+		DESCRIPTION 
+		    "This group contains the collection of objects related to UDP
+			forwarding feature."
+		::= { esIpExtGroups 9 }
+		
+    esIpExtIpv6AutoConfigGroup OBJECT-GROUP
+		OBJECTS { 
+		    esIpExtIpv6AutoConfigEnabled, 
+		    esIpExtIpv6AutoConfigDefault
+        }
+		STATUS current
+		DESCRIPTION 
+		    "This group contains the collection of objects related to SLAAC feature."
+		::= { esIpExtGroups 10 }		
+	
+END

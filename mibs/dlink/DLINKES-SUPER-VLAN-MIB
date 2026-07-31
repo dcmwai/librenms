@@ -1,0 +1,210 @@
+--  *****************************************************************
+--  DLINKES-SUPER-VLAN-MIB.mib : Super VLAN MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-SUPER-VLAN-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+		MODULE-IDENTITY, OBJECT-TYPE, IpAddress
+				FROM SNMPv2-SMI
+		RowStatus
+				FROM SNMPv2-TC
+        OBJECT-GROUP, MODULE-COMPLIANCE
+                FROM SNMPv2-CONF
+		VlanIndex
+				FROM Q-BRIDGE-MIB
+		Dlink2kVlanList
+		        FROM DLINKES-TC-MIB
+		dlinkCommon
+				FROM DLINK-ID-REC-MIB;
+
+	dlinkEsSuperVlanMIB MODULE-IDENTITY
+		LAST-UPDATED "201301180000Z"
+		ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "         D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:    +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+		DESCRIPTION
+		    "MIB module for displaying and configuring super VLAN related
+             features in a device."
+
+		REVISION     "201801030000Z"
+        DESCRIPTION
+            "First version of this MIB module."
+		REVISION     "201801030000Z"
+        DESCRIPTION
+            "Modify mib object for EESDD."
+			::= { dlinkCommon 91}
+
+-- -----------------------------------------------------------------------------
+    esSuperVlanMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsSuperVlanMIB 0 }
+    esSuperVlanMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsSuperVlanMIB 1 }
+    esSuperVlanMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsSuperVlanMIB 2 }
+
+-- -----------------------------------------------------------------------------
+	esSuperVlanTable	OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsSuperVlanEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"The table represents super VLAN configuration."
+		::= { esSuperVlanMIBObjects 1 }
+
+	esSuperVlanEntry OBJECT-TYPE
+		SYNTAX          EsSuperVlanEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"Each entry in this table contains a list of sub-VLANs associated
+			to a super VLAN."
+		INDEX  { esSuperVlanId }
+		::= { esSuperVlanTable 1 }
+
+	EsSuperVlanEntry ::=
+		SEQUENCE {
+			esSuperVlanId 		        VlanIndex,
+			esSuperVlanSubVlanFirst2k	Dlink2kVlanList,
+			esSuperVlanSubVlanSecond2k	Dlink2kVlanList,
+			esSuperVlanRowStatus		RowStatus
+		}
+
+	esSuperVlanId	OBJECT-TYPE
+		SYNTAX          VlanIndex (1..4094)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the VLAN-ID of the super VLAN."
+		::= { esSuperVlanEntry 1 }
+
+	esSuperVlanSubVlanFirst2k  OBJECT-TYPE
+		SYNTAX          Dlink2kVlanList
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+			"This object specifies a list of sub-VLANs in a string of
+			octets containing one bit per VLAN for VLANs 1 to 2048.
+            If the bit is set to '1', then the VLAN is associated to
+            the corresponding super VLAN and becomes as a sub-VLAN."
+        ::= { esSuperVlanEntry 2 }
+
+	esSuperVlanSubVlanSecond2k  OBJECT-TYPE
+		SYNTAX          Dlink2kVlanList
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+			"This object specifies a list of sub-VLANs in a string of
+			octets containing one bit per VLAN for VLANs 2049 to 4095.
+            If the bit is set to '1', then the VLAN is associated to
+            the corresponding super VLAN and becomes as a sub-VLAN."
+        ::= { esSuperVlanEntry 3 }
+
+	esSuperVlanRowStatus	OBJECT-TYPE
+		SYNTAX  RowStatus
+		MAX-ACCESS  read-create
+		STATUS  current
+		DESCRIPTION
+			"This object indicates the status of this entry."
+		::= { esSuperVlanEntry 4 }
+
+-- -----------------------------------------------------------------------------
+	esSubVlanIpRangeTable	OBJECT-TYPE
+		SYNTAX  SEQUENCE OF EsSubVlanIpRangeEntry
+		MAX-ACCESS  not-accessible
+		STATUS  current
+		DESCRIPTION
+			"This table contains the IP address range(s) of sub-VLANs."
+		::= { esSuperVlanMIBObjects 2 }
+
+	esSubVlanIpRangeEntry OBJECT-TYPE
+		SYNTAX          EsSubVlanIpRangeEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"A list of information about the IP address range(s0 of a sub-VLAN."
+		INDEX  {
+		    esSubVlanIpRangeVlanId,
+		    esSubVlanIpRangeStartAddr,
+		    esSubVlanIpRangeEndAddr
+		}
+		::= { esSubVlanIpRangeTable 1 }
+
+	EsSubVlanIpRangeEntry ::= 	SEQUENCE {
+		esSubVlanIpRangeVlanId		VlanIndex,
+		esSubVlanIpRangeStartAddr 	IpAddress,
+		esSubVlanIpRangeEndAddr  	IpAddress,
+		esSubVlanIpRangeRowStatus	RowStatus
+	}
+
+	esSubVlanIpRangeVlanId	OBJECT-TYPE
+		SYNTAX          VlanIndex (1..4094)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the sub-VLAN ID."
+		::= { esSubVlanIpRangeEntry 1 }
+
+	esSubVlanIpRangeStartAddr	OBJECT-TYPE
+		SYNTAX          IpAddress
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the start IP address of this sub VLAN."
+		::= { esSubVlanIpRangeEntry 2 }
+
+	esSubVlanIpRangeEndAddr	OBJECT-TYPE
+		SYNTAX          IpAddress
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the end IP address of this sub VLAN."
+		::= { esSubVlanIpRangeEntry 3 }
+
+	esSubVlanIpRangeRowStatus	OBJECT-TYPE
+		SYNTAX          RowStatus
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the status of this entry."
+		::= { esSubVlanIpRangeEntry 4 }
+
+-- -----------------------------------------------------------------------------
+    esSuperVlanCompliances  OBJECT IDENTIFIER
+        ::= { esSuperVlanMIBConformance 1 }
+
+    esSuperVlanGroups  OBJECT IDENTIFIER
+        ::= { esSuperVlanMIBConformance 2 }
+
+    esSuperVlanCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+			DLINKES-SUPER-VLAN-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS    {
+            esSuperVlanBasicCfgGroup
+        }
+
+        ::= { esSuperVlanCompliances 1 }
+-- -----------------------------------------------------------------------------
+    esSuperVlanBasicCfgGroup OBJECT-GROUP
+		OBJECTS {
+		    esSuperVlanSubVlanFirst2k,
+		    esSuperVlanSubVlanSecond2k,
+		    esSuperVlanRowStatus,
+		    esSubVlanIpRangeRowStatus
+		}
+		STATUS current
+		DESCRIPTION
+			"A collection of objects providing basic configuration of super VLAN
+			feature."
+		::= { esSuperVlanGroups 1 }
+
+
+
+END

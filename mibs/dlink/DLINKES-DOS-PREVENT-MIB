@@ -1,0 +1,530 @@
+--  *****************************************************************
+--  DLINKES-DOS-PREVENT-MIB.mib : DoS (Denial of Service) Prevention MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+    DLINKES-DOS-PREVENT-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        TEXTUAL-CONVENTION
+            FROM SNMPv2-TC
+        MODULE-IDENTITY,OBJECT-TYPE,Unsigned32,Counter64,IpAddress,
+        NOTIFICATION-TYPE
+            FROM SNMPv2-SMI
+        TruthValue
+            FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
+            FROM SNMPv2-CONF
+        InterfaceIndexOrZero
+            FROM IF-MIB
+        InetAddressType, InetAddress
+            FROM INET-ADDRESS-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+    dlinkEsDosPreventMIB MODULE-IDENTITY
+        LAST-UPDATED "201906260000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+           "This MIB contains managed objects for the DOS Protection
+            application of the device."
+
+        REVISION        "201906260000Z"
+        DESCRIPTION
+            "Add new MIB object dDoSPrevBlatAttackPktType to support blat UDP and blat TCP."
+
+        REVISION        "201404230000Z"
+        DESCRIPTION
+            "Add new notification esDosPreveAttackDetectedIpPacket to support IPv6."
+
+        REVISION        "201305300000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."
+
+            ::= { dlinkCommon 59 }
+
+--
+-- Textual conventions
+--
+
+    DosAttackType ::= TEXTUAL-CONVENTION
+        STATUS current
+        DESCRIPTION
+            "This data type indicates a well-known DoS type which can be detected.
+             Note that a particular agent may support only certain DoS attack
+             types. Thus, the valid values of this object are project
+             dependent. An agent may respond with an error
+             (e.g., 'inconsistentValue ') to a management SET operation which
+             attempts to modify the value to one which is not supported by the
+             managed device."
+             SYNTAX INTEGER {
+                landAttack(1),
+                blatAttack(2),
+                smurfAttack(3),
+                tcpNullScan(4),
+                tcpXmasScan(5),
+                tcpSynFin(6),
+                tcpSynSrcPortLess1024(7),
+                arpMacSaMismatch(8),
+                fraggleAttack(9),
+                icmpRedirectAttack(10),
+                icmpUnreachableAttack(11),
+                ipRouteRecordAttack(12),
+                ipSourceRouteAttack(13),
+                pingDeathAttack(14),
+                tcpFlagSynRst(15),
+                tcpOverMacMcbc(16),
+                tcpSynWithData(17),
+                tcpTinyFragAttack(18),
+                tcpUdpPortZero(19),
+                tracertAttack(20),
+                winNukeAttack(21),
+                pingFlood(22),
+                synFlood(23),
+                teardrop(24),
+                all(999) 
+            }
+
+-- ***************************************************************************
+-- Node definitions
+-- ***************************************************************************
+    esDosPrevMIBNotifications OBJECT IDENTIFIER ::= { dlinkEsDosPreventMIB 0 }
+    esDosPrevMIBObjects       OBJECT IDENTIFIER ::= { dlinkEsDosPreventMIB 1 }
+    esDosPrevMIBConformance   OBJECT IDENTIFIER ::= { dlinkEsDosPreventMIB 2 }
+
+-- ***************************************************************************
+-- esDosPrevMIBObjects
+-- ***************************************************************************
+    esDosPrevGlobalNotifsEnabled  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Set to 'true' to enable global SNMP notification
+            for DoS prevention feature.  Setting the object to
+            'false' will disable SNMP notifications."
+        DEFVAL      { false }
+        ::= { esDosPrevMIBObjects 1}
+
+    esDosPrevNotifyInfo  OBJECT IDENTIFIER ::= { esDosPrevMIBObjects 2 }
+
+    esDosPrevNotiInfoDropFramesCount OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the total dropped packets due to DoS attack
+            in the past 5 minutes."
+        ::= { esDosPrevNotifyInfo 1 }
+
+    esDosPrevNotiInfoDropIpAddr OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      accessible-for-notify
+        STATUS          deprecated
+        DESCRIPTION
+            "If the DoS packet is from the end station, represent the IP address of attacker;
+            otherwise represent the router's IP."
+        ::= { esDosPrevNotifyInfo 2 }
+
+    esDosPrevNotiInfoDropPortNumber OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the attacked port number."
+        ::= { esDosPrevNotifyInfo 3 }
+
+    esDosPrevNotiInfoDropIpAddressType OBJECT-TYPE
+        SYNTAX  InetAddressType
+        MAX-ACCESS  accessible-for-notify
+        STATUS  current
+        DESCRIPTION
+            "A value that represents a type of Internet address.
+             unknown(0)  An unknown address type. This value MUST
+                  be used if the value of the corresponding
+                  InetAddress object is a zero-length string.
+                  It may also be used to indicate an IP address
+                  which is not in one of the formats defined
+                  below.
+
+             ipv4(1)  An IPv4 address as defined by the
+                      InetAddressIPv4 textual convention.
+
+             ipv6(2)   An IPv6 address as defined by the
+                       InetAddressIPv6 textual convention.
+
+             dns(16)   A DNS domain name as defined by the
+                       InetAddressDNS textual convention.
+            "
+        ::= { esDosPrevNotifyInfo 4 }
+
+    esDosPrevNotiInfoDropIpAddress OBJECT-TYPE
+        SYNTAX  InetAddress
+        MAX-ACCESS  accessible-for-notify
+        STATUS  current
+        DESCRIPTION
+            "Denotes a generic Internet address.
+
+         An InetAddress value is always interpreted within the context
+         of an InetAddressType value.  Every usage of the InetAddress
+         textual convention is required to specify the InetAddressType
+         object that provides the context.  It is suggested that the
+         InetAddressType object be logically registered before the
+         object(s) that use the InetAddress textual convention, if
+         they appear in the same logical row.
+
+         The value of an InetAddress object must always be
+         consistent with the value of the associated InetAddressType
+         object.  Attempts to set an InetAddress object to a value
+         inconsistent with the associated InetAddressType
+         must fail with an inconsistentValue error.
+         "
+        ::= { esDosPrevNotifyInfo 5 }
+
+    esDosPrevCtrlTable  OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsDosPrevCtrlEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A table includes the settings of all DoS prevention
+            types supported by the Switch.
+            Note: the special attack type 'all' is not included
+            in this table."
+        ::= { esDosPrevMIBObjects 3 }
+
+    esDosPrevCtrlEntry OBJECT-TYPE
+        SYNTAX          EsDosPrevCtrlEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A single entry in the DoS prevention control table."
+        INDEX   { esDoSPrevCtrlAttackType }
+        ::= { esDosPrevCtrlTable 1 }
+
+    EsDosPrevCtrlEntry ::=   SEQUENCE {
+        esDoSPrevCtrlAttackType          DosAttackType,
+        esDoSPrevCtrlEnabled             TruthValue,
+        esDoSPrevCtrlActionType          INTEGER,
+        esDoSPrevCtrlRedirectPort        InterfaceIndexOrZero,
+        esDoSPrevCtrlRedirectPriority    Unsigned32,
+        esDoSPrevCtrlRedirectRateLimit   Unsigned32
+    }
+
+    esDoSPrevCtrlAttackType OBJECT-TYPE
+        SYNTAX          DosAttackType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the DoS attack type."
+        ::= { esDosPrevCtrlEntry 1 }
+
+    esDoSPrevCtrlEnabled OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the state of the DoS attack type.
+             Setting this object to 'false' will reset other columnar
+             objects in the same row."
+        DEFVAL      { false }
+        ::= { esDosPrevCtrlEntry 2 }
+
+    esDoSPrevCtrlActionType OBJECT-TYPE
+        SYNTAX  INTEGER    {
+            drop(1),
+            redirect(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the action for the DoS prevention type.
+             If this object is set to 'redirect' and esDoSPrevCtrlEnabled is
+             'true', the configuration will not take effect until a valid
+             redirect port (esDoSPrevCtrlRedirectPort) is specified. If redirect
+             port is not valid, the switch behaves same as 'drop' is set."
+        DEFVAL      { drop }
+        ::= { esDosPrevCtrlEntry 3 }
+
+    esDoSPrevCtrlRedirectPort OBJECT-TYPE
+        SYNTAX      InterfaceIndexOrZero
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the port to which the attacking packet will
+             be redirected. A value of 0 means redirect port is unspecified.
+             This object can only be modified for entries whose value of
+             esDoSPrevCtrlEnabled is 'true' and esDoSPrevCtrlActionType is
+             'redirect'. Otherwise, inconsistentValue error will be returned."
+        DEFVAL      { 0 }
+        ::= { esDosPrevCtrlEntry 4 }
+
+    esDoSPrevCtrlRedirectPriority OBJECT-TYPE
+        SYNTAX      Unsigned32 (0..8)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object configures the priority for the redirected attacking
+             packets. Valid priority values are from 0 to 7.
+             A value of 8 indicates that the original priority will not be
+             changed when the packet is redirected.
+             This object can only be modified for entries whose value of
+             esDoSPrevCtrlEnabled is 'true', esDoSPrevCtrlActionType is
+             'redirect' and esDoSPrevCtrlRedirectPort is specified.
+             Otherwise, inconsistentValue error will be returned."
+        DEFVAL      { 8 }
+        ::= { esDosPrevCtrlEntry 5 }
+
+    esDoSPrevCtrlRedirectRateLimit  OBJECT-TYPE
+        SYNTAX      Unsigned32 (0..100000000)
+        UNITS       "kbps"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the rate-limit (kilobit per second) for
+             redirecting DoS attacking packets.
+             The valid range and granularity is project dependent.
+             A value of 0 indicates that there is no limit for redirecting
+             DoS attacking packets.
+             This object can only be modified for entries whose value of
+             esDoSPrevCtrlEnabled is 'true', esDoSPrevCtrlActionType is
+             'redirect' and esDoSPrevCtrlRedirectPort is specified.
+             Otherwise, inconsistentValue error will be returned."
+        DEFVAL      { 0 }
+        ::= { esDosPrevCtrlEntry 6 }
+
+    esDoSPrevCounterTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsDoSPrevCounterEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The table contains the counters of DoS prevention
+             types supported by the Switch.
+             This table only contains one entry of attack type is 'all' if per
+             DoS-type counters is not supported."
+       ::= { esDosPrevMIBObjects 4 }
+
+    esDoSPrevCounterEntry OBJECT-TYPE
+        SYNTAX      EsDoSPrevCounterEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A single entry in the DoS prevention counter table."
+       INDEX   { esDoSPrevCounterAttackType }
+       ::= { esDoSPrevCounterTable 1 }
+
+    EsDoSPrevCounterEntry ::=    SEQUENCE {
+        esDoSPrevCounterAttackType       DosAttackType,
+        esDoSPrevCounterFrameCount       Counter64,
+        esDoSPrevCounterClearCounter     INTEGER
+    }
+
+    esDoSPrevCounterAttackType OBJECT-TYPE
+        SYNTAX      DosAttackType
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the DoS attack type."
+        ::= { esDoSPrevCounterEntry 1 }
+
+    esDoSPrevCounterFrameCount OBJECT-TYPE
+        SYNTAX      Counter64
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the number of frames detected for
+             the DoS attack prevention type."
+        ::= { esDoSPrevCounterEntry 2 }
+
+    esDoSPrevCounterClearCounter OBJECT-TYPE
+        SYNTAX      INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object is used to reset the counter of the specific
+             attack type when set to 'clear'.
+             No action is taken if this object is set to 'noOp'.
+             When read, the value 'noOp' is returned."
+        DEFVAL      { noOp }
+        ::= { esDoSPrevCounterEntry 3 }
+
+    esDoSPrevBlatAttackPktType OBJECT-TYPE
+        SYNTAX      INTEGER {
+            tcpAndUdp(1),
+            tcpOnly(2),
+            udpOnly(3)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of packets that will be checked when blat attack
+             prevention function is enabled.
+            'tcpAndUdp' - both TCP and UDP packets will be checked.
+            'tcpOnly' - TCP packets will be checked.
+            'udpOnly' - UDP packets will be checked.
+            "
+        DEFVAL      { tcpAndUdp }
+        ::= {  esDosPrevMIBObjects 5 }
+        
+--  ***************************************************************************
+--  Notifications
+--  ***************************************************************************
+    esDosPreveAttackDetected NOTIFICATION-TYPE
+        OBJECTS { esDosPrevNotiInfoDropFramesCount }
+        STATUS  current
+        DESCRIPTION
+            "This trap is sent when esDosPrevGlobalNotifsEnabled is 'true' and
+             the DoS attack occurs in the past 5 minutes."
+        ::= { esDosPrevMIBNotifications 1 }
+
+     esDosPreveAttackDetectedPacket NOTIFICATION-TYPE
+        OBJECTS {
+            esDosPrevNotiInfoDropIpAddr,
+            esDosPrevNotiInfoDropPortNumber
+        }
+        STATUS  deprecated
+        DESCRIPTION
+            "This trap is sent when esDosPrevGlobalNotifsEnabled is 'true' and
+             the DoS attack occurs to detect the dropped attack packets."
+        ::= { esDosPrevMIBNotifications 2 }
+
+     esDosPreveAttackDetectedIpPacket NOTIFICATION-TYPE
+        OBJECTS {
+            esDosPrevNotiInfoDropIpAddressType,
+            esDosPrevNotiInfoDropIpAddress,
+            esDosPrevNotiInfoDropPortNumber
+        }
+        STATUS  current
+        DESCRIPTION
+            "This trap is sent when esDosPrevGlobalNotifsEnabled is 'true' and
+             the DoS attack occurs to detect the dropped attack packets.
+             Note: include IPv4 and IPv6 DoS attack."
+        ::= { esDosPrevMIBNotifications 3 }
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esDosPrevMIBCompliances
+            OBJECT IDENTIFIER ::= { esDosPrevMIBConformance 1 }
+    esDosPrevMIBGroups
+            OBJECT IDENTIFIER ::= { esDosPrevMIBConformance 2 }
+
+    esDosPrevMIBCompliance MODULE-COMPLIANCE
+        STATUS          deprecated
+        DESCRIPTION
+            "The compliance statement for the DoS Prevention MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esDosPrevBasicGroup,
+            esDosPrevNotifyObjectGroup,
+            esDosPrevNotificationsGroup
+        }
+        GROUP esDosPrevActionRedirectCtrlGroup
+        DESCRIPTION
+            "This group need not be implemented if only support 'drop' for DoS
+             attack."
+        ::= { esDosPrevMIBCompliances 1 }
+
+    esDosPrevMIBCompliance2 MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for the DoS Prevention MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esDosPrevBasicGroup,
+            esDosPrevNotifyObjectGroup2,
+            esDosPrevNotificationsGroup2
+        }
+        GROUP esDosPrevActionRedirectCtrlGroup
+        DESCRIPTION
+            "This group need not be implemented if only support 'drop' for DoS
+             attack."
+        ::= { esDosPrevMIBCompliances 2 }
+
+    esDosPrevBasicGroup OBJECT-GROUP
+        OBJECTS    {
+            esDoSPrevCtrlEnabled,
+            esDoSPrevCounterFrameCount,
+            esDoSPrevCounterClearCounter
+        }
+        STATUS          current
+        DESCRIPTION
+            "The collection of objects provides basic control for DoS
+             Prevention."
+        ::= { esDosPrevMIBGroups 1 }
+
+    esDosPrevActionRedirectCtrlGroup OBJECT-GROUP
+        OBJECTS    {
+            esDoSPrevCtrlActionType,
+            esDoSPrevCtrlRedirectPort,
+            esDoSPrevCtrlRedirectPriority,
+            esDoSPrevCtrlRedirectRateLimit
+        }
+        STATUS          current
+        DESCRIPTION
+           "The collection of objects provides the advanced action control for
+            DoS Prevention."
+        ::= { esDosPrevMIBGroups 2 }
+
+    esDosPrevNotifyObjectGroup OBJECT-GROUP
+        OBJECTS         {
+            esDosPrevGlobalNotifsEnabled,
+            esDosPrevNotiInfoDropFramesCount,
+            esDosPrevNotiInfoDropIpAddr,
+            esDosPrevNotiInfoDropPortNumber,
+            esDoSPrevBlatAttackPktType
+        }
+        STATUS          deprecated
+        DESCRIPTION
+            "The collection of objects provides the control and information of
+             DoS notifications."
+        ::= { esDosPrevMIBGroups 3 }
+
+    esDosPrevNotificationsGroup NOTIFICATION-GROUP
+        NOTIFICATIONS   {
+            esDosPreveAttackDetected,
+            esDosPreveAttackDetectedPacket
+        }
+        STATUS          deprecated
+        DESCRIPTION
+            "The collection of objects provides DoS notifications."
+        ::= { esDosPrevMIBGroups 4 }
+
+    esDosPrevNotifyObjectGroup2 OBJECT-GROUP
+        OBJECTS         {
+            esDosPrevGlobalNotifsEnabled,
+            esDosPrevNotiInfoDropFramesCount,
+            esDosPrevNotiInfoDropIpAddress,
+            esDosPrevNotiInfoDropIpAddressType,
+            esDosPrevNotiInfoDropPortNumber
+        }
+        STATUS          current
+        DESCRIPTION
+            "The collection of objects provides the control and information of
+             DoS notifications."
+        ::= { esDosPrevMIBGroups 5 }
+
+    esDosPrevNotificationsGroup2 NOTIFICATION-GROUP
+        NOTIFICATIONS   {
+            esDosPreveAttackDetected,
+            esDosPreveAttackDetectedIpPacket
+        }
+        STATUS          current
+        DESCRIPTION
+            "The collection of objects provides DoS notifications."
+        ::= { esDosPrevMIBGroups 6 }
+
+END
+

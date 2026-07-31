@@ -1,0 +1,1919 @@
+--  *****************************************************************
+--  DLINKES-MGMD-SNOOPING-MIB.mib : MGMD (IGMP/MLD) Snooping MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+DLINKES-MGMD-SNOOPING-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE,
+        NOTIFICATION-TYPE, IpAddress,
+        TimeTicks, Counter64, Unsigned32      FROM SNMPv2-SMI
+        RowStatus, DisplayString, TruthValue  FROM SNMPv2-TC
+        TEXTUAL-CONVENTION                    FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP       FROM SNMPv2-CONF
+        InterfaceIndex, InterfaceIndexOrZero  FROM IF-MIB
+        InetAddress, InetAddressType          FROM INET-ADDRESS-MIB
+        VlanId, VlanIdOrNone                  FROM Q-BRIDGE-MIB
+        dlinkCommon                           FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsMgmdSnoopingMIB MODULE-IDENTITY
+        LAST-UPDATED "201408180000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for MGMD (Multicast Group
+            Membership Discovery) snooping."
+        REVISION "202004160000Z"
+	    DESCRIPTION
+        "Add New objects esMgmdSnpIfQuerier and
+        esMgmdSnpIfQuerierExpiryTime
+        "
+        REVISION "201408180000Z"
+	    DESCRIPTION 
+	    	"Add New objects 'esMgmdSnpClearAllUnknownDataGroup', 
+	    	     'esMgmdSnpClearIgmpSnoopUnknownDataGroupByGrpAddr',
+	             'esMgmdSnpClearMldSnoopUnknownDataGroupByGrpAddr',
+				 'esMgmdSnpClearIgmpSnoopUnknownDataGroupByVlanId',
+				 'esMgmdSnpClearMldSnoopUnknownDataGroupByVlanId',
+				 'esMgmdSnpIgmpSnoopDynamicMrouteAgingTime', 'esMgmdSnpMldSnoopDynamicMrouteAgingTime',
+				 'esMgmdSnpIgmpSnoopUnknownDataLimit', 'esMgmdSnpMldSnoopUnknownDataLimit' 
+				 to 'esMgmdSnpGlobalCtrl'.
+			 Add new objects 'esMgmdSnpIfLimitExceedAction' to 'esMgmdSnpIfLimitTable'. 
+			 Add new table 'esMgmdSnpPortIfTable'.
+			"
+      
+        REVISION "201407180000Z"
+	    DESCRIPTION 
+	    	"Modify the OID of all rowstatus objects to 99."
+	 
+        REVISION "201311080000Z"
+        DESCRIPTION
+            "Add new objects esMgmdSnpIfIgnoreTopologyChgNotification
+            to esMgmdSnpIfTable."
+            
+        REVISION "201309050000Z"
+        DESCRIPTION
+            "Add new objects esMgmdSnpIfQueryInterval, 
+            esMgmdSnpIfQueryMaxResponseTime, esMgmdSnpIfQueryVersion, 
+            esMgmdSnpIfRobustness, esMgmdSnpIfLastMemberQueryInterval, 
+            and esMgmdSnpIfSuppressionTime to esMgmdSnpIfTable.
+            
+            Split table esMgmdSnpGroupTable into two tables, there are 
+            esMgmdSnpGroupTable and esMgmdSnpStaticGrpTable. 
+            The table esMgmdSnpGroupTable listing MGMD snooping dynamic
+            groups; table esMgmdSnpStaticGrpTable manage MGMD snooping
+            static groups.
+            
+            Split table esMgmdSnpGroupSrcTable into two tables, there are 
+            esMgmdSnpGroupSrcTable and esMgmdSnpStaticGrpSrcTable. 
+            The table esMgmdSnpGroupSrcTable listing MGMD snooping dynamic
+            group source entries; table esMgmdSnpStaticGrpSrcTable manage 
+            MGMD snooping static group source entries.
+            
+            Revision some spelling error and objects description."
+            
+        REVISION "201301290000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file for 'MGMD snooping'
+            functionality."
+
+    ::= { dlinkCommon 6 }
+
+-- 
+-- Textual Conventions
+--
+SnoopingType ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+        "The snooping type.
+
+        'igmpSnooping' -- IGMP (IPv4 MGMD) snooping. 
+
+        'mldSnooping' -- MLD (IPv6 MGMD) snooping.
+        "    
+            
+    SYNTAX     INTEGER {
+        igmpSnooping(1),
+        mldSnooping(2)
+    }
+-- -----------------------------------------------------------------------------
+    esMgmdSnpMIBNotifications   OBJECT IDENTIFIER ::= { dlinkEsMgmdSnoopingMIB 0 }
+    esMgmdSnpMIBObjects         OBJECT IDENTIFIER ::= { dlinkEsMgmdSnoopingMIB 1 }
+    esMgmdSnpMIBConformance     OBJECT IDENTIFIER ::= { dlinkEsMgmdSnoopingMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esMgmdSnpGlobalCtrl         OBJECT IDENTIFIER ::= { esMgmdSnpMIBObjects 1 }
+    
+    esMgmdSnpStateGblEnabled OBJECT-TYPE
+        SYNTAX BITS {
+            ipv4(0),
+            ipv6(1)  }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "An object indicates which type of MGMD is globally enabled.
+            Setting a type's bit to 1 means the type of MGMD is globally 
+            enabled.
+            ipv4 (0)    - IGMP snooping
+            ipv6 (1)    - MLD snooping." 
+        ::= { esMgmdSnpGlobalCtrl 1 }
+        
+    esMgmdSnpClearAllState OBJECT-TYPE
+        SYNTAX      INTEGER {
+            notClear(1),
+            igmpClear(2),
+            mldClear(3)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the global state of MGMD snooping statistics 
+            function. Configuring this object to igmpClear or mldClear will clear
+            all respective MGMD snooping counters."
+        ::= { esMgmdSnpGlobalCtrl 2 }
+        
+    esMgmdSnpClearIgmpSnoopByPortIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the ifIndex of the port/port-channel on which 
+           the IGMP snooping counters will be cleared.
+           When read, the special value 0 is returned."
+        ::= { esMgmdSnpGlobalCtrl 3 }
+    
+    esMgmdSnpClearMldSnoopByPortIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the ifIndex of the port/port-channel on which 
+           the MLD snooping counters will be cleared.
+           When read, the special value 0 is returned."
+        ::= { esMgmdSnpGlobalCtrl 4 }
+    
+    esMgmdSnpClearIgmpSnoopByVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the VLAN ID on which the IGMP snooping 
+           counters will be cleared.
+           When read, the special value 0 is returned."
+        ::= { esMgmdSnpGlobalCtrl 5 }
+    
+    esMgmdSnpClearMldSnoopByVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone           
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the VLAN ID on which the MLD snooping counters
+           will be cleared.
+           When read, the special value 0 is returned."    
+        ::= { esMgmdSnpGlobalCtrl 6 }  
+        
+    esMgmdSnpClearAllUnknownDataGroup OBJECT-TYPE
+        SYNTAX      INTEGER {
+            notClear(1),
+            igmpClear(2),
+            mldClear(3)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the clear status of MGMD snooping unknown data groups. 
+            Configuring this object to igmpClear or mldClear will clear all unknown data
+            groups learned by MGMD snooping."
+        ::= { esMgmdSnpGlobalCtrl 7 }
+        
+    esMgmdSnpClearIgmpSnoopUnknownDataGroupByGrpAddr OBJECT-TYPE
+        SYNTAX          InetAddress (SIZE(4|16))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the multicast group address of IGMP snooping unknown data 
+           groups will be cleared.
+           When read, the special value 0 is returned."
+        ::= { esMgmdSnpGlobalCtrl 8 }
+    
+    esMgmdSnpClearMldSnoopUnknownDataGroupByGrpAddr OBJECT-TYPE
+        SYNTAX          InetAddress (SIZE(4|16))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the multicast group address of MLD snooping unknown data 
+           groups will be cleared.
+           When read, the special value 0 is returned."
+        ::= { esMgmdSnpGlobalCtrl 9 }
+    
+    esMgmdSnpClearIgmpSnoopUnknownDataGroupByVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the VLAN ID on which the IGMP snooping unknown
+           data groups will be cleared.
+           When read, the special value 0 is returned."
+        ::= { esMgmdSnpGlobalCtrl 10 }
+    
+    esMgmdSnpClearMldSnoopUnknownDataGroupByVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone           
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the VLAN ID on which the MLD snooping unknown
+           data groups will be cleared.
+           When read, the special value 0 is returned."    
+        ::= { esMgmdSnpGlobalCtrl 11 }
+
+    esMgmdSnpIgmpSnoopDynamicMrouteAgingTime OBJECT-TYPE
+        SYNTAX          Unsigned32 (10..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the aging time of dynamic multicat router ports
+           learned by IGMP snooping."    
+        ::= { esMgmdSnpGlobalCtrl 12 }
+    
+    esMgmdSnpMldSnoopDynamicMrouteAgingTime OBJECT-TYPE
+        SYNTAX          Unsigned32 (10..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the aging time of dynamic multicat router ports
+           learned by MLD snooping."    
+        ::= { esMgmdSnpGlobalCtrl 13 }
+        
+    esMgmdSnpIgmpSnoopUnknownDataLimit OBJECT-TYPE
+        SYNTAX          Unsigned32 
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the maximum group entry number learned from unknown 
+           multicast data by IGMP Snooping."    
+        ::= { esMgmdSnpGlobalCtrl 14 }  
+        
+    esMgmdSnpMldSnoopUnknownDataLimit OBJECT-TYPE
+        SYNTAX          Unsigned32 
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the maximum group entry number learned from unknown 
+           multicast data by MLD Snooping."    
+        ::= { esMgmdSnpGlobalCtrl 15 }    
+-- -----------------------------------------------------------------------------
+    esMgmdSnpVlanIfCtrl           OBJECT IDENTIFIER ::= { esMgmdSnpMIBObjects 2 }
+    
+    esMgmdSnpIfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table lists the MGMD snooping settings per interface. 
+            An entry is created to configure the MGMD snooping related settings
+            to different value than the default per interface.
+            When an entry is deleted, all the MGMD snooping settings will be
+            reverted to default settings."
+        ::= { esMgmdSnpVlanIfCtrl 1 }
+
+    esMgmdSnpIfEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table entry represents the MGMD snooping state on a VLAN
+             basis."
+        INDEX    { 
+            esMgmdSnpIfVlanIfIndex , 
+            esMgmdSnpIfSnoopingType
+        }
+        ::= { esMgmdSnpIfTable 1 }
+
+    EsMgmdSnpIfEntry ::= SEQUENCE {
+        esMgmdSnpIfVlanIfIndex               InterfaceIndex,
+        esMgmdSnpIfSnoopingType              SnoopingType,
+        esMgmdSnpIfStateEnabled              TruthValue,
+        esMgmdSnpIfQuerierStateEnabled       TruthValue,
+        esMgmdSnpIfQuerierRouter             INTEGER,
+        esMgmdSnpIfFastLeaveEnabled          TruthValue,
+        esMgmdSnpIfFastLeaveHostBased        TruthValue,
+        esMgmdSnpIfMinimumVersion            INTEGER,
+        esMgmdSnpIfExplicitTrackEnabled      TruthValue,
+        esMgmdSnpIfReportSuppresEnabled      TruthValue,
+        esMgmdSnpIfProxyReportingEnabled     TruthValue,
+        esMgmdSnpIfProxyReportSrcAddrType    InetAddressType,
+        esMgmdSnpIfProxyReportSrcAddr        InetAddress,
+        esMgmdSnpIfQueryInterval             Unsigned32,
+        esMgmdSnpIfQueryMaxResponseTime      Unsigned32,
+        esMgmdSnpIfQueryVersion              Unsigned32,
+        esMgmdSnpIfRobustness                Unsigned32,
+        esMgmdSnpIfLastMemberQueryInterval   Unsigned32,
+        esMgmdSnpIfSuppressionTime           Unsigned32,
+        esMgmdSnpIfIgnoreTopologyChgNotification      TruthValue,   
+        esMgmdSnpIfRateLimit                 Unsigned32,
+        esMgmdSnpIfUnknownDataLearnState     TruthValue,  
+        esMgmdSnpIfUnknownDataGroupExpiryTime       Unsigned32,
+        esMgmdSnpIfQuerier                   InetAddress,
+        esMgmdSnpIfQuerierExpiryTime         Unsigned32,
+        esMgmdSnpIfRowStatus                 RowStatus
+    }
+         
+    esMgmdSnpIfVlanIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific VLAN interface."
+        ::= { esMgmdSnpIfEntry 1 }
+
+    esMgmdSnpIfSnoopingType OBJECT-TYPE
+        SYNTAX          SnoopingType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The snooping type of this entry."
+        ::= { esMgmdSnpIfEntry 2 }
+
+    esMgmdSnpIfStateEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of MGMD snooping of the entry."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 4 }
+
+    esMgmdSnpIfQuerierStateEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the MGMD query function in Layer 2 networks."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 5 }
+
+    esMgmdSnpIfQuerierRouter OBJECT-TYPE
+        SYNTAX          INTEGER { 
+            absence(1), 
+            active(2), 
+            nonActive(3)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the VLAN interface at the switch system works as a
+            MGMD querier or not. A value of absence(1) indicates the absence of
+            this attribute."
+        ::= { esMgmdSnpIfEntry 6 }
+
+    esMgmdSnpIfFastLeaveEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object enables the MGMD snooping fast-leave feature on the
+            interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 7 }
+
+    esMgmdSnpIfFastLeaveHostBased OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object configures the MGMD Snooping Host Based Fast Leave 
+            function."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 8 }
+        
+    esMgmdSnpIfMinimumVersion OBJECT-TYPE
+        SYNTAX      INTEGER { 
+            disabled(1), 
+            version2(2), 
+            version3(3) }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "To restrict the minimum version allows user to control the minimum
+             version of MGMD hosts can be joined on a layer 2 port. The value 
+             '0' means that this interface does not restrict the minimum version.
+             Value 2 applies to IGMP routers only.  Value 3 applies to IGMP and
+             MLD routers."
+        DEFVAL      { 1 }
+        ::= { esMgmdSnpIfEntry 9 }
+
+    esMgmdSnpIfExplicitTrackEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object enables explicit tracking of group membership for IGMP
+            Version 3 hosts on the interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 10 }
+ 
+    esMgmdSnpIfReportSuppresEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object enables the report suppression on the interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 11 }
+    
+    esMgmdSnpIfProxyReportingEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object enables the proxy-reporting function on the interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 12 }    
+        
+    esMgmdSnpIfProxyReportSrcAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType 
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of Internet address 
+             of the source IP of proxy reporting."
+        DEFVAL { ipv4 }
+        ::= { esMgmdSnpIfEntry 14 }      
+        
+     esMgmdSnpIfProxyReportSrcAddr OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source Internet address 
+             of proxy reporting. This object is valid when 
+             esMgmdSnpIfProxyReportingEnabled is 'true'."
+        DEFVAL { '00000000'h }
+        ::= { esMgmdSnpIfEntry 15 }
+        
+    esMgmdSnpIfQueryInterval OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..31744)
+        UNITS           "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The frequency at which IGMP or MLD Query packets are
+            transmitted on this interface."
+        DEFVAL      { 125 }
+        ::= { esMgmdSnpIfEntry 16 }
+        
+    esMgmdSnpIfQueryMaxResponseTime OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The maximum query response interval advertised in IGMP 
+            or MLD queries on this interface."
+        ::= { esMgmdSnpIfEntry 17 }
+        
+    esMgmdSnpIfQueryVersion OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..3)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The version of MGMD querier version on this interface.
+            Value 1 applies to IGMPv1 routers only.  Value 2 applies
+            to IGMPv2 and MLDv1 routers, and value 3 applies to IGMPv3
+            and MLDv2 routers."
+        DEFVAL      { 3 }
+        ::= { esMgmdSnpIfEntry 18 }
+        
+    esMgmdSnpIfRobustness OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The Robustness Variable allows tuning for the expected
+            packet loss on a subnet."
+        DEFVAL      { 2 }
+        ::= { esMgmdSnpIfEntry 19 }
+        
+    esMgmdSnpIfLastMemberQueryInterval OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The amount of time between group-specific query messages.
+            This value can be tuned to modify the leave latency of the 
+            network."
+        DEFVAL      { 1 }
+        ::= { esMgmdSnpIfEntry 20 }
+        
+    esMgmdSnpIfSuppressionTime OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The interval of report suppression on this interface."
+        ::= { esMgmdSnpIfEntry 21 }
+
+    esMgmdSnpIfIgnoreTopologyChgNotification  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates MGMD ignore STP change and won't send 
+            STP-triggered-query on the interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 22 }
+    
+    esMgmdSnpIfRateLimit  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the rate of the MGMD control packets that 
+            the switch can process on the interface. 
+            If the value of this object is set to 0, the MGMD control packets
+            processing is not limitation.
+            The rate is specified in packets per second."
+        ::= { esMgmdSnpIfEntry 23 }
+    
+   esMgmdSnpIfUnknownDataLearnState  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of unknown data group learning function
+            on the interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpIfEntry 24 } 
+        
+    esMgmdSnpIfUnknownDataGroupExpiryTime OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the life time of MGMD snooping unknown data groups.
+            If the value of this oject is set to 0, the MGMD snooping unknown data 
+            groups won't be aged out."
+        ::= { esMgmdSnpIfEntry 25 }
+
+    esMgmdSnpIfQuerier OBJECT-TYPE
+      SYNTAX     InetAddress
+      MAX-ACCESS read-only
+      STATUS     current
+      DESCRIPTION
+            "The address of the Querier on the interface.
+            The type of address is determined by dMgmdSnpIfSnoopingType."
+    ::= { esMgmdSnpIfEntry 26 }
+
+    esMgmdSnpIfQuerierExpiryTime OBJECT-TYPE
+      SYNTAX     Unsigned32
+      UNITS      "seconds"
+      MAX-ACCESS read-only
+      STATUS     current
+      DESCRIPTION
+            "The amount of time remaining before the Other Querier
+            Present Timer expires.  If the local system is the querier,
+            the value of this object is zero."
+    ::= { esMgmdSnpIfEntry 27 }
+
+        
+    esMgmdSnpIfRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "The status of this conceptual row." 
+        ::= { esMgmdSnpIfEntry 99 }
+-- -----------------------------------------------------------------------------
+    esMgmdSnpPortIfCtrl           OBJECT IDENTIFIER ::= { esMgmdSnpMIBObjects 3 }
+
+    esMgmdSnpMrouterTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpMrouterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table to display and configure the MGMD snooping multicast
+            router information. An entry is created if a multicast router is
+            is learned dynamically on that port/port-channel interface 
+            (esMgmdSnpIfAutoLearnMrouter is 'true' on the VLAN interface). In 
+            this situation, an entry cannot be destroyed.
+            An entry can also be created to statically configured a multicast 
+            router port or forbid a port/port-channel become multicast router
+            port."
+        ::= { esMgmdSnpPortIfCtrl 1 }
+
+    esMgmdSnpMrouterEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpMrouterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpMrouterTable."
+        INDEX  { 
+            esMgmdSnpMrouterIfIndex,
+            esMgmdSnpMrouterVlanIfIndex,
+            esMgmdSnpMrouterQuerierType
+        }
+        ::= { esMgmdSnpMrouterTable 1 }
+
+    EsMgmdSnpMrouterEntry ::= SEQUENCE {
+        esMgmdSnpMrouterIfIndex              InterfaceIndex,
+        esMgmdSnpMrouterVlanIfIndex          InterfaceIndex,
+        esMgmdSnpMrouterQuerierType          SnoopingType,
+        esMgmdSnpMrouterAdminState           INTEGER,
+        esMgmdSnpMrouterDynamicMrouter       TruthValue,
+        esMgmdSnpMrouterStatus               RowStatus
+    }
+    
+    esMgmdSnpMrouterIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMgmdSnpMrouterEntry 1 }
+        
+    esMgmdSnpMrouterVlanIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific VLAN interface."
+        ::= { esMgmdSnpMrouterEntry 2 }
+
+    esMgmdSnpMrouterQuerierType OBJECT-TYPE
+        SYNTAX          SnoopingType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The snooping type of this interface."
+        ::= { esMgmdSnpMrouterEntry 3 }
+     
+    esMgmdSnpMrouterAdminState OBJECT-TYPE
+        SYNTAX      INTEGER { 
+            none(1), 
+            designated(2), 
+            forbidden(3) }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the static configuration about multicast
+            router state of a port/port-channel on a per-VLAN basis. 
+            none(1) - no static configuration
+            designated(2) - the port/port-channel is a static multicast router 
+                           port.
+            forbidden(3) - the port/port-channel cannot be multicast router
+                           port."
+        DEFVAL      { 1 }
+        ::= { esMgmdSnpMrouterEntry 5 }
+               
+     esMgmdSnpMrouterDynamicMrouter OBJECT-TYPE
+        SYNTAX          TruthValue 
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object is valid when esMgmdSnpMrouterAdminState is 'none'.
+            This object indicates the port/port-channel is dynamically learned
+            as a multicast router port on the corresponding VLAN interface."
+        ::= { esMgmdSnpMrouterEntry 6 }
+     
+    esMgmdSnpMrouterStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this conceptual row."
+        ::= { esMgmdSnpMrouterEntry 99 }              
+-- -----------------------------------------------------------------------------
+    esMgmdSnpIfLimitTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsMgmdSnpIfLimitEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The table to set the limitation on the number of MGMD cache entries.
+            For a Layer 2 VLAN on a trunk port, the limitation can be set per
+            port/port-channel and on per VLAN basis."
+        ::= { esMgmdSnpPortIfCtrl 2 }
+
+    esMgmdSnpIfLimitEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpIfLimitEntry
+        MAX-ACCESS      not-accessible
+        STATUS  current
+        DESCRIPTION
+            "An entry in the esMgmdSnpFilterTable."
+        INDEX  { 
+            esMgmdSnpIfLimitIfIndex,
+            esMgmdSnpIfLimitVlanId,
+            esMgmdSnpIfLimitSnoopingType 
+        }
+        ::= { esMgmdSnpIfLimitTable 1 }
+
+    EsMgmdSnpIfLimitEntry ::= SEQUENCE {
+        esMgmdSnpIfLimitIfIndex              InterfaceIndex,
+        esMgmdSnpIfLimitVlanId               VlanIdOrNone,
+        esMgmdSnpIfLimitSnoopingType         SnoopingType,
+        esMgmdSnpIfLimitExceptAccLstName     DisplayString,
+        esMgmdSnpIfLimitValue                Unsigned32, 
+        esMgmdSnpIfLimitExceedAction         INTEGER,
+        esMgmdSnpIfLimitRowStatus            RowStatus
+    }
+
+    esMgmdSnpIfLimitIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific physical interface/port-channel interface."
+        ::= { esMgmdSnpIfLimitEntry 1 }
+
+    esMgmdSnpIfLimitVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific VLAN ID.
+            A value of zero indicates that no VLAN ID is not applicable or 
+            not configured."
+        ::= { esMgmdSnpIfLimitEntry 2 }
+
+    esMgmdSnpIfLimitSnoopingType OBJECT-TYPE
+        SYNTAX          SnoopingType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+             "Indicates the snooping type."    
+        ::= { esMgmdSnpIfLimitEntry 3 }
+            
+    esMgmdSnpIfLimitExceptAccLstName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..32))
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "The name of the IP/IPv6 basic access list. The group (*,G), or 
+            channel (S,G) permitted by the access list will be excluded from the
+            limit.
+            The zero length of this object means except ACL is not specified.
+            "
+        ::= { esMgmdSnpIfLimitEntry 5 }
+            
+    esMgmdSnpIfLimitValue OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..1024)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "To restric the number of MGMD groups or channels allows user 
+            to control how many MGMD groups or channels can be joined on a 
+            layer-2 port."
+        ::= { esMgmdSnpIfLimitEntry 6}
+    
+    esMgmdSnpIfLimitExceedAction OBJECT-TYPE
+        SYNTAX      INTEGER {
+            drop(1),
+            replace(2)
+            }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the action for handling newly learned MGMD groups 
+            when the limitation is exceeded."
+        ::= { esMgmdSnpIfLimitEntry 7 }
+        
+    esMgmdSnpIfLimitRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this conceptual row."
+        ::= { esMgmdSnpIfLimitEntry 99 }
+-- -----------------------------------------------------------------------------
+    esMgmdSnpAccGrpTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsMgmdSnpAccGrpEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The table to display and configure the IP/IPv6 basic access list 
+            information of MGMD snooping.
+            For a Layer 2 VLAN on a trunk port, the access group can be set per
+            port/port-channel and on per VLAN basis."
+        ::= { esMgmdSnpPortIfCtrl 3 }
+
+    esMgmdSnpAccGrpEntry OBJECT-TYPE
+        SYNTAX      EsMgmdSnpAccGrpEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "An entry in the esMgmdSnpAccGrpTable. "
+        INDEX  { 
+            esMgmdSnpAccGrpIfIndex,
+            esMgmdSnpAccGrpVlanId,
+            esMgmdSnpAccGrpSnoopingType
+        }
+        ::= { esMgmdSnpAccGrpTable 1 }
+
+    EsMgmdSnpAccGrpEntry ::= SEQUENCE {
+            esMgmdSnpAccGrpIfIndex           InterfaceIndex,
+            esMgmdSnpAccGrpVlanId            VlanIdOrNone,
+            esMgmdSnpAccGrpSnoopingType      SnoopingType,
+            esMgmdSnpAccessGroupName         DisplayString,
+            esMgmdSnpAccGrpStatus            RowStatus
+        }
+
+    esMgmdSnpAccGrpIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the specific physical interface/port-channel interface."
+        ::= { esMgmdSnpAccGrpEntry 1 }
+
+    esMgmdSnpAccGrpVlanId OBJECT-TYPE
+        SYNTAX      VlanIdOrNone
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the specific VLAN interface."
+        ::= { esMgmdSnpAccGrpEntry 2 }
+
+    esMgmdSnpAccGrpSnoopingType OBJECT-TYPE
+        SYNTAX          SnoopingType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+             "Indicates the snooping type." 
+        ::= { esMgmdSnpAccGrpEntry 3 }
+        
+    esMgmdSnpAccessGroupName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (1..32))
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "The name of the IP/IPv6 basic access list to be configured on MGMD 
+            snooping."
+        ::= { esMgmdSnpAccGrpEntry 5 }
+    
+    esMgmdSnpAccGrpStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The status of this conceptual row."
+        ::= { esMgmdSnpAccGrpEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esMgmdSnpPortIfTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsMgmdSnpPortIfEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table lists the MGMD snooping settings per port/port-channel 
+            interface."
+        ::= { esMgmdSnpPortIfCtrl 4 }
+
+    esMgmdSnpPortIfEntry OBJECT-TYPE
+        SYNTAX      EsMgmdSnpPortIfEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "An entry in the esMgmdSnpPortIfTable. "
+        INDEX  { 
+            esMgmdSnpPortIfIndex,
+            esMgmdSnpPortIfSnoopingType
+        }
+        ::= { esMgmdSnpPortIfTable 1 }
+
+    EsMgmdSnpPortIfEntry ::= SEQUENCE {
+            esMgmdSnpPortIfIndex           InterfaceIndex,
+            esMgmdSnpPortIfSnoopingType    SnoopingType,
+            esMgmdSnpPortIfAccountState    TruthValue,
+            esMgmdSnpPortIfAuthState       TruthValue,
+            esMgmdSnpPortIfRateLimit       Unsigned32
+        }
+
+    esMgmdSnpPortIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the port/port-channel interface of the entry."
+        ::= { esMgmdSnpPortIfEntry 1 }
+          
+    esMgmdSnpPortIfSnoopingType OBJECT-TYPE
+        SYNTAX          SnoopingType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The snooping type of this entry."
+        ::= { esMgmdSnpPortIfEntry 2 }
+    
+    esMgmdSnpPortIfAccountState OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the accounting state on the port/port-channel 
+            interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpPortIfEntry 3}  
+        
+    esMgmdSnpPortIfAuthState OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the authentication state on the port/port-channel 
+            interface."
+        DEFVAL      { false }
+        ::= { esMgmdSnpPortIfEntry 4} 
+        
+    esMgmdSnpPortIfRateLimit  OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..1000)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the rate of the MGMD control packets that 
+            the switch can process on the port/port-channel interface. 
+            If the value of this object is set to 0, the MGMD control packets
+            processing is not limitation.
+            The rate is specified in packets per second."
+        ::= { esMgmdSnpPortIfEntry 5 }
+     
+-- -----------------------------------------------------------------------------
+    esMgmdSnpGroupCtrl           OBJECT IDENTIFIER ::= { esMgmdSnpMIBObjects 4 }
+    
+    esMgmdSnpGroupTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table listing the MGMD snooping dynamic groups."
+        ::= { esMgmdSnpGroupCtrl 1 }
+
+    esMgmdSnpGroupEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpGroupTable."
+        INDEX  { 
+            esMgmdSnpGroupVlanIfIndex,
+            esMgmdSnpGroupAddressType, 
+            esMgmdSnpGroupAddress,
+            esMgmdSnpGroupIfIndex
+        }
+        ::= { esMgmdSnpGroupTable 1 }
+
+    EsMgmdSnpGroupEntry ::=   SEQUENCE {
+        esMgmdSnpGroupVlanIfIndex            InterfaceIndex,
+        esMgmdSnpGroupAddressType            InetAddressType,
+        esMgmdSnpGroupAddress                InetAddress,
+        esMgmdSnpGroupIfIndex                InterfaceIndex, 
+        esMgmdSnpGroupVersion                INTEGER,
+        esMgmdSnpGroupUpTime                 TimeTicks,
+        esMgmdSnpGroupExpire                 TimeTicks,
+        esMgmdSnpGroupMode                   INTEGER,
+        esMgmdSnpGroupLastReportAddrType     InetAddressType,
+        esMgmdSnpGroupLastReportAddr         InetAddress
+    }
+     esMgmdSnpGroupVlanIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific VLAN interface."
+        ::= { esMgmdSnpGroupEntry 1 }
+        
+    esMgmdSnpGroupAddressType OBJECT-TYPE
+        SYNTAX          InetAddressType 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The type of this group address."
+        ::= { esMgmdSnpGroupEntry 2 }
+
+    esMgmdSnpGroupAddress OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object identifies the group address of the entry."
+        ::= { esMgmdSnpGroupEntry 3}
+            
+    esMgmdSnpGroupIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMgmdSnpGroupEntry 4 }
+
+    esMgmdSnpGroupVersion OBJECT-TYPE
+        SYNTAX     INTEGER { 
+            version1(1), 
+            version2(2), 
+            version3(3) 
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The version of MGMD that the multicast group is reported."
+        ::= { esMgmdSnpGroupEntry 5 }
+
+    esMgmdSnpGroupUpTime OBJECT-TYPE
+        SYNTAX          TimeTicks
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The time elapsed since the entry has been created."
+        ::= { esMgmdSnpGroupEntry 6 }
+
+    esMgmdSnpGroupExpire  OBJECT-TYPE
+        SYNTAX          TimeTicks
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The time that the entry will be removed if there is no refresh on
+            the entry "
+        ::= { esMgmdSnpGroupEntry 7 }
+
+    esMgmdSnpGroupMode OBJECT-TYPE
+        SYNTAX          INTEGER { 
+            include(1), 
+            exclude(2) 
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The group mode is based on the type of membership reports that are
+            received on the interface for the group."
+        ::= { esMgmdSnpGroupEntry 8 }
+
+     esMgmdSnpGroupLastReportAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType 
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of the last host to report being a
+            member of the multicast group."
+        DEFVAL { ipv4 }
+        ::= { esMgmdSnpGroupEntry 9 }
+        
+     esMgmdSnpGroupLastReportAddr OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the address of the last host to report being
+            a member of the multicast group."
+        ::= { esMgmdSnpGroupEntry 10 }
+            
+-- -----------------------------------------------------------------------------
+    esMgmdSnpGroupSrcTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpGroupSrcEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table listing the MGMD snooping dynamic group source
+            entries."
+        ::= { esMgmdSnpGroupCtrl 2 }
+
+    esMgmdSnpGroupSrcEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpGroupSrcEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpGroupSrcTable."
+        INDEX      { 
+            esMgmdSnpGroupVlanIfIndex,
+            esMgmdSnpGroupAddressType,
+            esMgmdSnpGroupAddress,
+            esMgmdSnpGroupSrcAddrType,
+            esMgmdSnpGroupSrcAddress,
+            esMgmdSnpGroupSrcIfIndex 
+        }
+        ::= { esMgmdSnpGroupSrcTable 1 }
+
+    EsMgmdSnpGroupSrcEntry ::= SEQUENCE {
+        esMgmdSnpGroupSrcAddrType     InetAddressType,
+        esMgmdSnpGroupSrcAddress      InetAddress,
+        esMgmdSnpGroupSrcIfIndex      InterfaceIndex,
+        esMgmdSnpGroupSrcUpTime       TimeTicks,
+        esMgmdSnpGroupSrcExpire       TimeTicks,
+        esMgmdSnpGroupSrcForward      INTEGER
+    }
+    
+    esMgmdSnpGroupSrcAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of the source address where the 
+            (S,G) channel traffic originate."
+        ::= { esMgmdSnpGroupSrcEntry 1 }  
+    
+    esMgmdSnpGroupSrcAddress OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source address where the 
+            (S,G) channel traffic originate." 
+        ::= { esMgmdSnpGroupSrcEntry 2 }
+            
+    esMgmdSnpGroupSrcIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMgmdSnpGroupSrcEntry 3 }
+
+    esMgmdSnpGroupSrcUpTime OBJECT-TYPE
+        SYNTAX          TimeTicks
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The time elapsed since the entry has been created."
+        ::= { esMgmdSnpGroupSrcEntry 4 }
+
+    esMgmdSnpGroupSrcExpire OBJECT-TYPE
+        SYNTAX          TimeTicks
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The expire timer."
+        ::= { esMgmdSnpGroupSrcEntry 5 }
+
+    esMgmdSnpGroupSrcForward OBJECT-TYPE
+        SYNTAX      INTEGER { yes(1), no(2) }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The status of whether the router is forwarding multicast traffic
+            due to this entry."
+        ::= { esMgmdSnpGroupSrcEntry 6 }
+
+-- -----------------------------------------------------------------------------
+    esMgmdSnpStaticGrpTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpStaticGrpEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table is used to manage MGMD snooping static groups."
+        ::= { esMgmdSnpGroupCtrl 3 }
+    
+    esMgmdSnpStaticGrpEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpStaticGrpEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpStaticGrpTable."
+        INDEX  { 
+            esMgmdSnpStaticGrpVlanIfIndex,
+            esMgmdSnpStaticGrpAddressType, 
+            esMgmdSnpStaticGrpAddress,
+            esMgmdSnpStaticGrpIfIndex
+        }
+        ::= { esMgmdSnpStaticGrpTable 1 }
+        
+    EsMgmdSnpStaticGrpEntry ::=   SEQUENCE {
+        esMgmdSnpStaticGrpVlanIfIndex          InterfaceIndex,
+        esMgmdSnpStaticGrpAddressType          InetAddressType,
+        esMgmdSnpStaticGrpAddress              InetAddress,
+        esMgmdSnpStaticGrpIfIndex              InterfaceIndex,
+        esMgmdSnpStaticGrpStatus               RowStatus
+    }
+    
+    esMgmdSnpStaticGrpVlanIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific VLAN interface."
+        ::= { esMgmdSnpStaticGrpEntry 1 }
+        
+    esMgmdSnpStaticGrpAddressType OBJECT-TYPE
+        SYNTAX          InetAddressType 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The type of this group address."
+        ::= { esMgmdSnpStaticGrpEntry 2 }
+        
+    esMgmdSnpStaticGrpAddress OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object identifies the group address of the entry."
+        ::= { esMgmdSnpStaticGrpEntry 3}
+            
+    esMgmdSnpStaticGrpIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMgmdSnpStaticGrpEntry 4 }
+           
+    esMgmdSnpStaticGrpStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The status of this conceptual row."
+        ::= { esMgmdSnpStaticGrpEntry 99 }
+         
+-- -----------------------------------------------------------------------------
+    esMgmdSnpStaticGrpSrcTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpStaticGrpSrcEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table is used to manage MGMD snooping static group 
+            source entries."
+        ::= { esMgmdSnpGroupCtrl 4 }
+    
+    esMgmdSnpStaticGrpSrcEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpStaticGrpSrcEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpStaticGrpSrcTable."
+        INDEX      { 
+            esMgmdSnpStaticGrpVlanIfIndex,
+            esMgmdSnpStaticGrpAddressType,
+            esMgmdSnpStaticGrpAddress,
+            esMgmdSnpStaticGrpSrcAddrType,
+            esMgmdSnpStaticGrpSrcAddress,
+            esMgmdSnpStaticGrpSrcIfIndex 
+        }
+        ::= { esMgmdSnpStaticGrpSrcTable 1 }
+    
+    EsMgmdSnpStaticGrpSrcEntry ::= SEQUENCE {
+        esMgmdSnpStaticGrpSrcAddrType     InetAddressType,
+        esMgmdSnpStaticGrpSrcAddress      InetAddress,
+        esMgmdSnpStaticGrpSrcIfIndex      InterfaceIndex,
+        esMgmdSnpStaticGrpSrcStatus       RowStatus
+    }
+    
+    esMgmdSnpStaticGrpSrcAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of the source address where the 
+            (S,G) channel traffic originate."
+        ::= { esMgmdSnpStaticGrpSrcEntry 1 }  
+    
+    esMgmdSnpStaticGrpSrcAddress OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source address where the 
+            (S,G) channel traffic originate." 
+        ::= { esMgmdSnpStaticGrpSrcEntry 2 }
+        
+    esMgmdSnpStaticGrpSrcIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMgmdSnpStaticGrpSrcEntry 3 }
+        
+    esMgmdSnpStaticGrpSrcStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this conceptual row."
+        ::= { esMgmdSnpStaticGrpSrcEntry 99 }
+        
+-- ----------------------------------------------------------------------------- 
+    esMgmdSnpHostTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpHostEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table is a list of host information of MGMD snooping."
+        ::= { esMgmdSnpMIBObjects 5 }
+
+    esMgmdSnpHostEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpHostEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpHostTable."
+        INDEX  { 
+            esMgmdSnpHostVlanIfIndex, 
+            esMgmdSnpHostGrpAddressType,
+            esMgmdSnpHostGrpAddress, 
+            esMgmdSnpHostIfIndex,
+            esMgmdSnpHostAddrType,
+            esMgmdSnpHostAddress
+        }
+        ::= { esMgmdSnpHostTable 1 }
+
+    EsMgmdSnpHostEntry ::= SEQUENCE {
+        esMgmdSnpHostVlanIfIndex        InterfaceIndex,
+        esMgmdSnpHostGrpAddressType     InetAddressType,
+        esMgmdSnpHostGrpAddress         InetAddress,
+        esMgmdSnpHostIfIndex            InterfaceIndex,
+        esMgmdSnpHostAddrType           InetAddressType,
+        esMgmdSnpHostAddress            InetAddress
+    }
+
+    esMgmdSnpHostVlanIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the specific VLAN interface."
+        ::= { esMgmdSnpHostEntry 1 }
+
+    esMgmdSnpHostGrpAddressType OBJECT-TYPE
+        SYNTAX     InetAddressType 
+        MAX-ACCESS not-accessible
+        STATUS     current
+        DESCRIPTION
+            "The address type of this group address."
+        ::= { esMgmdSnpHostEntry 2 }
+
+    esMgmdSnpHostGrpAddress OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object identifies IP multicast group addresses of a group which
+             the user would like to see."
+        ::= { esMgmdSnpHostEntry 3 }
+
+    esMgmdSnpHostIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMgmdSnpHostEntry 4 }
+
+    esMgmdSnpHostAddrType OBJECT-TYPE
+        SYNTAX     InetAddressType 
+        MAX-ACCESS not-accessible
+        STATUS     current
+        DESCRIPTION
+                "The address type of the host."
+        ::= { esMgmdSnpHostEntry 5 }
+        
+    esMgmdSnpHostAddress OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object identifies the address of the host."
+        ::= { esMgmdSnpHostEntry 6 }
+
+-- -----------------------------------------------------------------------------
+    esMgmdSnpStatistics   OBJECT IDENTIFIER ::= { esMgmdSnpMIBObjects 6 }
+                
+    esMgmdSnpStatPortIfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpStatPortIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table to display per port/port-channel statistics of MGMD snooping."
+        ::= { esMgmdSnpStatistics 1 }
+
+    esMgmdSnpStatPortIfEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpStatPortIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpStatisticTable."
+        INDEX  { 
+            esMgmdSnpStatPortIfIndex,
+            esMgmdSnpStatPortIfType 
+        }
+        ::= { esMgmdSnpStatPortIfTable 1 }
+
+    EsMgmdSnpStatPortIfEntry ::= SEQUENCE {
+        esMgmdSnpStatPortIfIndex             InterfaceIndex,
+        esMgmdSnpStatPortIfType              SnoopingType,
+        esMgmdSnpStatPortIfV1RxReport        Counter64,
+        esMgmdSnpStatPortIfV1RxQuery         Counter64,
+        esMgmdSnpStatPortIfV1TxReport        Counter64,
+        esMgmdSnpStatPortIfV1TxQuery         Counter64,
+        esMgmdSnpStatPortIfV2RxReport        Counter64,
+        esMgmdSnpStatPortIfV2RxQuery         Counter64,
+        esMgmdSnpStatPortIfV2RxLeave         Counter64,
+        esMgmdSnpStatPortIfV2TxReport        Counter64,
+        esMgmdSnpStatPortIfV2TxQuery         Counter64,
+        esMgmdSnpStatPortIfV2TxLeave         Counter64,
+        esMgmdSnpStatPortIfV3RxReport        Counter64,
+        esMgmdSnpStatPortIfV3RxQuery         Counter64,
+        esMgmdSnpStatPortIfV3TxReport        Counter64,
+        esMgmdSnpStatPortIfV3TxQuery         Counter64,
+        esMgmdSnpStatPortIfDropByAccGroup    Counter64,
+        esMgmdSnpStatPortIfDropByGrpLimit    Counter64
+    }
+
+    esMgmdSnpStatPortIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMgmdSnpStatPortIfEntry 1 }
+  
+    esMgmdSnpStatPortIfType OBJECT-TYPE
+        SYNTAX          SnoopingType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The snooping type of this entry."
+        ::= { esMgmdSnpStatPortIfEntry 2 }
+
+    esMgmdSnpStatPortIfV1RxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v1 Report packets received in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 3 }
+
+    esMgmdSnpStatPortIfV1RxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v1 Query packets received in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 4 }
+    
+    esMgmdSnpStatPortIfV1TxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v1 Report packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 5 }
+        
+    esMgmdSnpStatPortIfV1TxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v1 Query packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 6 }
+    
+    esMgmdSnpStatPortIfV2RxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Report packets received in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 7 }
+
+    esMgmdSnpStatPortIfV2RxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Query packets received in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 8 }
+    
+    esMgmdSnpStatPortIfV2RxLeave OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Leave packets received in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 9 }
+        
+    esMgmdSnpStatPortIfV2TxReport OBJECT-TYPE
+        SYNTAX         Counter64
+        MAX-ACCESS     read-only
+        STATUS         current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Report packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 10 }
+        
+    esMgmdSnpStatPortIfV2TxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v2 Query packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 11 }
+    
+    esMgmdSnpStatPortIfV2TxLeave OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v2 Leave packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 12 }
+        
+    esMgmdSnpStatPortIfV3RxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v3 Report packets received in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 13 }
+
+    esMgmdSnpStatPortIfV3RxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v3 Query packets received in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 14 }
+    
+    esMgmdSnpStatPortIfV3TxReport OBJECT-TYPE
+        SYNTAX         Counter64
+        MAX-ACCESS     read-only
+        STATUS         current
+        DESCRIPTION
+             "This indicates the number of MGMD v3 Report packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 15 }
+        
+    esMgmdSnpStatPortIfV3TxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v3 Query packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 16 }        
+    
+     esMgmdSnpStatPortIfDropByAccGroup OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD packets dropped by access group
+             in this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 17 }       
+      
+     esMgmdSnpStatPortIfDropByGrpLimit OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD packets dropped by the limit   
+            of the number of MGMD groups in this port/port-channel."
+        ::= { esMgmdSnpStatPortIfEntry 18 }
+               
+-- -----------------------------------------------------------------------------
+    esMgmdSnpStatVlanIfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMgmdSnpStatVlanIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table to display per port/port-channel statistics of MGMD snooping."
+        ::= { esMgmdSnpStatistics 2 }
+
+    esMgmdSnpStatVlanIfEntry OBJECT-TYPE
+        SYNTAX          EsMgmdSnpStatVlanIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esMgmdSnpStatisticTable."
+        INDEX  { 
+            esMgmdSnpStatVlanIfIndex,
+            esMgmdSnpStatVlanIfType 
+        }
+        ::= { esMgmdSnpStatVlanIfTable 1 }
+
+    EsMgmdSnpStatVlanIfEntry ::= SEQUENCE {
+        esMgmdSnpStatVlanIfIndex             VlanId,
+        esMgmdSnpStatVlanIfType              SnoopingType,
+        esMgmdSnpStatVlanIfV1RxReport        Counter64,
+        esMgmdSnpStatVlanIfV1RxQuery         Counter64,
+        esMgmdSnpStatVlanIfV1TxReport        Counter64,
+        esMgmdSnpStatVlanIfV1TxQuery         Counter64,
+        esMgmdSnpStatVlanIfV2RxReport        Counter64,
+        esMgmdSnpStatVlanIfV2RxQuery         Counter64,
+        esMgmdSnpStatVlanIfV2RxLeave         Counter64,
+        esMgmdSnpStatVlanIfV2TxReport        Counter64,
+        esMgmdSnpStatVlanIfV2TxQuery         Counter64,
+        esMgmdSnpStatVlanIfV2TxLeave         Counter64,
+        esMgmdSnpStatVlanIfV3RxReport        Counter64,
+        esMgmdSnpStatVlanIfV3RxQuery         Counter64,
+        esMgmdSnpStatVlanIfV3TxReport        Counter64,
+        esMgmdSnpStatVlanIfV3TxQuery         Counter64,
+        esMgmdSnpStatVlanIfDropByAccGroup    Counter64,
+        esMgmdSnpStatVlanIfDropByGrpLimit    Counter64
+    }
+
+    esMgmdSnpStatVlanIfIndex OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific VLAN ID."
+        ::= { esMgmdSnpStatVlanIfEntry 1 }
+  
+    esMgmdSnpStatVlanIfType OBJECT-TYPE
+        SYNTAX          SnoopingType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The snooping type of this entry."
+        ::= { esMgmdSnpStatVlanIfEntry 2 }
+
+    esMgmdSnpStatVlanIfV1RxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v1 Report packets received in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 3 }
+
+    esMgmdSnpStatVlanIfV1RxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v1 Query packets received in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 4 }
+    
+    esMgmdSnpStatVlanIfV1TxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v1 Report packets transmitted in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 5 }
+        
+    esMgmdSnpStatVlanIfV1TxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v1 Query packets transmitted in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 6 }
+    
+    esMgmdSnpStatVlanIfV2RxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Report packets received in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 7 }
+
+    esMgmdSnpStatVlanIfV2RxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Query packets received in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 8 }
+    
+    esMgmdSnpStatVlanIfV2RxLeave OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Leave packets received in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 9 }
+        
+    esMgmdSnpStatVlanIfV2TxReport OBJECT-TYPE
+        SYNTAX         Counter64
+        MAX-ACCESS     read-only
+        STATUS         current
+        DESCRIPTION
+            "This indicates the number of MGMD v2 Report packets transmitted in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 10 }
+        
+    esMgmdSnpStatVlanIfV2TxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v2 Query packets transmitted in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 11 }
+    
+    esMgmdSnpStatVlanIfV2TxLeave OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v2 Leave packets transmitted in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 12 }
+        
+    esMgmdSnpStatVlanIfV3RxReport OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v3 Report packets received in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 13 }
+
+    esMgmdSnpStatVlanIfV3RxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This indicates the number of MGMD v3 Query packets received in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 14 }
+    
+    esMgmdSnpStatVlanIfV3TxReport OBJECT-TYPE
+        SYNTAX         Counter64
+        MAX-ACCESS     read-only
+        STATUS         current
+        DESCRIPTION
+             "This indicates the number of MGMD v3 Report packets transmitted in 
+            this port/port-channel."
+        ::= { esMgmdSnpStatVlanIfEntry 15 }
+        
+    esMgmdSnpStatVlanIfV3TxQuery OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD v3 Query packets transmitted in 
+            this VLAN."
+        ::= { esMgmdSnpStatVlanIfEntry 16 }   
+
+    esMgmdSnpStatVlanIfDropByAccGroup OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD packets dropped by access  
+            group."
+        ::= { esMgmdSnpStatVlanIfEntry 17 }   
+    
+    esMgmdSnpStatVlanIfDropByGrpLimit OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+             "This indicates the number of MGMD packets dropped by the limit   
+            of the number of MGMD groups."
+        ::= { esMgmdSnpStatVlanIfEntry 18 }    
+        
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esMgmdSnpCompliances OBJECT IDENTIFIER ::= { esMgmdSnpMIBConformance 1 }
+        
+    esMgmdSnpCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION 
+            "The compliance statement for entities which implement the 
+            DLINKES-MGMD-SNOOPING-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS { 
+            esMgmdSnpGblCfgGroup,
+            esMgmdSnpVlanIfCfgGoup, 
+            esMgmdSnpPortIfCfgGoup,
+            esMgmdSnpDynamicInfoGroup,
+            esMgmdSnpStatisticsInfoGoup
+        }
+        
+        OBJECT          esMgmdSnpIfProxyReportingEnabled
+        MIN-ACCESS      read-only
+        DESCRIPTION
+         "It is compliant to implement this object as read-only if 
+         proxy-reporting function is not supported at the agent."
+        ::= { esMgmdSnpCompliances 1 }
+        
+    esMgmdSnpGroups OBJECT IDENTIFIER ::= { esMgmdSnpMIBConformance 2 }
+        
+    esMgmdSnpGblCfgGroup OBJECT-GROUP
+        OBJECTS { 
+            esMgmdSnpStateGblEnabled, esMgmdSnpClearAllState, 
+            esMgmdSnpClearIgmpSnoopByPortIf, esMgmdSnpClearMldSnoopByPortIf, 
+            esMgmdSnpClearIgmpSnoopByVlanId, esMgmdSnpClearMldSnoopByVlanId,
+            esMgmdSnpClearAllUnknownDataGroup, esMgmdSnpClearIgmpSnoopUnknownDataGroupByGrpAddr,
+            esMgmdSnpClearMldSnoopUnknownDataGroupByGrpAddr, esMgmdSnpClearIgmpSnoopUnknownDataGroupByVlanId,
+            esMgmdSnpClearMldSnoopUnknownDataGroupByVlanId, esMgmdSnpIgmpSnoopDynamicMrouteAgingTime,
+            esMgmdSnpMldSnoopDynamicMrouteAgingTime, esMgmdSnpIgmpSnoopUnknownDataLimit,
+            esMgmdSnpMldSnoopUnknownDataLimit 
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing global configuration about MGMD
+            snooping."
+        ::= { esMgmdSnpGroups 1 }
+        
+    esMgmdSnpVlanIfCfgGoup OBJECT-GROUP
+        OBJECTS { 
+            esMgmdSnpIfRowStatus, esMgmdSnpIfStateEnabled, 
+            esMgmdSnpIfQuerierStateEnabled, esMgmdSnpIfQuerierRouter, 
+            esMgmdSnpIfFastLeaveEnabled, esMgmdSnpIfFastLeaveHostBased, 
+            esMgmdSnpIfExplicitTrackEnabled, esMgmdSnpIfReportSuppresEnabled, 
+            esMgmdSnpIfMinimumVersion, esMgmdSnpIfProxyReportingEnabled, 
+            esMgmdSnpIfProxyReportSrcAddrType, 
+            esMgmdSnpIfProxyReportSrcAddr, esMgmdSnpIfQueryInterval,
+            esMgmdSnpIfQueryMaxResponseTime, esMgmdSnpIfQueryVersion,
+            esMgmdSnpIfRobustness, esMgmdSnpIfLastMemberQueryInterval,
+            esMgmdSnpIfSuppressionTime, esMgmdSnpIfIgnoreTopologyChgNotification,
+            esMgmdSnpIfRateLimit,   esMgmdSnpIfUnknownDataLearnState,
+            esMgmdSnpIfUnknownDataGroupExpiryTime, esMgmdSnpIfQuerier,
+            esMgmdSnpIfQuerierExpiryTime
+        }                                     
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing MGMD snooping per VLAN interface 
+            configuration."
+            ::= { esMgmdSnpGroups 2 }
+        
+    esMgmdSnpPortIfCfgGoup OBJECT-GROUP
+        OBJECTS { 
+            esMgmdSnpMrouterStatus, 
+            esMgmdSnpMrouterAdminState, esMgmdSnpIfLimitRowStatus, 
+            esMgmdSnpIfLimitExceptAccLstName, esMgmdSnpIfLimitValue,
+            esMgmdSnpIfLimitExceedAction,  
+            esMgmdSnpAccGrpStatus, esMgmdSnpAccessGroupName, 
+            esMgmdSnpStaticGrpStatus, esMgmdSnpStaticGrpSrcStatus,
+            esMgmdSnpPortIfAccountState, esMgmdSnpPortIfAuthState,
+            esMgmdSnpPortIfRateLimit
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing MGMD snooping per port/port-channel
+            interface configuration."
+        ::= { esMgmdSnpGroups 3 }
+    
+    esMgmdSnpDynamicInfoGroup OBJECT-GROUP
+        OBJECTS { 
+            esMgmdSnpMrouterDynamicMrouter,
+            esMgmdSnpHostAddress, 
+            esMgmdSnpGroupVersion, esMgmdSnpGroupUpTime, 
+            esMgmdSnpGroupExpire, esMgmdSnpGroupMode, 
+            esMgmdSnpGroupLastReportAddrType, 
+            esMgmdSnpGroupLastReportAddr, esMgmdSnpGroupSrcUpTime, 
+            esMgmdSnpGroupSrcExpire, esMgmdSnpGroupSrcForward 
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing dynamic information for learned
+            multicast router, host, and group."
+        ::= { esMgmdSnpGroups 4 }
+            
+    esMgmdSnpStatisticsInfoGoup OBJECT-GROUP
+        OBJECTS { 
+            esMgmdSnpStatPortIfV1RxReport, esMgmdSnpStatPortIfV1RxQuery, 
+            esMgmdSnpStatPortIfV1TxReport, esMgmdSnpStatPortIfV1TxQuery, 
+            esMgmdSnpStatPortIfV2RxReport, esMgmdSnpStatPortIfV2RxQuery, 
+            esMgmdSnpStatPortIfV2RxLeave,  esMgmdSnpStatPortIfV2TxReport, 
+            esMgmdSnpStatPortIfV2TxQuery,  esMgmdSnpStatPortIfV2TxLeave, 
+            esMgmdSnpStatPortIfV3RxReport, esMgmdSnpStatPortIfV3RxQuery, 
+            esMgmdSnpStatPortIfV3TxReport, esMgmdSnpStatPortIfV3TxQuery, 
+            esMgmdSnpStatPortIfDropByAccGroup, esMgmdSnpStatPortIfDropByGrpLimit,
+            esMgmdSnpStatVlanIfV1RxReport, esMgmdSnpStatVlanIfV1RxQuery, 
+            esMgmdSnpStatVlanIfV1TxReport, esMgmdSnpStatVlanIfV1TxQuery, 
+            esMgmdSnpStatVlanIfV2RxReport, esMgmdSnpStatVlanIfV2RxQuery, 
+            esMgmdSnpStatVlanIfV2RxLeave, esMgmdSnpStatVlanIfV2TxReport, 
+            esMgmdSnpStatVlanIfV2TxQuery, esMgmdSnpStatVlanIfV2TxLeave, 
+            esMgmdSnpStatVlanIfV3RxReport, esMgmdSnpStatVlanIfV3RxQuery, 
+            esMgmdSnpStatVlanIfV3TxReport, esMgmdSnpStatVlanIfV3TxQuery,
+            esMgmdSnpStatVlanIfDropByAccGroup, esMgmdSnpStatVlanIfDropByGrpLimit
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing information for MGMD statistics."
+            ::= { esMgmdSnpGroups 5 }
+END
+

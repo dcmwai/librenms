@@ -1,0 +1,341 @@
+--  *****************************************************************
+--  DLINKES-IMPB-MIB.mib : IP-MAC-Port Binding MIB
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+DLINKES-IMPB-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    NOTIFICATION-TYPE
+                FROM SNMPv2-SMI
+    MODULE-COMPLIANCE,
+    OBJECT-GROUP,
+    NOTIFICATION-GROUP
+                FROM SNMPv2-CONF
+    MacAddress,
+    TruthValue
+                FROM SNMPv2-TC
+    InetAddress,
+    InetAddressType
+                FROM INET-ADDRESS-MIB
+    ifIndex,
+    InterfaceIndexOrZero
+                FROM IF-MIB
+    VlanId
+                FROM Q-BRIDGE-MIB
+    dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsImpbMIB MODULE-IDENTITY
+        LAST-UPDATED    "201708070000Z"
+        ORGANIZATION    "D-Link Corp."
+        CONTACT-INFO
+                "        D-Link Corporation
+
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:     +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+                "
+        DESCRIPTION
+            "The MIB module defines objects for IP-MAC-Port Binding feature."
+
+        REVISION        "201708070000Z"
+        DESCRIPTION
+            "Initial revision of this MIB module."
+        ::= { dlinkCommon 22 }
+
+
+    esImpbNotifications     OBJECT IDENTIFIER ::= { dlinkEsImpbMIB 0 }
+    esImpbObjects           OBJECT IDENTIFIER ::= { dlinkEsImpbMIB 1 }
+    esImpbConformance       OBJECT IDENTIFIER ::= { dlinkEsImpbMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esImpbNotifyInfo  OBJECT IDENTIFIER    ::= { esImpbObjects 1 }
+
+    esImpbGlobalNotifyEnabled  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Set to 'true' to enable global SNMP notification
+            for IP-MAC-Port Binding feature.  Setting the object to
+            'false' will disable SNMP notifications."
+        DEFVAL      { false }
+        ::= { esImpbNotifyInfo 1}
+
+    esImpbViolationIpAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType
+        MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of the violation IP address."
+        ::= { esImpbNotifyInfo 2 }
+
+    esImpbViolationIpAddress OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the IP address of the violation entry."
+        ::= { esImpbNotifyInfo 3 }
+
+    esImpbViolationMacAddress OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the MAC address of this entry."
+        ::= { esImpbNotifyInfo 4 }
+
+    esImpbViolationVlan OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the VLAN of this entry."
+        ::= { esImpbNotifyInfo 5 }
+
+
+    esImpbIfConfigTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsImpbIfConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to enable or disable
+            IP-MAC-Port Binding at each physical interface capable of
+            this feature.
+
+            For IPV4 network, IP-MAC-Port Binding must co-work with
+            both IPv4 source guard and Dynamic ARP inspection are enabled.
+            For IPv6 network, IP-MAC-Port Binding must co-work with
+            both IPv6 source guard and ND inspection.
+            "
+        ::= { esImpbObjects 2 }
+
+    esImpbIfConfigEntry OBJECT-TYPE
+        SYNTAX          EsImpbIfConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration to enable
+            or disable IP-MAC-Port Binding as well as the configuration
+            of the filter type at each physical interface capable
+            of IP-MAC-Port Binding feature."
+        INDEX           { ifIndex }
+        ::= { esImpbIfConfigTable 1 }
+
+    EsImpbIfConfigEntry ::= SEQUENCE {
+        esImpbIfBindMode INTEGER
+    }
+
+    esImpbIfBindMode OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            disable(1),
+            strict(2),
+            loose(3)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the IP-MAC-Port Binding access control applied
+            at this interface.
+
+            'disable' indicates that IP-MAC-Port Binding feature is disabled.
+            'strict' indicates performing strict-mode access control.
+            'loose' indicates to perform loose-mode access control.
+
+            Before set 'strict' or 'loose', all of ARP Inspection, IP/IPv6 Source
+            Guard should be enabled.
+            For IPv6 network, IP-MAC-Port Binding must operate in strict mode,
+            otherwise IPv6 source guard and ND inspection cannot be enabled."
+        ::= { esImpbIfConfigEntry 1 }
+
+
+-- ---------------------------------------------------------------------------------------------
+    esImpbViolationLogTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsImpbViolationLogEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the information about the violation of IP-MAC-Port Binding."
+        ::= { esImpbObjects 3 }
+
+    esImpbViolationLogEntry OBJECT-TYPE
+        SYNTAX          EsImpbViolationLogEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the blocked entry of IP-MAC-Port Binding."
+        INDEX           {
+            ifIndex,
+            esImpbViolationLogVlan,
+            esImpbViolationLogMacAddress
+        }
+        ::= { esImpbViolationLogTable 1 }
+
+    EsImpbViolationLogEntry ::= SEQUENCE {
+        esImpbViolationLogVlan          VlanId,
+        esImpbViolationLogMacAddress    MacAddress,
+        esImpbViolationAction           INTEGER
+    }
+
+    esImpbViolationLogVlan OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the VLAN of this entry."
+        ::= { esImpbViolationLogEntry 1 }
+
+    esImpbViolationLogMacAddress OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the MAC address of this entry."
+        ::= { esImpbViolationLogEntry 2 }
+
+    esImpbViolationAction OBJECT-TYPE
+        SYNTAX          INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to remove a specific violation entry when set
+            to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+         ::= { esImpbViolationLogEntry 99 }
+
+-- ---------------------------------------------------------------------------------------------
+    esImpbClearObjects  OBJECT IDENTIFIER    ::= { esImpbObjects 4 }
+
+    esImpbClearAllViolation OBJECT-TYPE
+        SYNTAX          INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to clear all violations of IP-MAC-Port Binding when set
+            to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+         ::= { esImpbClearObjects 1 }
+
+    esImpbClearViolationByIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex on which all violations will be cleared.
+
+            When read, the special value 0 is returned."
+         ::= { esImpbClearObjects 2 }
+
+-- Notifications
+
+    esImpbViolationTrap NOTIFICATION-TYPE
+        OBJECTS  {
+            ifIndex,
+            esImpbViolationIpAddrType,
+            esImpbViolationIpAddress,
+            esImpbViolationMacAddress,
+            esImpbViolationVlan
+        }
+        STATUS  current
+        DESCRIPTION
+            "The address violation notification is generated when IP-MAC-Port Binding
+            address violation is detected."
+        ::= { esImpbNotifications 1 }
+
+-- Conformance
+
+    esImpbMIBCompliances    OBJECT IDENTIFIER ::= { esImpbConformance 1 }
+    esImpbMIBGroups         OBJECT IDENTIFIER ::= { esImpbConformance 2 }
+
+
+    esImpbMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for the DLINKES-IMPB-MIB"
+        MODULE          -- this module
+        MANDATORY-GROUPS {
+            esImpbNotifyInfoGroup,
+            esImpbConfigGroup,
+            esImpbNotifyObjectGroup,
+            esImpbNotificationsGroup
+        }
+
+        GROUP           esImpbClearViolationLogGroup
+        DESCRIPTION
+            "This group is mandatory only for platforms which support
+            clearing violation of IP-MAC-Port Binding."
+
+        ::= { esImpbMIBCompliances 1 }
+
+    -- Units of Conformance
+
+    esImpbNotifyInfoGroup OBJECT-GROUP
+        OBJECTS         {
+            esImpbGlobalNotifyEnabled
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects which are used to configure notification
+             state."
+        ::= { esImpbMIBGroups 1 }
+
+    esImpbConfigGroup OBJECT-GROUP
+        OBJECTS         {
+            esImpbIfBindMode
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects which are used to configure
+            as well as show information regarding the IP-MAC-Port Binding."
+        ::= { esImpbMIBGroups 2 }
+
+    esImpbClearViolationLogGroup OBJECT-GROUP
+        OBJECTS         {
+            esImpbViolationAction,
+            esImpbClearAllViolation,
+            esImpbClearViolationByIf
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects which are used to clear violation
+             information."
+        ::= { esImpbMIBGroups 3 }
+
+    esImpbNotifyObjectGroup OBJECT-GROUP
+        OBJECTS   {
+            esImpbViolationIpAddrType,
+            esImpbViolationIpAddress,
+            esImpbViolationMacAddress,
+            esImpbViolationVlan
+        }
+        STATUS          current
+        DESCRIPTION
+            "The collection of objects provides IP-MAC-Port Binding notifications."
+        ::= { esImpbMIBGroups 4 }
+
+    esImpbNotificationsGroup NOTIFICATION-GROUP
+        NOTIFICATIONS   {
+            esImpbViolationTrap
+        }
+        STATUS          current
+        DESCRIPTION
+            "The collection of objects provides IP-MAC-Port Binding notifications."
+        ::= { esImpbMIBGroups 5 }
+
+END

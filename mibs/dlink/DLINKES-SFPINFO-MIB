@@ -1,0 +1,411 @@
+--  *****************************************************************
+--  DLINKES-SFPINFO-MIB.mib : SFP/QSFP+ information (SFPINFO) MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-SFPINFO-MIB DEFINITIONS ::= BEGIN
+    IMPORTS
+        DisplayString
+            FROM SNMPv2-TC
+        MODULE-IDENTITY,OBJECT-TYPE,Integer32
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE,OBJECT-GROUP
+		FROM SNMPv2-CONF
+        ifIndex
+            FROM IF-MIB    
+        dlinkCommon		
+            FROM DLINK-ID-REC-MIB;
+   
+    dlinkEsPortSfpInfoMIB         MODULE-IDENTITY
+   		LAST-UPDATED "201412080000Z"
+   		ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for SFPINFO."
+            
+        REVISION "201412080000Z"
+        DESCRIPTION
+		    "The structure of PORTSFPINFO for the proprietary enterprise."
+		    
+	  	::= {dlinkCommon 184} 
+		    
+-- -----------------------------------------------------------------------------
+    esPortSfpInfoNotifications    OBJECT IDENTIFIER ::= { dlinkEsPortSfpInfoMIB 0 }
+    esPortSfpInfoObjects          OBJECT IDENTIFIER ::= { dlinkEsPortSfpInfoMIB 1 }
+    esPortSfpInfoConformance      OBJECT IDENTIFIER ::= { dlinkEsPortSfpInfoMIB 2 }
+
+-- -----------------------------------------------------------------------------
+-- Notifications
+-- -----------------------------------------------------------------------------
+	    
+-- -----------------------------------------------------------------------------
+-- Objects
+-- -----------------------------------------------------------------------------
+    esPortSfpInfoTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsPortSfpInfoEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A table that contains information for each module plugged in."
+        ::= { esPortSfpInfoObjects 1 }
+
+    esPortSfpInfoEntry OBJECT-TYPE
+        SYNTAX  EsPortSfpInfoEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A list of information for each module plugged in."
+        INDEX   { ifIndex }
+        ::= { esPortSfpInfoTable 1 }
+
+    EsPortSfpInfoEntry ::=
+        SEQUENCE {
+           esPortSfpInfoInterfaceType
+           	DisplayString,
+           esPortSfpInfoLaserIdentifier
+           	DisplayString,
+           esPortSfpInfoExtLaserIdentifier
+           	DisplayString,
+           esPortSfpInfoConnectType
+           	DisplayString,           
+           esPortSfpInfoEthComplianceCode
+           	DisplayString,
+           esPortSfpInfoEncoding
+           	DisplayString,
+           esPortSfpInfoVendorName 
+	        DisplayString,
+           esPortSfpInfoVendorOUI
+           	DisplayString,
+           esPortSfpInfoVendorPN
+			DisplayString,
+           esPortSfpInfoVendorRev
+			DisplayString,
+           esPortSfpInfoVendorSN
+           	DisplayString,
+           esPortSfpInfoDateCode
+           	DisplayString,           	
+           esPortSfpInfoRecPowerMeasureType
+           	DisplayString,       	
+           esPortSfpInfoTransmissionMedia
+           	DisplayString,
+           esPortSfpInfoBitRate
+           	Integer32,
+           esPortSfpInfoWavelength
+           	Integer32,       	
+           esPortSfpInfoWavelengthTolerance
+           	Integer32, 
+           esPortSfpInfoSMFTransferDistance
+           	Integer32,           	
+           esPortSfpInfoOM1TransferDistance
+           	Integer32,             	
+           esPortSfpInfoOM2TransferDistance
+           	Integer32, 
+           esPortSfpInfoOM3TransferDistance
+           	Integer32,
+           esPortSfpInfoCopperTransferDistance
+           	Integer32
+        }
+
+    esPortSfpInfoInterfaceType OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The Interface Type of the Port."
+    	::= { esPortSfpInfoEntry 1 }
+    	
+    esPortSfpInfoLaserIdentifier OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The Laser Identifier of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 2 }
+
+    esPortSfpInfoExtLaserIdentifier OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The Extended Identifier of QSFP+. If the module
+                    type is not QSFP+, this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 3 }
+
+    esPortSfpInfoConnectType OBJECT-TYPE                        
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only                                 
+	    STATUS  current                                       
+	    DESCRIPTION                                           
+	            "Indicates the external connector of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 4 }
+
+    esPortSfpInfoEthComplianceCode OBJECT-TYPE                           
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only                                 
+	    STATUS  current                                       
+	    DESCRIPTION                                           
+	            "The Ethernet Compliance Code of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 5 }
+
+    esPortSfpInfoEncoding OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "Encoding value indicates the serial encoding mechanism of
+                    the module.If there is no module plugged in,this 
+                    object contains an octet string of zero length."
+    	::= { esPortSfpInfoEntry 6 }
+    	
+    esPortSfpInfoVendorName OBJECT-TYPE
+	   SYNTAX  DisplayString
+	   MAX-ACCESS  read-only                                  
+	   STATUS  current                                        
+	    DESCRIPTION                                           
+	            "The vendor name of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 7 }
+    	
+     esPortSfpInfoVendorOUI OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The vendor OUI of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 8 }
+    	
+    esPortSfpInfoVendorPN OBJECT-TYPE                           
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only                                 
+	    STATUS  current                                       
+	    DESCRIPTION                                           
+	            "The vendor PN of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 9 }
+
+   esPortSfpInfoVendorRev OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The vendor Rev of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 10 }
+    	
+    esPortSfpInfoVendorSN OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The vendor SN of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 11 }
+        
+   esPortSfpInfoDateCode OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The date code of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 12 }
+    	
+   esPortSfpInfoRecPowerMeasureType OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The Received power measurement type of the module.
+	            If there is no module plugged in,this object 
+	            contains an octet string of zero length"
+    	::= { esPortSfpInfoEntry 13 }
+
+    	
+   esPortSfpInfoTransmissionMedia OBJECT-TYPE
+	    SYNTAX  DisplayString
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The transmission media of the module.If there is no module 
+	            plugged in,this object contains an octet string
+                    of zero length."
+    	::= { esPortSfpInfoEntry 16 }
+    	
+   esPortSfpInfoBitRate OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The nominal bit rate of the module.If there is no module 
+	            plugged in,this object is zero.The value is in units of MBd."
+    	::= { esPortSfpInfoEntry 17 }
+    	
+   esPortSfpInfoWavelength OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The wavelength of the module.If there is no module 
+	            plugged in or the module type is not QSFP+ Fiber,
+	            this object is zero.The value is in units of nm."
+    	::= { esPortSfpInfoEntry 18 }
+
+    	
+   esPortSfpInfoWavelengthTolerance OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "The guaranteed +/- range of transmitter 
+	            output wavelength of QSFP+. If the module type is not QSFP+
+				, the value is zero.
+                                The value is in units of nm."
+    	::= { esPortSfpInfoEntry 21 }
+    	
+   esPortSfpInfoSMFTransferDistance OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "This value specifies the link length that is supported by 
+	            the module while operating in compliance with the
+                    applicable standards using single mode fiber.If there 
+                    is no module plugged in,this object is zero.
+                    The value is in units of kilometers."
+    	::= { esPortSfpInfoEntry 22 }
+    	
+   esPortSfpInfoOM1TransferDistance OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "This value specifies the link length that is supported by
+                    the module while operating in compliance with the
+                    applicable standards using 200 MHz*Km (850 nm)
+                    and 500MHz*Km (1310 nm) 62.5 micron multi-mode fiber.
+                    If there is no module plugged in,this object is zero.
+                    The value is in units of meters."
+    	::= { esPortSfpInfoEntry 23 }
+    	
+   esPortSfpInfoOM2TransferDistance OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "This value specifies the link length that is supported by
+                    the module while operating in compliance with the
+                    applicable standards using 500 MHz*Km
+                    (850 nm and 1310nm) 50 micron multi-mode fiber.
+                    If there is no module plugged in,this object is zero.
+                    The value is in units of meters."
+    	::= { esPortSfpInfoEntry 24 }
+    	
+   esPortSfpInfoOM3TransferDistance OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "This value specifies the link length that is supported by
+                    the module while operating in compliance with the
+                    applicable standards using 2000 MHZ*km (850 nm)
+                    extended bandwidth 50 micron core multimode fiber.
+                    If there is no module plugged in,this object is zero.
+                    The value is in units of meters."
+    	::= { esPortSfpInfoEntry 25 }
+    	
+   esPortSfpInfoCopperTransferDistance OBJECT-TYPE
+	    SYNTAX  Integer32 (0..65535)
+	    MAX-ACCESS  read-only
+	    STATUS  current
+	    DESCRIPTION
+	            "This value specifies the link length of the copper Cable
+                    of the module.If there is no module 
+	            plugged in,this object is zero.
+                    The value is in units of meters."
+    	::= { esPortSfpInfoEntry 26 } 	
+    	       
+-- -----------------------------------------------------------------------------
+-- Conformance
+-- -----------------------------------------------------------------------------
+    esPortSfpInfoCompliances OBJECT IDENTIFIER ::= { esPortSfpInfoConformance 1 }
+    esPortSfpInfoGroups OBJECT IDENTIFIER ::= { esPortSfpInfoConformance 2 }
+
+--  compliance statements
+esPortSfpInfoCompliance MODULE-COMPLIANCE
+        STATUS         current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-SFPINFO-MIB."
+
+        MODULE  -- this module
+        MANDATORY-GROUPS 
+            { 
+            	esPortSfpInfoGroup
+            }
+        ::= { esPortSfpInfoCompliances 1 }
+        
+--  units of conformance
+
+    esPortSfpInfoGroup OBJECT-GROUP
+        OBJECTS             {
+           esPortSfpInfoInterfaceType,
+           esPortSfpInfoLaserIdentifier,
+           esPortSfpInfoExtLaserIdentifier,
+           esPortSfpInfoConnectType,
+           esPortSfpInfoEthComplianceCode,
+           esPortSfpInfoEncoding,
+           esPortSfpInfoVendorName,
+           esPortSfpInfoVendorOUI,
+           esPortSfpInfoVendorPN,
+           esPortSfpInfoVendorRev,
+           esPortSfpInfoVendorSN,
+           esPortSfpInfoDateCode,         	
+           esPortSfpInfoRecPowerMeasureType,       	
+           esPortSfpInfoTransmissionMedia,
+           esPortSfpInfoBitRate,
+           esPortSfpInfoWavelength,          	
+           esPortSfpInfoWavelengthTolerance,
+           esPortSfpInfoSMFTransferDistance,         	
+           esPortSfpInfoOM1TransferDistance,            	
+           esPortSfpInfoOM2TransferDistance,
+           esPortSfpInfoOM3TransferDistance,
+           esPortSfpInfoCopperTransferDistance
+        }
+        STATUS  current
+        DESCRIPTION
+            "This group contains the collection of objects related to
+            SFP information."
+        ::= { esPortSfpInfoGroups 1 }
+
+END
+
+
+
+
+
+
+
+
+

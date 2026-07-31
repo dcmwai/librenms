@@ -1,0 +1,498 @@
+--  *****************************************************************
+--  DLINKES-VOICE-VLAN-MIB.mib : Voice VLAN MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-VOICE-VLAN-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,OBJECT-TYPE,Unsigned32
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        MacAddress, TruthValue, RowStatus, DateAndTime
+            FROM SNMPv2-TC
+        PortList, VlanIdOrNone
+            FROM Q-BRIDGE-MIB
+        InterfaceIndex
+            FROM IF-MIB
+        SnmpAdminString
+            FROM SNMP-FRAMEWORK-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB 
+        LldpPortNumber, LldpChassisIdSubtype, LldpChassisId, LldpPortIdSubtype,
+        LldpPortId
+            FROM LLDP-MIB;
+
+
+    dlinkEsVoiceVlanMIB MODULE-IDENTITY
+        LAST-UPDATED "201304260000Z"
+        ORGANIZATION "D-Link Corp."
+            CONTACT-INFO
+                "        D-Link Corporation
+
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:     +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+                "
+        DESCRIPTION
+            "The MIB module for managing voice VLAN feature."
+        REVISION        "201304260000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."
+        ::= { dlinkCommon 74}
+
+-- -----------------------------------------------------------------------------
+-- Node definitions
+-- -----------------------------------------------------------------------------
+
+    esVoiceVlanMIBNotifications  OBJECT IDENTIFIER ::= { dlinkEsVoiceVlanMIB 0 }
+    esVoiceVlanMIBObjects        OBJECT IDENTIFIER ::= { dlinkEsVoiceVlanMIB 1 }
+    esVoiceVlanMIBConformance    OBJECT IDENTIFIER ::= { dlinkEsVoiceVlanMIB 2 }
+
+-- -----------------------------------------------------------------------------
+-- esVoiceVlanGlobal
+-- -----------------------------------------------------------------------------
+    esVoiceVlanGlobal    OBJECT IDENTIFIER ::= { esVoiceVlanMIBObjects 1 }
+
+    esVoiceVlanVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The object specifies the voice VLAN on a switch.
+            A value of zero indicates that no voice VLAN has been
+            configured.
+            It is required to configure the global esVoiceVlanVlanId and enable
+            esVoiceVlanIfEnabled to start the voice VLAN function
+            on a port."
+        DEFVAL          { 0 }
+        ::= { esVoiceVlanGlobal 1 }
+
+    esVoiceVlanQos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The priority for the voice VLAN, which is used to distinguish
+            the QoS of the voice traffic from data traffic."
+        DEFVAL          { 5 }
+        ::= { esVoiceVlanGlobal 2 }
+
+    esVoiceVlanAgingTime OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        UNITS           "minutes"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The aging time for the voice VLAN, for aging out the voice
+            device and the voice VLAN automatically learned member ports."
+        DEFVAL          { 720 }
+        ::= { esVoiceVlanGlobal 3 }
+
+    esVoiceVlanOuiTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsVoiceVlanOuiEntry
+        MAX-ACCESS      not-accessible
+        STATUS current
+        DESCRIPTION
+            "This table contains the voice VLAN OUI configuration."
+        ::= { esVoiceVlanGlobal 4 }
+
+    esVoiceVlanOuiEntry OBJECT-TYPE
+        SYNTAX          EsVoiceVlanOuiEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry indicates an OUI information, which is used to classify
+            voice traffic into the voice VLAN. If the source MAC addresses of
+            the received packet matches any of the OUI pattern, the received
+            packet is determined as voice packet. "
+        INDEX { esVoiceVlanOuiAddr, esVoiceVlanOuiMask}
+        ::= { esVoiceVlanOuiTable 1 }
+
+    EsVoiceVlanOuiEntry ::=
+        SEQUENCE {
+            esVoiceVlanOuiAddr       MacAddress,
+            esVoiceVlanOuiMask       MacAddress,
+            esVoiceVlanOuiDes        SnmpAdminString,
+            esVoiceVlanOuiRowStatus  RowStatus
+        }
+
+    esVoiceVlanOuiAddr OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The MAC address of the OUI referring to this VoiceVlanOuiEntry."
+        ::= { esVoiceVlanOuiEntry 1 }
+
+    esVoiceVlanOuiMask OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the OUI MAC address matching bitmask."
+        ::= { esVoiceVlanOuiEntry 2 }
+
+    esVoiceVlanOuiDes OBJECT-TYPE
+        SYNTAX          SnmpAdminString (SIZE (0..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The description of the OUI. A zero length string of this object indicates
+            there is no description for this OUI."
+        ::= { esVoiceVlanOuiEntry 3 }
+
+    esVoiceVlanOuiRowStatus  OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the status of this entry."
+        ::= { esVoiceVlanOuiEntry 4 }
+
+-- -----------------------------------------------------------------------------
+    esVoiceVlanInterface OBJECT IDENTIFIER ::= { esVoiceVlanMIBObjects 2 }
+
+    esVoiceVlanInterfaceTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsVoiceVlanInterfaceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains the interface-specific voice VLAN parameters."
+        ::= { esVoiceVlanInterface 1 }
+
+    esVoiceVlanInterfaceEntry OBJECT-TYPE
+        SYNTAX          EsVoiceVlanInterfaceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry indicates the voice VLAN parameters for a port/port-channel."
+        INDEX { esVoiceVlanIfIndex }
+        ::= { esVoiceVlanInterfaceTable 1 }
+
+    EsVoiceVlanInterfaceEntry ::=
+        SEQUENCE {
+            esVoiceVlanIfIndex       InterfaceIndex,
+            esVoiceVlanIfEnabled       TruthValue,
+            esVoiceVlanIfMode        INTEGER
+        }
+
+    esVoiceVlanIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the ifIndex of the physical port/port-channel interface."
+        ::= { esVoiceVlanInterfaceEntry 1 }
+
+    esVoiceVlanIfEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Indicates whether the voice VLAN is enabled at the port."
+        ::= { esVoiceVlanInterfaceEntry 2 }
+
+    esVoiceVlanIfMode OBJECT-TYPE
+        SYNTAX          INTEGER{
+            autoUntagged(1),
+            autoTagged(2),
+            manual(3)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "If auto learning is enabled, the port will be automatically learned
+            as voice VLAN member.
+            When the port is working in auto tagged mode, and the port captures
+            a voice device through the device's OUI, it will join the voice VLAN
+            as a tagged member automatically. When the voice device sends tagged
+            packets, the switch will change its priority. When the voice device
+            sends untagged packets, it will forward them in port's PVID VLAN.
+            When the port is working in auto untagged mode, and the port captures
+            a voice device through the device's OUI, it will join the voice VLAN
+            as an untagged member automatically. When the voice device sends tagged
+            packets, the switch will change its priority. When the voice device
+            sends untagged packets, it will forward them in voice VLAN." 
+        ::= { esVoiceVlanInterfaceEntry 3 }
+
+-- -----------------------------------------------------------------------------
+    esVoiceVlanInfo      OBJECT IDENTIFIER ::= { esVoiceVlanMIBObjects 3 }
+
+    esVoiceVlanMemberPorts OBJECT-TYPE
+        SYNTAX      PortList
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The voice VLAN's member ports, includes the dynamically
+            learned ports."
+        ::= { esVoiceVlanInfo 1 }
+
+    esVoiceVlanDynamicMemberPorts OBJECT-TYPE
+        SYNTAX      PortList
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The voice VLAN's dynamically learned member ports."
+        ::= { esVoiceVlanInfo 2 }
+
+    esVoiceVlanDeviceTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsVoiceVlanDeviceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains the information about the learned voice devices."
+        ::= { esVoiceVlanInfo 3 }
+
+    esVoiceVlanDeviceEntry OBJECT-TYPE
+        SYNTAX          EsVoiceVlanDeviceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the information of the connected voice device."
+        INDEX {
+            esVoiceVlanDevicePortIfindex,
+            esVoiceVlanDeviceAddr }
+        ::= { esVoiceVlanDeviceTable 1 }
+
+    EsVoiceVlanDeviceEntry ::=
+        SEQUENCE {
+            esVoiceVlanDevicePortIfindex     InterfaceIndex,
+            esVoiceVlanDeviceAddr            MacAddress,
+            esVoiceVlanDeviceStartTime       DateAndTime,
+            esVoiceVlanDeviceStatus          INTEGER
+        }
+
+    esVoiceVlanDevicePortIfindex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the ifIndex of the port to which the voice device connects."
+        ::= { esVoiceVlanDeviceEntry 1 }
+
+    esVoiceVlanDeviceAddr OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the MAC address of the voice device."
+        ::= { esVoiceVlanDeviceEntry 2 }
+
+     esVoiceVlanDeviceStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the start time of the connected voice device."
+        ::= { esVoiceVlanDeviceEntry 3 }
+
+    esVoiceVlanDeviceStatus OBJECT-TYPE
+        SYNTAX          INTEGER{
+            active(1),
+            aging(2)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the status of the connected voice device."
+        ::= { esVoiceVlanDeviceEntry 4 }
+
+-- -----------------------------------------------------------------------------        
+    esVoiceVlanLldpMedDeviceTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsVoiceVlanLldpMedDeviceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains the voice devices that are learned through LLDP-MED."
+        ::= { esVoiceVlanInfo 4 }
+
+    esVoiceVlanLldpMedDeviceEntry OBJECT-TYPE
+        SYNTAX          EsVoiceVlanLldpMedDeviceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the information of a voice device learned through
+            LLDP-MED."
+        INDEX { esVoiceVlanLldpMedDeviceIndex }
+        ::= { esVoiceVlanLldpMedDeviceTable 1 }      
+        
+    EsVoiceVlanLldpMedDeviceEntry ::=
+        SEQUENCE {
+            esVoiceVlanLldpMedDeviceIndex                Unsigned32,
+            esVoiceVlanLldpMedDeviceLocalPort            LldpPortNumber,
+            esVoiceVlanLldpMedDevChIdSubtype             LldpChassisIdSubtype,
+            esVoiceVlanLldpMedDevChassisId               LldpChassisId,
+            esVoiceVlanLldpMedDevPoIdSubtype             LldpPortIdSubtype,
+            esVoiceVlanLldpMedDevicePortId               LldpPortId,             
+            esVoiceVlanLldpMedDevCreateTime              DateAndTime,
+            esVoiceVlanLldpMedDevRemainTime              Unsigned32
+        }
+            
+    esVoiceVlanLldpMedDeviceIndex OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..4294967295)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The local index used to identify the entry."
+        ::= { esVoiceVlanLldpMedDeviceEntry 1 }
+ 
+    esVoiceVlanLldpMedDeviceLocalPort OBJECT-TYPE
+        SYNTAX          LldpPortNumber
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the local port number on which the voice
+            device is learned."
+        ::= { esVoiceVlanLldpMedDeviceEntry 2 }
+        
+    esVoiceVlanLldpMedDevChIdSubtype OBJECT-TYPE
+        SYNTAX          LldpChassisIdSubtype
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The type of encoding used to identify the chassis associated with
+            the voice device."  
+        REFERENCE 
+            "IEEE Std 802.1AB-2005 9.5.2.2"
+        ::= { esVoiceVlanLldpMedDeviceEntry 3 }   
+            
+    esVoiceVlanLldpMedDevChassisId OBJECT-TYPE
+        SYNTAX          LldpChassisId
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The string value used to identify the chassis component associated
+            with the voice device."
+        REFERENCE 
+            "IEEE Std 802.1AB-2005 9.5.2.3"
+        ::= { esVoiceVlanLldpMedDeviceEntry 4 }
+   
+    esVoiceVlanLldpMedDevPoIdSubtype OBJECT-TYPE
+        SYNTAX          LldpPortIdSubtype
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The type of port identifier encoding used to identify the port component
+            associated with the voice device." 
+        REFERENCE 
+            "IEEE Std 802.1AB-2005 9.5.3.2"
+        ::= { esVoiceVlanLldpMedDeviceEntry 5 }   
+            
+    esVoiceVlanLldpMedDevicePortId OBJECT-TYPE
+        SYNTAX          LldpPortId
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The string value used to identify the port component associated with
+            the voice device."  
+        REFERENCE 
+            "IEEE Std 802.1AB-2005 9.5.3.3"
+        ::= { esVoiceVlanLldpMedDeviceEntry 6 }
+
+    esVoiceVlanLldpMedDevCreateTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The creation time of the voice device."
+        ::= { esVoiceVlanLldpMedDeviceEntry 7}   
+            
+    esVoiceVlanLldpMedDevRemainTime OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The Time-To-Live (in seconds) remaining for the voice device. 
+            If the Remain Time decreases to 0, the voice device will be deleted."
+        ::= { esVoiceVlanLldpMedDeviceEntry 8}
+    
+
+-- -----------------------------------------------------------------------------
+-- MIB Conformance statements
+-- -----------------------------------------------------------------------------
+    esVoiceVlanMIBCompliances  OBJECT IDENTIFIER
+        ::= { esVoiceVlanMIBConformance 1 }
+
+    esVoiceVlanMIBGroups  OBJECT IDENTIFIER
+        ::= { esVoiceVlanMIBConformance 2 }
+
+    esVoiceVlanMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-VOICE-VLAN-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS  {   esVoiceVlanBasicGroup  }
+
+        GROUP esVoiceVlanOUICfgGroup
+        DESCRIPTION
+            "This group is required for entities that implement classifying
+            voice traffic based on OUI patterns."
+
+        GROUP esVoiceVlanDeviceInfoGroup
+        DESCRIPTION
+            "This group is required for entities that display voice vlan
+            device infomation."
+        
+        GROUP esVoiceVlanDeviceLldpMedInfoGroup
+        DESCRIPTION
+            "This group is optional."
+
+        ::= { esVoiceVlanMIBCompliances 1 }
+          
+    esVoiceVlanBasicGroup OBJECT-GROUP
+        OBJECTS {
+            esVoiceVlanVlanId,
+            esVoiceVlanQos,
+            esVoiceVlanAgingTime,
+            esVoiceVlanIfEnabled,
+            esVoiceVlanIfMode,
+            esVoiceVlanMemberPorts,
+            esVoiceVlanDynamicMemberPorts}
+        STATUS current
+        DESCRIPTION
+            "A collection of objects to configure or display the status
+            of voice VLAN feature."
+        ::= { esVoiceVlanMIBGroups 1 }
+
+    esVoiceVlanOUICfgGroup OBJECT-GROUP
+        OBJECTS {
+            esVoiceVlanOuiDes,
+            esVoiceVlanOuiRowStatus }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects to configure voice device OUI(s)."
+        ::= { esVoiceVlanMIBGroups 2 }
+     
+    esVoiceVlanDeviceInfoGroup OBJECT-GROUP
+        OBJECTS {
+            esVoiceVlanDeviceStartTime,
+            esVoiceVlanDeviceStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects to display voice device(s)."
+        ::= { esVoiceVlanMIBGroups 3 }
+    
+    esVoiceVlanDeviceLldpMedInfoGroup OBJECT-GROUP
+        OBJECTS {
+            esVoiceVlanLldpMedDeviceLocalPort,
+            esVoiceVlanLldpMedDevChIdSubtype,
+            esVoiceVlanLldpMedDevChassisId,
+            esVoiceVlanLldpMedDevPoIdSubtype,
+            esVoiceVlanLldpMedDevicePortId,
+            esVoiceVlanLldpMedDevCreateTime,
+            esVoiceVlanLldpMedDevRemainTime  
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects displays information learned via LLDP-MED."
+        ::= { esVoiceVlanMIBGroups 4 } 
+
+ 
+END

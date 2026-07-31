@@ -1,0 +1,202 @@
+--  *****************************************************************
+--  DLINKES-VRRP-EXT-MIB.mib : VRRP MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+
+	DLINKES-VRRP-EXT-MIB DEFINITIONS ::= BEGIN
+ 
+		IMPORTS
+			dlinkIndustrialCommon			
+				FROM DLINK-ID-REC-MIB			
+			InterfaceIndex			
+				FROM IF-MIB			
+			InetAddressIPv4			
+				FROM INET-ADDRESS-MIB			
+			OBJECT-GROUP, MODULE-COMPLIANCE			
+				FROM SNMPv2-CONF			
+			OBJECT-TYPE, MODULE-IDENTITY			
+				FROM SNMPv2-SMI			
+			TruthValue, RowStatus			
+				FROM SNMPv2-TC;
+	
+	
+		dlinkEsVrrpExtMIB MODULE-IDENTITY 
+			LAST-UPDATED "201309280000Z"
+			ORGANIZATION 
+				"D-Link Corp."
+			CONTACT-INFO 
+				"        D-Link Corporation
+				
+				Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+				        Taipei City 114, Taiwan, R.O.C
+				Tel:     +886-2-66000123
+				E-mail: tsd@dlink.com.tw
+				"
+			DESCRIPTION 
+				"The Structure of VRRP Information for the
+				proprietary enterprise."
+			REVISION "201305060000Z"
+			DESCRIPTION 
+				"Initial revision of this MIB module."
+
+			REVISION "201309280000Z"
+			DESCRIPTION
+            	"Add a new object 'esVrrpCriticalIpVrId'."
+
+			::= { dlinkIndustrialCommon 93 }
+
+		
+	
+	
+--
+-- Node definitions
+--
+	
+		esVrrpMIBNotifications OBJECT IDENTIFIER ::= { dlinkEsVrrpExtMIB 1 }
+
+		
+		esVrrpMIBObjects OBJECT IDENTIFIER ::= { dlinkEsVrrpExtMIB 2 }
+
+		
+		esVrrpGlobalCtrl OBJECT IDENTIFIER ::= { esVrrpMIBObjects 1 }
+
+		
+		esVrrpNonOwnerPingEnabled OBJECT-TYPE
+			SYNTAX TruthValue
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"Enable virtual router in Master state to response ICMP 
+				echo request for IP address not owned but associated 
+				with this virtual router."
+			::= { esVrrpGlobalCtrl 1 }
+
+		
+		esVrrpNewMasterNotificationEnabled OBJECT-TYPE
+			SYNTAX TruthValue
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"This object indicates whether sending notification for VRRP new master event."
+			::= { esVrrpGlobalCtrl 2 }
+
+		
+		esVrrpAuthFailureNotificationEnabled OBJECT-TYPE
+			SYNTAX TruthValue
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"This object indicates whether sending notification for authentication failure event."
+			::= { esVrrpGlobalCtrl 3 }
+
+		
+		esVrrpCriticalIpTable OBJECT-TYPE
+			SYNTAX SEQUENCE OF EsVrrpCriticalIpEntry
+			MAX-ACCESS not-accessible
+			STATUS current
+			DESCRIPTION
+				"Table to configure VRRP critical IP address."
+			::= { esVrrpMIBObjects 2 }
+
+		
+		esVrrpCriticalIpEntry OBJECT-TYPE
+			SYNTAX EsVrrpCriticalIpEntry
+			MAX-ACCESS not-accessible
+			STATUS current
+			DESCRIPTION
+				"An entry in the esVrrpCriticalIpTable is used to configure VRRP critical IP address for a VLAN interface."
+			INDEX { esVrrpCriticalIpIfIndex, esVrrpCriticalIpVrId }
+			::= { esVrrpCriticalIpTable 1 }
+
+		
+		EsVrrpCriticalIpEntry ::=
+			SEQUENCE { 
+				esVrrpCriticalIpIfIndex
+					InterfaceIndex,
+				esVrrpCriticalIpVrId
+					INTEGER,
+				esVrrpCriticalIpAddr
+					InetAddressIPv4,
+				esVrrpCriticalIpRowStatus
+					RowStatus
+			 }
+
+		esVrrpCriticalIpIfIndex OBJECT-TYPE
+			SYNTAX InterfaceIndex
+			MAX-ACCESS not-accessible
+			STATUS current
+			DESCRIPTION
+				"The ifIndex value of the VRRP interface."
+			::= { esVrrpCriticalIpEntry 1 }
+
+		esVrrpCriticalIpVrId OBJECT-TYPE
+			SYNTAX  INTEGER (1..255)
+			MAX-ACCESS not-accessible
+			STATUS current
+			DESCRIPTION
+				"Specify the ID of vritual router."
+			::= { esVrrpCriticalIpEntry 2 }
+		
+		esVrrpCriticalIpAddr OBJECT-TYPE
+			SYNTAX InetAddressIPv4
+			MAX-ACCESS read-create
+			STATUS current
+			DESCRIPTION
+				"Specify the critical IP address."
+			::= { esVrrpCriticalIpEntry 3 }
+
+		
+		esVrrpCriticalIpRowStatus OBJECT-TYPE
+			SYNTAX RowStatus
+			MAX-ACCESS read-create
+			STATUS current
+			DESCRIPTION
+				"This object is used to operate a table entry.
+				Only createAndGo(4) and destroy(6) are supported."
+			::= { esVrrpCriticalIpEntry 4 }
+
+		
+		esVrrpMIBConformance OBJECT IDENTIFIER ::= { dlinkEsVrrpExtMIB 3 }
+
+		
+		esVrrpMIBCompliances OBJECT IDENTIFIER ::= { esVrrpMIBConformance 1 }
+
+		
+		esVrrpMIBCompliance MODULE-COMPLIANCE
+			STATUS current
+			DESCRIPTION 
+				"The compliance statement for entities which implement the 
+				DLINKES-VRRP-EXT-MIB."
+			MODULE -- this module
+				MANDATORY-GROUPS { esVrrpCriticalIpGroup, esVrrpGlobalCtrlGroup }
+			::= { esVrrpMIBCompliances 1 }
+
+		
+		esVrrpMIBGroups OBJECT IDENTIFIER ::= { esVrrpMIBConformance 2 }
+
+		
+		esVrrpGlobalCtrlGroup OBJECT-GROUP
+			OBJECTS { esVrrpNewMasterNotificationEnabled, esVrrpAuthFailureNotificationEnabled, esVrrpNonOwnerPingEnabled }
+			STATUS current
+			DESCRIPTION 
+				"These objects are used to control VRRP global configurations."
+			::= { esVrrpMIBGroups 1 }
+
+		
+		esVrrpCriticalIpGroup OBJECT-GROUP
+			OBJECTS { esVrrpCriticalIpRowStatus, esVrrpCriticalIpAddr }
+			STATUS current
+			DESCRIPTION 
+				"These objects are used for managing/monitoring
+				the VRRP critical IP addresses."
+			::= { esVrrpMIBGroups 2 }
+
+		
+	
+	END
+
+--
+-- DLINKES-VRRP-EXT-MIB export.mib
+--

@@ -1,0 +1,900 @@
+-- -----------------------------------------------------------------------------
+-- MIB NAME : Single IP Management Common mib
+-- FILE NAME: SingleIp.mib
+-- DATE     : 2009/01/21
+-- VERSION  : 2.02
+-- PURPOSE  : To construct the MIB structure of Single IP management
+--            for proprietary enterprise
+-- -----------------------------------------------------------------------------
+-- MODIFICTION HISTORY:
+-- -----------------------------------------------------------------------------
+-- Version, Date, Author
+-- Description:
+--  [New Object]
+--  [Modification]
+-- Notes: (Requested by who and which project)
+--
+-- Version 2.02, 2009/01/21, Eli Lin
+-- [New Object]
+-- Add esSingleIpTrapMgmt and esSingleIpTrapStatus for enableing/disable the
+-- trap function.
+-- Notes: Requested by Eli for project DES3028
+--
+-- Version 2.01, 2007/12/19, Jenny
+-- [New Object]
+-- 1.add object esSingleIpCSGroupName.
+-- Notes: Requested by Jenny for project DES3528
+--
+-- Version 2.00, 2007/03/27, Yedda
+-- This is the first formal version for universal MIB definition.
+-- -----------------------------------------------------------------------------
+
+DLINKES-SINGLE-IP-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    ifIndex
+                    FROM RFC1213-MIB
+    NOTIFICATION-TYPE, MODULE-IDENTITY, OBJECT-TYPE,
+    Integer32
+                    FROM SNMPv2-SMI
+    MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
+                    FROM SNMPv2-CONF
+    DisplayString, MacAddress
+                    FROM SNMPv2-TC
+    dlinkCommon
+                    FROM DLINK-ID-REC-MIB;
+
+    dlinkEsSingleIpMIB MODULE-IDENTITY
+        LAST-UPDATED "201708070000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "http://support.dlink.com"
+        DESCRIPTION
+            "The Single IP management MIB."
+
+        REVISION    "201708070000Z"
+        DESCRIPTION
+             "Update for ESSDD."
+
+        REVISION    "200901210000Z"
+        DESCRIPTION
+             "This is the first version of the MIB file.
+             "
+
+        ::= { dlinkCommon 225}
+
+
+    esSingleIpMSNotify      OBJECT IDENTIFIER ::= { dlinkEsSingleIpMIB 0 }
+    esSingleIpMgmt          OBJECT IDENTIFIER ::= { dlinkEsSingleIpMIB 1 }
+    esSingleIpConformance   OBJECT IDENTIFIER ::= { dlinkEsSingleIpMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esSingleIpInfo          OBJECT IDENTIFIER ::= { esSingleIpMgmt 1 }
+    esSingleIpCtrl          OBJECT IDENTIFIER ::= { esSingleIpMgmt 2 }
+
+-- -----------------------------------------------------------------------------
+-- esSingleIpInfo
+-- -----------------------------------------------------------------------------
+    esSingleIpVersion OBJECT-TYPE
+        SYNTAX  DisplayString  (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the version of Single IP Management supported in the system."
+        ::= { esSingleIpInfo 1}
+
+    esSingleIpCapability OBJECT-TYPE
+        SYNTAX  DisplayString  (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the capability of the switch system."
+        ::= { esSingleIpInfo 2}
+
+    esSingleIpPlatform OBJECT-TYPE
+        SYNTAX  DisplayString  (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the platform of the switch system."
+        ::= { esSingleIpInfo 3}
+
+    esSingleIpFirmwareVer OBJECT-TYPE
+        SYNTAX  DisplayString  (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the firmware version of the switch system."
+        ::= { esSingleIpInfo 4}
+
+    esSingleIpDeviceName OBJECT-TYPE
+        SYNTAX  DisplayString  (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the device name of the switch system."
+        ::= { esSingleIpInfo 5}
+
+    esSingleIpMacAddr OBJECT-TYPE
+        SYNTAX  MacAddress
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object specifies the MAC address of the switch system."
+        ::= { esSingleIpInfo 6}
+
+-- -----------------------------------------------------------------------------
+-- esSingleIpCtrl
+-- -----------------------------------------------------------------------------
+    esSingleIpAdmin OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    other(1),
+                    disabled(2),
+                    enabled(3)
+                }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates Single IP Management is enabled or disabled on the system."
+        ::= { esSingleIpCtrl 1}
+
+    esSingleIpRoleState OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    cs(1),
+                    cas(2),
+                    ms(3)
+                }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the role state of the switch system."
+        ::= { esSingleIpCtrl 2}
+
+    esSingleIpHoldtime OBJECT-TYPE
+        SYNTAX  Integer32 (100..255)
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicate the holdtime of the switch in seconds.
+             The default value is 100, the maximum value is 255, and the minimum value is 100."
+        DEFVAL { 100 }
+        ::= { esSingleIpCtrl 3 }
+
+    esSingleIpTimeInterval OBJECT-TYPE
+        SYNTAX  Integer32 (30..90)
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the time interval of the switch in seconds to
+             periodically send out Single IP protocol control packets.
+             The default value is 60, the maximum value is 120, and the minimum value is 30.
+             The esSingleIpTimeInterval will always <= esSingleIpHoldtime/2."
+        DEFVAL { 30 }
+        ::= { esSingleIpCtrl 4 }
+
+    esSingleIpCSGroupName OBJECT-TYPE
+        SYNTAX    DisplayString  (SIZE (0..64))
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This object is used to configure the group name for the commander switch."
+        ::= { esSingleIpCtrl 5 }
+
+    esSingleIpMgmtVlan OBJECT-TYPE
+        SYNTAX    Integer32 (1..4094)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+            "This object is used to configure the SIM management VLAN."
+        ::= { esSingleIpCtrl 7 }
+
+-- -----------------------------------------------------------------------------
+-- esSingleIpTrapMgmt
+-- -----------------------------------------------------------------------------
+
+    esSingleIpTrapMgmt OBJECT IDENTIFIER ::= { esSingleIpCtrl 6 }
+
+    esSingleIpTrapStatus OBJECT-TYPE
+        SYNTAX  INTEGER {
+               enabled(1),
+               disabled(2)
+            }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "When enabled (1), whenever the commander detects a member's trap
+             event, a trap will be sent out."
+        ::= { esSingleIpTrapMgmt 1 }
+
+-- -----------------------------------------------------------------------------
+-- esSingleIpMSTable
+-- -----------------------------------------------------------------------------
+
+    esSingleIpMSTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsSingleIpMSEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains information about member switches which belong to the
+            single IP management group.
+             A member will be joined into the group by row creation.
+             Before a switch is joined into a group as a member switch,
+             it must exist in the candidate table list."
+        ::= { esSingleIpMgmt 3 }
+
+    esSingleIpMSEntry OBJECT-TYPE
+        SYNTAX  EsSingleIpMSEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A list of information about member switches that belong to the single IP
+             management group."
+        INDEX  { esSingleIpMSMacAddr }
+        ::= { esSingleIpMSTable 1 }
+
+    EsSingleIpMSEntry ::=
+        SEQUENCE {
+            esSingleIpMSMacAddr         MacAddress,
+            esSingleIpMSDeviceName      DisplayString,
+            esSingleIpMSOperate         INTEGER,
+            esSingleIpMSFirmwareVer     DisplayString,
+            esSingleIpMSCapability      DisplayString,
+            esSingleIpMSPlatform        DisplayString,
+            esSingleIpMSHoldtime        Integer32,
+            esSingleIpMSCfgStatus       INTEGER
+        }
+
+    esSingleIpMSMacAddr OBJECT-TYPE
+        SYNTAX  MacAddress
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This object specifies the MAC address of the member switch."
+        ::= { esSingleIpMSEntry 1 }
+
+    esSingleIpMSDeviceName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the name of switch."
+        ::= { esSingleIpMSEntry 2 }
+
+    esSingleIpMSOperate OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    noOp(1),
+                    transformToCaS(2)
+                }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object is used to control entry state.
+             It will transform to CaS table when set to 'transformToCaS'.
+             No action is taken if this object is set to 'noOp'.
+             When read, the value 'noOp' is returned."
+        ::= { esSingleIpMSEntry 3 }
+
+    esSingleIpMSFirmwareVer OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the firmware version of the switch."
+        ::= { esSingleIpMSEntry 4 }
+
+    esSingleIpMSCapability OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the capability of the switch."
+        ::= { esSingleIpMSEntry 5 }
+
+    esSingleIpMSPlatform OBJECT-TYPE
+        SYNTAX   DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the platform of the switch."
+        ::= { esSingleIpMSEntry 6 }
+
+    esSingleIpMSHoldtime OBJECT-TYPE
+        SYNTAX  Integer32
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the holdtime of Single IP Management protocol sent by
+            this member switch."
+        ::= { esSingleIpMSEntry 7 }        
+        
+    esSingleIpMSCfgStatus OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    normal(1),
+                    waiting(2)
+                }
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the config ACK status of this device. 
+            allow: device can send a config packet
+            not-allow: device still wait for config ACK."
+        ::= { esSingleIpMSEntry 8 }
+
+
+-- -----------------------------------------------------------------------------
+-- esSingleIpCaSTable
+-- -----------------------------------------------------------------------------
+    esSingleIpCaSTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsSingleIpCaSEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains information about candidate switches.
+             This table is a read-only table listing all information about candidate
+             switches that will be maintained automatically by the Single IP topology discovery
+             protocol.  "
+        ::= { esSingleIpMgmt 4 }
+
+    esSingleIpCaSEntry OBJECT-TYPE
+        SYNTAX  EsSingleIpCaSEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A list of information about candidate switches that belong to the Single
+             IP Management group."
+        INDEX  { esSingleIpCaSMacAddr }
+        ::= { esSingleIpCaSTable 1 }
+
+    EsSingleIpCaSEntry ::=
+        SEQUENCE {
+            esSingleIpCaSMacAddr            MacAddress,
+            esSingleIpCaSDeviceName         DisplayString,
+            esSingleIpCaSOperate            INTEGER,
+            esSingleIpCaSFirmwareVer        DisplayString,
+            esSingleIpCaSCapability         DisplayString,
+            esSingleIpCaSPlatform           DisplayString,
+            esSingleIpCaSHoldtime           Integer32,
+            esSingleIpCasPassword           DisplayString,
+            esSingleIpCaSCfgStatus          INTEGER
+        }
+
+    esSingleIpCaSMacAddr OBJECT-TYPE
+        SYNTAX  MacAddress
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This object specifies the MAC address of the candidate switch."
+        ::= { esSingleIpCaSEntry 1 }
+
+    esSingleIpCaSDeviceName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the name of switch."
+        ::= { esSingleIpCaSEntry 2 }
+
+    esSingleIpCaSOperate OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    noOp(1),
+                    transformToMS(2)
+                }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object is used to control entry state.
+             It will transform to MS table when set to 'transformToMS'.
+             No action is taken if this object is set to 'noOp'.
+             When read, the value 'noOp' is returned."
+        ::= { esSingleIpCaSEntry 3 }
+
+    esSingleIpCaSFirmwareVer OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the firmware version of the switch."
+        ::= { esSingleIpCaSEntry 4 }
+
+    esSingleIpCaSCapability OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the capability of the switch."
+        ::= { esSingleIpCaSEntry 5 }
+
+    esSingleIpCaSPlatform OBJECT-TYPE
+        SYNTAX   DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the platform of the switch."
+        ::= { esSingleIpCaSEntry 6 }
+
+    esSingleIpCaSHoldtime OBJECT-TYPE
+        SYNTAX  Integer32
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the holdtime of the Single IP Management protocol
+             sent by this candidate switch."
+        ::= { esSingleIpCaSEntry 7 }
+
+    esSingleIpCasPassword OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..16))
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "Specifies the CaS password when creating the MS entry. The object is used
+            only when creating the esSingleIpCaSEntry. The value always shows a zero length string."
+        ::= { esSingleIpCaSEntry 8 }     
+        
+    esSingleIpCaSCfgStatus OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    normal(1),
+                    waiting(2)
+                }
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the config ACK status of this device. 
+            allow: device can send a config packet
+            not-allow: device still wait for config ACK."
+        ::= { esSingleIpCaSEntry 9 }
+
+-- -----------------------------------------------------------------------------
+-- esSingleIpGroupTable
+-- -----------------------------------------------------------------------------
+    esSingleIpGroupTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsSingleIpGroupEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains information about Single IP Management groups learned by the
+             commander switch.
+             This table is a read-only table listing all information about the Single IP groups that will
+             maintained automatically by Single IP topology discovery protocol."
+        ::= { esSingleIpMgmt 5 }
+
+    esSingleIpGroupEntry OBJECT-TYPE
+        SYNTAX  EsSingleIpGroupEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A list of information about Single IP Management groups."
+        INDEX  { esSingleIpGroupMacAddr }
+        ::= { esSingleIpGroupTable 1 }
+
+    EsSingleIpGroupEntry ::=
+        SEQUENCE {
+            esSingleIpGroupMacAddr          MacAddress,
+            esSingleIpGroupName             DisplayString,
+            esSingleIpGroupDeviceName       DisplayString,
+            esSingleIpGroupMSNumber         Integer32,
+            esSingleIpGroupFirmwareVer      DisplayString,
+            esSingleIpGroupCapability       DisplayString,
+            esSingleIpGroupPlatform         DisplayString,
+            esSingleIpGroupHoldtime         Integer32
+        }
+
+    esSingleIpGroupMacAddr OBJECT-TYPE
+        SYNTAX  MacAddress
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This object specifies the MAC address of the commander switch."
+        ::= { esSingleIpGroupEntry 1 }
+
+    esSingleIpGroupName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the name of the Single IP Management group."
+        ::= { esSingleIpGroupEntry 2 }
+
+    esSingleIpGroupDeviceName OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the name of commander switch of the group."
+        ::= { esSingleIpGroupEntry 3 }
+
+    esSingleIpGroupMSNumber OBJECT-TYPE
+        SYNTAX  Integer32
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the member switch number of the group.
+             "
+        ::= { esSingleIpGroupEntry 4 }
+
+    esSingleIpGroupFirmwareVer OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the firmware version of the switch."
+        ::= { esSingleIpGroupEntry 5 }
+
+    esSingleIpGroupCapability OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the capability of the switch."
+        ::= { esSingleIpGroupEntry 6 }
+
+    esSingleIpGroupPlatform OBJECT-TYPE
+        SYNTAX   DisplayString (SIZE (0..64))
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the platform of the switch."
+        ::= { esSingleIpGroupEntry 7 }
+
+    esSingleIpGroupHoldtime OBJECT-TYPE
+        SYNTAX  Integer32
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "Specifies the holdtime of the Single IP Management protocol sent by this commander
+             switch."
+        ::= { esSingleIpGroupEntry 8 }
+
+-- -----------------------------------------------------------------------------
+-- esSingleIpNeighborTable
+-- -----------------------------------------------------------------------------
+    esSingleIpNeighborTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsSingleIpNeighborEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains information about Single IP Management neighbors learned by the
+             switch.
+             This table is a read-only table listing all the information about Single IP neighbors
+             that will be maintained automatically by the Single IP topology protocol."
+        ::= { esSingleIpMgmt 6 }
+
+    esSingleIpNeighborEntry OBJECT-TYPE
+        SYNTAX  EsSingleIpNeighborEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A list of information about Single IP Management neighbors."
+        INDEX  { esSingleIpNBReceivedPort,esSingleIpNBMacAddr }
+        ::= { esSingleIpNeighborTable 1 }
+
+    EsSingleIpNeighborEntry ::=
+        SEQUENCE {
+            esSingleIpNBReceivedPort    Integer32,
+            esSingleIpNBMacAddr         MacAddress,
+            esSingleIpNBRoleState       INTEGER
+        }
+
+    esSingleIpNBReceivedPort OBJECT-TYPE
+        SYNTAX  Integer32 (1..2147483647)
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "Specifies the received port of the neighbor switch."
+        ::= { esSingleIpNeighborEntry 1 }
+
+    esSingleIpNBMacAddr OBJECT-TYPE
+        SYNTAX  MacAddress
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This object specifies the MAC address of the neighbor switch."
+        ::= { esSingleIpNeighborEntry 2 }
+
+    esSingleIpNBRoleState OBJECT-TYPE
+        SYNTAX  INTEGER {
+                    commander(1),
+                    candidate(2),
+                    member(3)
+                }
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object specifies the role state of the neighbor switch."
+        ::= { esSingleIpNeighborEntry 3 }
+
+-- -----------------------------------------------------------------------------
+-- Traps for use by SIM
+-- -----------------------------------------------------------------------------
+    esSingleIpMSNotifyPrefix    OBJECT IDENTIFIER ::= { esSingleIpMSNotify 0 }
+
+    esSingleIpMSColdStart NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSColdStart notification to the indicated
+               host when its member generates a cold start notification."
+        ::= { esSingleIpMSNotifyPrefix 11 }
+
+    esSingleIpMSWarmStart NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSWarmStart notification to the indicated
+               host when its member generates a warm start notification."
+        ::= { esSingleIpMSNotifyPrefix 12 }
+
+    esSingleIpMSLinkDown NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr,ifIndex }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSLinkDown notification to the indicated
+               host when its member generates a link down notification."
+        ::= { esSingleIpMSNotifyPrefix 13 }
+
+    esSingleIpMSLinkUp NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr,ifIndex }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSLinkUp notification to the indicated
+               host when its member generates a link up notification."
+        ::= { esSingleIpMSNotifyPrefix 14 }
+
+    esSingleIpMSAuthFail NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSAuthFail notification to the indicated
+              host when its member generates an authentation failure notification."
+        ::= { esSingleIpMSNotifyPrefix 15 }
+
+    esSingleIpMSnewRoot NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSnewRoot notification to the indicated
+              host when its member generates a new root notification."
+        ::= { esSingleIpMSNotifyPrefix 16 }
+
+    esSingleIpMSTopologyChange NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSTopologyChange notification to the
+               indicated host when its member generates a topology change notification."
+        ::= { esSingleIpMSNotifyPrefix 17 }
+
+    esSingleIpMSrisingAlarm NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSrisingAlarm notification to
+              the indicated host when its member generates a rising alarm notification."
+        ::= { esSingleIpMSNotifyPrefix 18 }
+
+    esSingleIpMSfallingAlarm NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSfallingAlarm notification to the
+               indicated host when its member generates a falling alarm notification."
+        ::= { esSingleIpMSNotifyPrefix 19 }
+
+    esSingleIpMSmacNotification NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr,esSingleIpMSTrapMessage }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSmacNotification notification to the
+               indicated host when its member generates a MAC address variation notification."
+        ::= { esSingleIpMSNotifyPrefix 20}
+
+    esSingleIpMSPortTypeChange NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr,ifIndex,esSingleIpMSTrapMessage }
+        STATUS  current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSPortTypeChange notification to the
+               indicated host when its member generates a port type change notification."
+        ::= { esSingleIpMSNotifyPrefix 21 }
+
+    esSingleIpMSPowerStatusChg  NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr,esSingleIpMSTrapMessage }
+        STATUS          current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSPowerStatusChg notification to the
+               indicated host when its member generates a power status change notification."
+        ::= { esSingleIpMSNotifyPrefix  22 }
+
+    esSingleIpMSPowerFailure  NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr,esSingleIpMSTrapMessage }
+        STATUS          current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSPowerFailure notification to the
+               indicated host when its member generates a power failure notification."
+        ::= { esSingleIpMSNotifyPrefix  23 }
+
+    esSingleIpMSPowerRecover NOTIFICATION-TYPE
+        OBJECTS { esSingleIpMSTrapMacAddr, esSingleIpMSTrapMessage }
+        STATUS          current
+        DESCRIPTION
+              "The commander switch will send esSingleIpMSPowerRecover notification to the
+               indicated host when its member generates a power recover notification."
+        ::= { esSingleIpMSNotifyPrefix  24 }
+
+-- -----------------------------------------------------------------------------
+--    notificationBidings
+-- -----------------------------------------------------------------------------
+    esSingleIpNotifyBidings OBJECT IDENTIFIER ::= { esSingleIpMSNotify 1 }
+
+    esSingleIpMSTrapMacAddr OBJECT-TYPE
+        SYNTAX     MacAddress
+        MAX-ACCESS accessible-for-notify
+        STATUS     current
+        DESCRIPTION
+            "The mac address that the member switch sent."
+        ::= { esSingleIpNotifyBidings 1 }
+
+    esSingleIpMSTrapMessage OBJECT-TYPE
+        SYNTAX     OCTET STRING(SIZE (0..1024))
+        MAX-ACCESS accessible-for-notify
+        STATUS     current
+        DESCRIPTION
+            "The string that the member switch sent."
+        ::= { esSingleIpNotifyBidings 2 }
+
+-- -----------------------------------------------------------------------------
+-- Conformance
+-- -----------------------------------------------------------------------------
+    esSingleIpMIBCompliances    OBJECT IDENTIFIER ::= { esSingleIpConformance 1 }
+    esSingleIpMIBGroups         OBJECT IDENTIFIER ::= { esSingleIpConformance 2 }
+
+    esSingleIpMIBCompliance MODULE-COMPLIANCE
+        STATUS  current
+        DESCRIPTION
+            "The compliance statement for DLINKES-SINGLE-IP-MIB"
+        MODULE
+        MANDATORY-GROUPS {
+            esSingleIpInfoGroup,
+            esSingleIpCtrlGroup,
+            esSingleIpBindGroup
+        }
+
+        GROUP esSingleIpMSGroup
+        DESCRIPTION
+            "."
+
+        GROUP esSingleIpCaSGroup
+        DESCRIPTION
+            "."
+
+        GROUP esSingleIpGroupGroup
+        DESCRIPTION
+            "."
+
+        GROUP esSingleIpNeighborGroup
+        DESCRIPTION
+            "."
+
+        GROUP esSingleIpNotifyGroup
+        DESCRIPTION
+            "."
+
+        ::= { esSingleIpMIBCompliances 1 }
+
+-- Units of Conformance
+
+-- esSingleIpGlobalGroup
+
+    esSingleIpInfoGroup OBJECT-GROUP
+        OBJECTS {
+            esSingleIpVersion,
+            esSingleIpCapability,
+            esSingleIpPlatform,
+            esSingleIpFirmwareVer,
+            esSingleIpDeviceName,
+            esSingleIpMacAddr
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 1 }
+
+    esSingleIpCtrlGroup OBJECT-GROUP
+        OBJECTS {
+            esSingleIpAdmin,
+            esSingleIpRoleState,
+            esSingleIpHoldtime,
+            esSingleIpTimeInterval,
+            esSingleIpCSGroupName,
+            esSingleIpMgmtVlan,
+            esSingleIpTrapStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 2 }
+
+    esSingleIpMSGroup OBJECT-GROUP
+        OBJECTS {
+            esSingleIpMSDeviceName,
+            esSingleIpMSOperate,
+            esSingleIpMSFirmwareVer,
+            esSingleIpMSCapability,
+            esSingleIpMSPlatform,
+            esSingleIpMSHoldtime
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 3 }
+
+    esSingleIpCaSGroup OBJECT-GROUP
+        OBJECTS {
+            esSingleIpCaSDeviceName,
+            esSingleIpCaSOperate,
+            esSingleIpCaSFirmwareVer,
+            esSingleIpCaSCapability,
+            esSingleIpCaSPlatform,
+            esSingleIpCaSHoldtime,
+            esSingleIpCasPassword
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 4 }
+
+    esSingleIpGroupGroup OBJECT-GROUP
+        OBJECTS {
+            esSingleIpGroupName,
+            esSingleIpGroupDeviceName,
+            esSingleIpGroupMSNumber,
+            esSingleIpGroupFirmwareVer,
+            esSingleIpGroupCapability,
+            esSingleIpGroupPlatform,
+            esSingleIpGroupHoldtime
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 5 }
+
+    esSingleIpNeighborGroup OBJECT-GROUP
+        OBJECTS {
+            esSingleIpNBRoleState
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 6 }
+
+    esSingleIpBindGroup OBJECT-GROUP
+        OBJECTS {
+            esSingleIpMSTrapMacAddr,
+            esSingleIpMSTrapMessage
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 7 }
+
+    esSingleIpNotifyGroup NOTIFICATION-GROUP
+        NOTIFICATIONS {
+            esSingleIpMSColdStart,
+            esSingleIpMSWarmStart,
+            esSingleIpMSLinkDown,
+            esSingleIpMSLinkUp,
+            esSingleIpMSAuthFail,
+            esSingleIpMSnewRoot,
+            esSingleIpMSTopologyChange,
+            esSingleIpMSrisingAlarm,
+            esSingleIpMSfallingAlarm,
+            esSingleIpMSmacNotification,
+            esSingleIpMSPortTypeChange,
+            esSingleIpMSPowerStatusChg,
+            esSingleIpMSPowerFailure,
+            esSingleIpMSPowerRecover
+        }
+        STATUS current
+        DESCRIPTION
+            "."
+        ::= { esSingleIpMIBGroups 8 }
+
+END

@@ -1,0 +1,110 @@
+--  *****************************************************************
+--  DLINKES-TRAFFIC-SEGMENT-MIB.mib : Traffic Segmentation MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+
+    DLINKES-TRAFFIC-SEGMENT-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,OBJECT-TYPE     FROM SNMPv2-SMI
+        ifIndex,
+        InterfaceIndex                  FROM IF-MIB
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP                    FROM SNMPv2-CONF
+        PortList                        FROM Q-BRIDGE-MIB
+        dlinkCommon                     FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsTrafficSegMIB MODULE-IDENTITY
+        LAST-UPDATED "201303010000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for Traffic Segmentation."            
+            
+        REVISION     "201303010000Z"
+        DESCRIPTION 
+            "This is the first version of the MIB file."    
+        ::= { dlinkCommon 26 }
+  
+
+-- ---------------------------------------------------------------------------------------------
+    esTrafficSegNotifications    OBJECT IDENTIFIER ::= { dlinkEsTrafficSegMIB 0 }
+    esTrafficSegObjects          OBJECT IDENTIFIER ::= { dlinkEsTrafficSegMIB 1 }
+    esTrafficSegConformance      OBJECT IDENTIFIER ::= { dlinkEsTrafficSegMIB 2 }
+
+-- ---------------------------------------------------------------------------------------------
+    esTrafficSegForwardDomainTable    OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsTrafficSegForwardDomainEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current   
+        DESCRIPTION            
+            "A list of specification of forwarding domains for Traffic Segmentation."            
+    ::= { esTrafficSegObjects 1 }
+
+    esTrafficSegForwardDomainEntry    OBJECT-TYPE
+        SYNTAX          EsTrafficSegForwardDomainEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current   
+        DESCRIPTION            
+            "An entry indicates the setting of forwarding domain on an interface."
+        INDEX  { ifIndex }
+        ::= { esTrafficSegForwardDomainTable 1 }
+
+    EsTrafficSegForwardDomainEntry ::= SEQUENCE
+    {
+        esTrafficSegForwardPorts    PortList
+    }
+
+    esTrafficSegForwardPorts    OBJECT-TYPE
+        SYNTAX                 PortList
+        MAX-ACCESS             read-write
+        STATUS                 current
+        DESCRIPTION
+            "This object indicates the forward domain (a set of ports) on the
+            interface."
+        ::= { esTrafficSegForwardDomainEntry 1 }
+
+-- -----------------------------------------------------------------------------
+-- MIB Conformance statements
+-- -----------------------------------------------------------------------------
+    esTrafficSegMIBCompliances    OBJECT IDENTIFIER
+        ::= { esTrafficSegConformance 1 }
+
+    esTrafficSegMIBGroups    OBJECT IDENTIFIER
+        ::= { esTrafficSegConformance 2 } 
+    
+    esTrafficSegMIBCompliance    MODULE-COMPLIANCE
+        STATUS                  current
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+            DLINKES-TRAFFIC-SEGMENT-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS
+        {   
+            esTrafficSegIfCfgGroup           
+        }                 
+        ::= { esTrafficSegMIBCompliances 1 }
+
+-- -----------------------------------------------------------------------------        
+    esTrafficSegIfCfgGroup    OBJECT-GROUP
+        OBJECTS
+        { 
+            esTrafficSegForwardPorts
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing management of the Traffic
+            Segmentation feature."
+        ::= { esTrafficSegMIBGroups 1 }
+  
+END

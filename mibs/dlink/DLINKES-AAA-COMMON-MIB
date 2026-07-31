@@ -1,0 +1,185 @@
+-- *****************************************************************
+-- DLINKES-AAA-COMMON-MIB:  D-Link AAA Common MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-AAA-COMMON-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-IDENTITY, OBJECT-TYPE,
+        Integer32
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE,	OBJECT-GROUP
+            FROM SNMPv2-CONF		
+        TEXTUAL-CONVENTION, TruthValue
+            FROM SNMPv2-TC
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsAAACommonMIB MODULE-IDENTITY
+        LAST-UPDATED	"201707100000Z"
+        ORGANIZATION	"D-Link Corp."
+        CONTACT-INFO
+            "       D-Link Corporation
+            Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                    Taipei City 114, Taiwan, R.O.C
+            Tel:    +886-2-66000123
+            E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "The MIB module	for configuring AAA common feature.
+            This MIB module also provides Textual Conventions 
+            and OBJECT-IDENTITY Objects to be used AAA services.
+            "
+        REVISION	 "201707100000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."  
+        ::= { dlinkCommon 150 }
+
+
+--
+-- Textual Conventions
+--
+
+    EsAaaSessionType ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "Represents a session type.
+
+            telnet(1) - indicates telnet session.
+
+            console(2) - indicates console session.
+
+            ssh(3) - indicates ssh session.
+            " 
+        SYNTAX    INTEGER {
+            telnet(1),
+            console(2),
+            ssh(3)
+        }
+
+
+    EsAaaPrivilegeLevel ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "Represents privilege level.
+            "
+        SYNTAX          Integer32  (1..15)
+
+
+
+    EsAaaMethodListName ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "Represents the name of a method list.
+
+            The following name are reserved and cannot be used as the name of 
+            method list:
+            enable, none, local, tacacs, xtacacs, tacacs+, radius             
+            "
+        SYNTAX          OCTET STRING (SIZE (1..32))
+
+
+    EsAaaMethodPriority ::= TEXTUAL-CONVENTION
+        STATUS       current
+        DESCRIPTION
+            "Represents the priority of a method. Lower numbers indicate
+            higher priority.
+            "
+        SYNTAX          Integer32  (1..4)
+
+
+    EsAaaMethodName ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "Represents method name.
+
+            The following name are reserved and cannot be used as method name:
+            enable, local, tacacs, and xtacacs
+       
+            The following name are reserved method name which can be applied but cannot
+            be manually created:
+            none, tacacs+ and radius.
+            
+            none - Do not perform accounting or authentication.
+            radius - Use the servers defined at dasServerConfigTable (the value of dasServerProtocol
+                    is 'radius').
+            tacacs+ - Use the servers defined at dasServerConfigTable (the value of dasServerProtocol
+                    is 'tacacsplus').             
+            The name of dasGroupName - Uses the servers which are grouped into the specified group
+                    in dasGroupTable.
+            "
+        SYNTAX        OCTET STRING (SIZE(1..32))
+               
+-- -----------------------------------------------------------------------------
+    esAaaCommonMIBNotifications 	OBJECT IDENTIFIER ::= { dlinkEsAAACommonMIB 0 }
+               
+    esAaaMIBObjects    OBJECT-IDENTITY 
+        STATUS          current
+        DESCRIPTION
+            "This object provides OBJECT-IDENTITY for other AAA MIB modules.                     
+            "
+        ::= { dlinkEsAAACommonMIB 1 }
+
+    esAaaCommonMIBConformance	OBJECT IDENTIFIER ::= { dlinkEsAAACommonMIB 2 }
+    
+-- ----------------------------------------------------------------------------- 
+    esAaaCommonObjects    OBJECT-IDENTITY 
+        STATUS          current
+        DESCRIPTION
+            "Group of objects that are related to the common AAA feature.                          
+            "
+        ::= { esAaaMIBObjects 1 }
+    
+    esAaaNewModelEnabled OBJECT-TYPE
+	    SYNTAX	        TruthValue                   
+	    MAX-ACCESS      read-write
+	    STATUS	        current
+	    DESCRIPTION
+	        "Set this object to 'true' to enable AAA global state, then the
+	        authentication and  accounting via the AAA method lists will 
+	        take effect.
+	        Set this object to 'false' to globally disable AAA.
+	        "
+        DEFVAL { false }
+        ::= { esAaaCommonObjects	1 }
+
+
+-- ******************************************************************
+-- Conformance and Compliance
+-- ******************************************************************
+
+    esAaaCommonMIBCompliances  OBJECT IDENTIFIER ::= { esAaaCommonMIBConformance 1 }
+    
+
+    esaaaMIBCompliance MODULE-COMPLIANCE
+        STATUS	    current
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+            DLINKES-AAA-COMMON-MIB.
+                "
+        MODULE	    -- this module
+        MANDATORY-GROUPS
+        {
+            esaaaGlobalCtrlGroup
+        }
+        ::= { esAaaCommonMIBCompliances	1 }
+
+
+-- units of conformance
+    esAaaCommonMIBGroups	      OBJECT IDENTIFIER ::= { esAaaCommonMIBConformance 2 }
+    esaaaGlobalCtrlGroup OBJECT-GROUP
+        OBJECTS {
+            esAaaNewModelEnabled
+        }
+        STATUS      current
+        DESCRIPTION
+            "Objects for globally configuring AAA feature.
+            "
+        ::= { esAaaCommonMIBGroups 1 }
+
+END
+

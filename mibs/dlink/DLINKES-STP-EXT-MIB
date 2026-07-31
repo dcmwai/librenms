@@ -1,0 +1,667 @@
+--  *****************************************************************
+--  DLINKES-STP-EXT-MIB.mib : STP Extension MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+DLINKES-STP-EXT-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, Unsigned32, TimeTicks, Counter64, Integer32
+            FROM SNMPv2-SMI
+        TruthValue, DisplayString, RowStatus
+            FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB
+        BridgeId, Timeout
+            FROM BRIDGE-MIB
+        IEEE8021PbbComponentIdentifier, IEEE8021BridgePortNumber, IEEE8021MstIdentifier
+            FROM IEEE8021-TC-MIB;
+
+    dlinkEsStpExtMIB MODULE-IDENTITY
+        LAST-UPDATED "201303270000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+		    "The MIB module for managing D-Link STP extensions which are not covered
+            by standard MIBs."
+		REVISION "202006100000Z"
+        DESCRIPTION
+            "Add MIB objects dStpExtMptTreeEntryTreePriority, dStpExtMptTreeEntryTreeForwardDelay       	
+             dStpExtMptTreeEntryTreeHelloTime, dStpExtMptTreeEntryTreeMaxAge
+             dStpExtPortMptTreeID - change from not-accessible to read-write.  
+             Add mib object dStpExtPortLinkType.
+             "    
+		REVISION "201901030000Z"
+        DESCRIPTION
+            "Add MIB objects for Multiple process Spanning Tree funnction.
+            MPT Instance Table, MPT Instance Info Table, dStpExtPortMptTreeID"    
+		REVISION "201303270000Z"
+        DESCRIPTION
+            "Initial version of this MIB."  
+        ::= { dlinkCommon 15 }
+
+
+    esStpExtMIBNotifications      OBJECT IDENTIFIER ::= { dlinkEsStpExtMIB 0 }
+    esStpExtMIBObjects            OBJECT IDENTIFIER ::= { dlinkEsStpExtMIB 1 }
+    esStpExtMIBConformance        OBJECT IDENTIFIER ::= { dlinkEsStpExtMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esStpExtGblMgmt        OBJECT IDENTIFIER ::= { esStpExtMIBObjects 1 }
+
+    esStpExtStpGblStateEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object enables global spanning-tree function."
+        ::= { esStpExtGblMgmt 1 }
+
+    esStpExtNotificationEnable OBJECT-TYPE
+        SYNTAX          BITS {
+            newRoot(0),
+            topologyChange(1)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates whether a specified notification is enabled or not.
+            If a bit corresponding to a notification is set to 1, then
+            the specified notification can be generated.
+
+            newRoot(0)    - the newRoot notification as defined in BRIDGE-MIB.
+            topologyChange(1) -- the topologyChange notification as defined in
+                         BRIDGE-MIB.
+         "
+    ::= { esStpExtGblMgmt 2 }
+
+    esStpExtStpNniBpduAddress OBJECT-TYPE
+           SYNTAX  INTEGER {
+            dot1d(1),
+            dot1ad(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "Specifies the BPDU MAC address of the NNI port in Q-in-Q status.
+            dot1d - Use Customer Bridge Group Address (01-80-C2-00-00-00) as
+                    destination address of STP BPDU.
+            dot1ad - Use Provider Bridge Group Address (01-80-C2-00-00-08) as
+                    destination address of STP BPDU.
+            "
+        ::= { esStpExtGblMgmt 3 }
+
+
+--  ***************************************************************************
+--  STP Port Table
+--  ***************************************************************************
+    esStpExtPortMgmt        OBJECT IDENTIFIER ::= { esStpExtMIBObjects 2 }
+
+    esStpExtPortTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsStpExtPortEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+              "A table that contains port-specific information
+              for the STP extensions."
+        ::= { esStpExtPortMgmt 1 }
+
+    esStpExtPortEntry OBJECT-TYPE
+        SYNTAX          EsStpExtPortEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+              "An entry in esStpExtPortTable. This object indicates per port
+              STP information which is not covered by standard MIB(s)."
+        INDEX   { esStpExtPortNumber }
+        ::= { esStpExtPortTable 1 }
+
+    EsStpExtPortEntry ::= SEQUENCE {
+        esStpExtPortNumber                  Unsigned32,
+        esStpExtPortForwardBpduEnabled      TruthValue,
+        esStpExtPortAdminHelloTime          Unsigned32,
+        esStpExtPortState                   INTEGER,
+		esStpExtPortMptTreeID               INTEGER,
+        esStpExtPortLinkType                INTEGER
+    }
+
+    esStpExtPortNumber OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      not-accessible
+        STATUS  current
+        DESCRIPTION
+              "The port number of the port for this entry."
+        ::= { esStpExtPortEntry 1 }
+
+    esStpExtPortForwardBpduEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether forward the received STP BPDUs to all
+            VLAN member ports in untagged form.
+            esStpExtPortForwardBpduEnabled cannot be set to 'true' when
+            spanning-tree protocol is enabled on the interface. "
+        ::= { esStpExtPortEntry 2 }
+
+    esStpExtPortAdminHelloTime OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..2)
+        UNITS          "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the time interval to send one BPDU at the
+            designated port.
+            esStpExtPortAdminHelloTime only takes effect in MSTP mode."
+        ::= { esStpExtPortEntry 3 }
+
+    esStpExtPortState OBJECT-TYPE
+        SYNTAX  INTEGER {
+            errDisabled(1),
+            blocking(2),
+            listening(3),
+            learning(4),
+            forwarding(5),
+            broken(6),
+            nonStpForwarding(7),
+            nonStpOther(8)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of STP port.
+            errDisabled(1): the port is at error disabled state.
+            blocking(2) - broken(6): When STP is enabled on the port and the
+                          port is not at error disabled state, esStpExtPortState
+                          has the same value as dot1dStpPortState, as defined
+                          by application of STP.
+            noStpForwarding(7) - STP is disabled at the port and this port is
+                          functioning.
+            nonStpOther(8) - STP is disabled at the port and this port is link-down
+                          or other malfunctioning situations.
+            "
+        ::= { esStpExtPortEntry 4 }
+	
+	esStpExtPortMptTreeID OBJECT-TYPE
+			SYNTAX INTEGER (0..32)
+			MAX-ACCESS read-write
+			STATUS current
+			DESCRIPTION
+				"This object indicates the MPT tree instance ID to be configured."
+		::= { esStpExtPortEntry 5 }
+		
+	esStpExtPortLinkType OBJECT-TYPE
+            SYNTAX  INTEGER {            
+            pointToPoint(1),
+            shared(2),
+            auto(3)
+            }   
+            MAX-ACCESS  read-write
+            STATUS      current
+            DESCRIPTION
+          "
+           pointToPoint - the port's link type is point-to-point. 
+           shared  -  the port's link type is shared media.
+           auto - automatically determine the type of the link.
+           The port can't transit into forwarding state rapidly when
+           link type is shared-media.
+          "
+    ::= { esStpExtPortEntry 6 }
+
+--  ***************************************************************************
+--  MSTP Instance Extension Table
+--  ***************************************************************************
+    esStpExtMstpMgmt        OBJECT IDENTIFIER ::= { esStpExtMIBObjects 3 }
+
+    esStpExtMstpPortTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsStpExtMstpPortEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains MSTI-specific information
+            which are not covered by ieee8021MstpPortTable.
+            Note that entries will exist in this table only for bridge
+            components for which the corresponding instance of
+            ieee8021SpanningTreeVersion (from the IEEE8021-SPANNING-TREE-MIB)
+            has a value of mstp(2) and the corresponding port is not disabled.
+            "
+        ::= { esStpExtMstpMgmt 1 }
+
+    esStpExtMstpPortEntry OBJECT-TYPE
+        SYNTAX          EsStpExtMstpPortEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+              "An entry in esStpExtMstPortTable, which consists of information
+              is not covered by ieee8021MstpPortTable."
+        INDEX   {
+            esStpExtMstpPortMstId,
+            esStpExtMstpPortNum
+        }
+        ::= { esStpExtMstpPortTable 1 }
+
+    EsStpExtMstpPortEntry ::= SEQUENCE {
+        esStpExtMstpPortMstId       Unsigned32,
+        esStpExtMstpPortNum         Unsigned32,
+        esStpExtMstpPortRole        INTEGER
+    }
+
+    esStpExtMstpPortMstId  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "In an MSTP Bridge, this parameter is the MSTID, i.e. the
+            identifier of a Spanning Tree (or MST) Instance."
+        ::= { esStpExtMstpPortEntry 1 }
+
+    esStpExtMstpPortNum OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "In an MSTP Bridge, the Port's Port Number parameter value for
+            the MSTI, i.e. the number of the Bridge Port for the MSTI."
+        ::= { esStpExtMstpPortEntry 2 }
+
+    esStpExtMstpPortRole OBJECT-TYPE
+        SYNTAX  INTEGER {
+            disabled(0),
+            root(1),
+            designated(2),
+            alternate(3),
+            backup(4),
+            master(5)
+        }
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "The MSTI's current port role as defined by application of MSTP."
+        ::= { esStpExtMstpPortEntry 3 }
+
+--  ***************************************************************************	
+--  MPT Instance Table
+--  ***************************************************************************         
+    esStpExtMptMgmt     OBJECT IDENTIFIER ::= { esStpExtMIBObjects 4 }     
+    esStpExtMptTreeTable OBJECT-TYPE
+            SYNTAX SEQUENCE OF EsStpExtMptTreeEntry
+			MAX-ACCESS not-accessible			
+			STATUS current
+			DESCRIPTION
+				"Multiple process STP tree configuration table. Use this table to 
+				create or remove a MPT tree instance."
+			::= { esStpExtMptMgmt 1 }  
+			
+ 	esStpExtMptTreeEntry OBJECT-TYPE
+			SYNTAX EsStpExtMptTreeEntry
+			MAX-ACCESS not-accessible
+			STATUS current
+			DESCRIPTION
+				"Multiple process STP tree configuration entry"
+			INDEX { esStpExtMptTreeEntryTreeID }
+			::= { esStpExtMptTreeTable 1 }
+       
+	EsStpExtMptTreeEntry ::=
+			SEQUENCE { 
+				esStpExtMptTreeEntryTreeID
+					INTEGER,
+				esStpExtMptTreeEntryTreeName
+					DisplayString,
+				esStpExtMptTreeEntryRowStatus
+					RowStatus,      
+                esStpExtMptTreeEntryTreePriority
+                    Unsigned32,
+				esStpExtMptTreeEntryTreeMaxAge    
+				    Timeout,
+				esStpExtMptTreeEntryTreeHelloTime
+				    Timeout,
+				esStpExtMptTreeEntryTreeForwardDelay
+				    Timeout 
+			 }
+
+    esStpExtMptTreeEntryTreeID OBJECT-TYPE
+			SYNTAX INTEGER (1..32) 
+			MAX-ACCESS not-accessible
+			STATUS current
+			DESCRIPTION
+				"Multiple process STP tree instance ID to be created or removed."
+			::= {esStpExtMptTreeEntry 1 }
+
+	esStpExtMptTreeEntryTreeName OBJECT-TYPE
+			SYNTAX DisplayString (SIZE (0..32))
+            MAX-ACCESS      read-create
+			STATUS current
+			DESCRIPTION
+				"Configures the STP tree instance name."
+			::= { esStpExtMptTreeEntry 2 }
+
+ 	esStpExtMptTreeEntryRowStatus OBJECT-TYPE
+			SYNTAX RowStatus
+			MAX-ACCESS read-create
+			STATUS current
+			DESCRIPTION
+				"Configures the entry status"
+			::= { esStpExtMptTreeEntry 3 }   
+			
+    esStpExtMptTreeEntryTreePriority OBJECT-TYPE
+           SYNTAX      Unsigned32 (0..61440)
+           MAX-ACCESS  read-create
+           STATUS      current
+           DESCRIPTION
+               " Bridge priority"
+           ::= { esStpExtMptTreeEntry 4 }
+  
+    esStpExtMptTreeEntryTreeMaxAge OBJECT-TYPE
+        SYNTAX      Timeout
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The maximum age of Spanning Tree Protocol information
+            learned from the network on any port before it is
+            discarded."
+        REFERENCE   "12.8.1.1.3 h)"
+        ::= { esStpExtMptTreeEntry 5 }
+
+    esStpExtMptTreeEntryTreeHelloTime OBJECT-TYPE
+        SYNTAX      Timeout
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The amount of time between the transmission of
+            Configuration bridge PDUs by this node on any port when
+            it is the root of the spanning tree, or trying to become
+            so."
+        REFERENCE   "12.8.1.1.3 k)"
+        ::= { esStpExtMptTreeEntry 6 }
+
+    esStpExtMptTreeEntryTreeForwardDelay OBJECT-TYPE
+        SYNTAX      Timeout
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This time value, measured in units of hundredths of a
+            second, controls how fast a port changes its spanning
+            state when moving towards the Forwarding state.  The
+            value determines how long the port stays in each of the
+            Listening and Learning states, which precede the
+            Forwarding state."
+        REFERENCE   "12.8.1.1.3 i)"
+        ::= { esStpExtMptTreeEntry 7 }
+       
+          		
+--  ***************************************************************************	
+--  MPT Instance Info Table
+--  ***************************************************************************         
+    esStpExtMptTreeIeee8021InfoTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsStpExtMptTreeIeee8021InfoEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table contains information for each MPT tree about the Spanning Tree Protocol for that tree. "
+        ::= { esStpExtMptMgmt 2 }
+
+    esStpExtMptTreeIeee8021InfoEntry OBJECT-TYPE
+        SYNTAX      EsStpExtMptTreeIeee8021InfoEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A list of objects containing information for each MPT tree
+             about the Spanning Tree Protocol for that tree."
+        INDEX  {esStpExtMptTreeIeee8021TreeID }
+        ::= { esStpExtMptTreeIeee8021InfoTable 1 }
+
+    EsStpExtMptTreeIeee8021InfoEntry ::=
+        SEQUENCE {
+            esStpExtMptTreeIeee8021TreeID
+                INTEGER,
+            esStpExtMptTreeIeee8021TimeSinceTopologyChange
+                TimeTicks,
+            esStpExtMptTreeIeee8021TopChanges
+                Counter64,
+            esStpExtMptTreeIeee8021DesignatedRoot
+                BridgeId,
+            esStpExtMptTreeIeee8021RootCost
+                Integer32,
+            esStpExtMptTreeIeee8021RootPort
+                IEEE8021BridgePortNumber,
+            esStpExtMptTreeIeee8021MaxAge
+                Timeout,
+            esStpExtMptTreeIeee8021HelloTime
+                Timeout,
+            esStpExtMptTreeIeee8021HoldTime
+                Integer32,
+            esStpExtMptTreeIeee8021ForwardDelay
+                Timeout
+               }
+        
+    esStpExtMptTreeIeee8021TreeID OBJECT-TYPE
+                SYNTAX INTEGER (1..32) 
+                MAX-ACCESS not-accessible
+                STATUS current
+                DESCRIPTION
+                    "Multiple process STP tree instance ID."
+                ::= {esStpExtMptTreeIeee8021InfoEntry 1 }
+
+    esStpExtMptTreeIeee8021TimeSinceTopologyChange OBJECT-TYPE
+        SYNTAX      TimeTicks
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The time (in hundredths of a second) since the
+            last time a topology change was detected by the
+            bridge entity.
+            For RSTP, this reports the time since the tcWhile
+            timer for any port on this Bridge was nonzero."
+        REFERENCE   "12.8.1.1.3 b)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 2 }
+
+    esStpExtMptTreeIeee8021TopChanges OBJECT-TYPE
+        SYNTAX      Counter64
+        UNITS       "topology changes"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The total number of topology changes detected by
+            this bridge since the management entity was last
+            reset or initialized.
+
+            Discontinuities in the value of the counter can occur
+            at re-initialization of the management system."
+        REFERENCE   "12.8.1.1.3 c)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 3 }
+
+    esStpExtMptTreeIeee8021DesignatedRoot OBJECT-TYPE
+        SYNTAX      BridgeId
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The bridge identifier of the root of the spanning
+            tree, as determined by the Spanning Tree Protocol,
+            as executed by this node.  This value is used as
+            the Root Identifier parameter in all Configuration
+            Bridge PDUs originated by this node."
+        REFERENCE   "12.8.1.1.3 e)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 4 }
+
+    esStpExtMptTreeIeee8021RootCost OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The cost of the path to the root as seen from
+            this bridge."
+        REFERENCE   "12.8.1.1.3 f)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 5 }
+
+    esStpExtMptTreeIeee8021RootPort OBJECT-TYPE
+        SYNTAX      IEEE8021BridgePortNumber
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The port number of the port that offers the lowest
+            cost path from this bridge to the root bridge."
+        REFERENCE   "12.8.1.1.3 g)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 6 }
+
+    esStpExtMptTreeIeee8021MaxAge OBJECT-TYPE
+        SYNTAX      Timeout
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The maximum age of Spanning Tree Protocol information
+            learned from the network on any port before it is
+            discarded, in units of hundredths of a second.  This is
+            the actual value that this bridge is currently using."
+        REFERENCE   "12.8.1.1.3 h)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 7 }
+
+    esStpExtMptTreeIeee8021HelloTime OBJECT-TYPE
+        SYNTAX      Timeout
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The amount of time between the transmission of
+            Configuration bridge PDUs by this node on any port when
+            it is the root of the spanning tree, or trying to become
+            so, in units of hundredths of a second.  This is the
+            actual value that this bridge is currently using."
+        REFERENCE   "12.8.1.1.3 k)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 8 }
+
+    esStpExtMptTreeIeee8021HoldTime OBJECT-TYPE
+        SYNTAX      Integer32
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This time value determines the interval length
+            during which no more than two Configuration bridge
+            PDUs shall be transmitted by this node, in units
+            of hundredths of a second."
+        REFERENCE   "12.8.1.1.3 m)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 9 }
+
+    esStpExtMptTreeIeee8021ForwardDelay OBJECT-TYPE
+        SYNTAX      Timeout
+        UNITS       "centi-seconds"
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This time value, measured in units of hundredths of a
+            second, controls how fast a port changes its spanning
+            state when moving towards the Forwarding state.  The
+            value determines how long the port stays in each of the
+            Listening and Learning states, which precede the
+            Forwarding state.  This value is also used when a
+            topology change has been detected and is underway, to
+            age all dynamic entries in the Filtering Database.
+            [Note that this value is the one that this bridge is
+            currently using, in contrast to
+            ieee8021SpanningTreeBridgeForwardDelay, which is the
+            value that this bridge and all others would start using
+            if/when this bridge were to become the root.]"
+        REFERENCE   "12.8.1.1.3 i)"
+        ::= { esStpExtMptTreeIeee8021InfoEntry 10 }
+    
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esStpExtMIBCompliances OBJECT IDENTIFIER ::= { esStpExtMIBConformance 1 }
+
+    esStpExtCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-STP-EXT-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esStpExtBasicGroup
+        }
+
+        GROUP   esStpExtMstpGroup
+        DESCRIPTION
+            "This group is required only if the MSTP is implemented by the agent."
+
+        GROUP   esStpExtServiceProviderCfgGroup
+        DESCRIPTION
+            "This group is required only if the VLAN tunnel is implemented by the agent."
+        ::= { esStpExtMIBCompliances 1 }
+
+    esStpExtGroups OBJECT IDENTIFIER ::= { esStpExtMIBCompliances 2 }
+
+
+    esStpExtBasicGroup OBJECT-GROUP
+        OBJECTS {
+            esStpExtStpGblStateEnabled,
+            esStpExtPortForwardBpduEnabled,
+            esStpExtPortState,
+            esStpExtNotificationEnable
+        }
+        STATUS current
+        DESCRIPTION
+            "This group contains the collection of objects related to
+            STP/RSTP configuration/status which cannot be covered by
+            standard MIBs."
+        ::= { esStpExtGroups 1 }
+
+    esStpExtMstpGroup OBJECT-GROUP
+        OBJECTS {
+            esStpExtPortAdminHelloTime,
+            esStpExtMstpPortRole
+        }
+        STATUS current
+        DESCRIPTION
+            "This group contains the collection of objects related to
+            MSTP configuration/status which cannot be covered by
+            standard MIBs."
+        ::= { esStpExtGroups 2 }
+
+    esStpExtServiceProviderCfgGroup OBJECT-GROUP
+        OBJECTS {
+            esStpExtStpNniBpduAddress
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects configures STP in service provider site."
+        ::= { esStpExtGroups 3 }
+
+    esStpExtMptGroup OBJECT-GROUP
+		OBJECTS { 
+		    esStpExtMptTreeEntryTreeName,
+		    esStpExtMptTreeEntryRowStatus,  
+		    esStpExtMptTreeEntryTreePriority,   
+		    esStpExtMptTreeEntryTreeForwardDelay,       	
+            esStpExtMptTreeEntryTreeHelloTime,  
+            esStpExtMptTreeEntryTreeMaxAge, 
+        	esStpExtMptTreeIeee8021TimeSinceTopologyChange,
+        	esStpExtMptTreeIeee8021TopChanges,
+        	esStpExtMptTreeIeee8021DesignatedRoot,
+	        esStpExtMptTreeIeee8021RootCost,
+        	esStpExtMptTreeIeee8021RootPort,
+        	esStpExtMptTreeIeee8021MaxAge,
+        	esStpExtMptTreeIeee8021HelloTime,
+   			esStpExtMptTreeIeee8021HoldTime,
+       	 	esStpExtMptTreeIeee8021ForwardDelay
+		}
+		STATUS current
+		DESCRIPTION 
+			"This group contains the collection of objects related to  
+		    Multiple process tree (MPT)."
+		::= { esStpExtGroups 4 }	
+END

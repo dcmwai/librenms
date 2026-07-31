@@ -1,0 +1,231 @@
+-- *****************************************************************
+-- DLINKES-RA-GUARD-MIB: RA Guard MIB
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-RA-GUARD-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    Unsigned32,
+    OBJECT-TYPE
+                FROM SNMPv2-SMI
+    MODULE-COMPLIANCE,
+    OBJECT-GROUP
+                FROM SNMPv2-CONF
+    RowStatus,
+    DisplayString
+                FROM SNMPv2-TC
+    ifIndex
+                FROM IF-MIB
+    dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+    dlinkEsRaGuardMIB MODULE-IDENTITY
+        LAST-UPDATED "201708070000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:     +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for RA Guard."
+
+        REVISION    "201708070000Z"
+        DESCRIPTION
+             "This is the first version of the MIB file.
+             "
+        ::= { dlinkCommon 141 }
+
+--
+-- Textual Conventions
+--
+
+
+-- -----------------------------------------------------------------------------
+    esRaGuardNotifications      OBJECT IDENTIFIER ::= { dlinkEsRaGuardMIB 0 }
+    esRaGuardObjects            OBJECT IDENTIFIER ::= { dlinkEsRaGuardMIB 1 }
+    esRaGuardConformance        OBJECT IDENTIFIER ::= { dlinkEsRaGuardMIB 2 }
+
+    esRaGuardPolicy             OBJECT IDENTIFIER ::= { esRaGuardObjects 1 }
+    esRaGuardInterface          OBJECT IDENTIFIER ::= { esRaGuardObjects 2 }
+
+-- -----------------------------------------------------------------------------
+    esRaGuardPolicyNumber  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in RA Guard policy
+             table."
+        ::= { esRaGuardPolicy 1 }
+
+    esRaGuardPolicyTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsRaGuardPolicyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains information about RA Guard policies."
+        ::= { esRaGuardPolicy 2 }
+
+    esRaGuardPolicyEntry OBJECT-TYPE
+        SYNTAX          EsRaGuardPolicyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defined in esRaGuardPolicyTable. An entry is
+            created/removed when a RA Guard policy is created/deleted."
+        INDEX { esRaGuardPolicyName }
+        ::= { esRaGuardPolicyTable 1 }
+
+    EsRaGuardPolicyEntry ::= SEQUENCE {
+        esRaGuardPolicyName          DisplayString,
+        esRaGuardPolicyDeviceRole    INTEGER,
+        esRaGuardPolicyMatchAclName  DisplayString,
+        esRaGuardPolicyRowStatus     RowStatus
+    }
+
+    esRaGuardPolicyName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of the RA Guard policy."
+        ::= { esRaGuardPolicyEntry 1 }
+
+    esRaGuardPolicyDeviceRole OBJECT-TYPE
+        SYNTAX      INTEGER {
+            host(1),
+            router(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Indicates the role of the attached device.
+             host: all the inbound router advertisement
+                   and redirect messages are blocked.
+             router: all messages (router solicitation [RS],
+                   router advertisement [RA], or redirect)
+                   are allowed on this port.
+            "
+        DEFVAL { host }
+        ::= { esRaGuardPolicyEntry 2 }
+
+    esRaGuardPolicyMatchAclName  OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the associated IPv6 access list
+            in a RA Guard policy.
+            The IPv6 access list is used to filter RA messages based on sender
+            IPv6 address when the corresponding esRaGuardPolicyDeviceRole is
+            'router'.
+            If the IPv6 access list is not configured, all RA messages are
+            bypassed."
+        ::= { esRaGuardPolicyEntry 3 }
+
+     esRaGuardPolicyRowStatus  OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object allows the dynamic creation and deletion of a RA Guard
+            policy.
+            "
+        ::= { esRaGuardPolicyEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esRaGuardIfAttachTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsRaGuardIfAttachEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to attach a RA Guard policy on
+            a physical port or port-channel interface.
+            "
+    ::= { esRaGuardInterface 2 }
+
+    esRaGuardIfAttachEntry OBJECT-TYPE
+        SYNTAX       EsRaGuardIfAttachEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+            "A row instance contains the configuration to attach a RA Guard
+            policy on a physical port or port-channel interface.
+            "
+        INDEX { ifIndex }
+        ::= { esRaGuardIfAttachTable 1 }
+
+    EsRaGuardIfAttachEntry ::= SEQUENCE {
+        esRaGuardIfAttachPolicy       DisplayString
+    }
+
+    esRaGuardIfAttachPolicy OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..32))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the attached RA Guard
+            policy.
+            "
+        ::= { esRaGuardIfAttachEntry 1 }
+
+-- Conformance
+
+    esRaGuardMIBCompliances     OBJECT IDENTIFIER ::= { esRaGuardConformance 1 }
+    esRaGuardMIBGroups          OBJECT IDENTIFIER ::= { esRaGuardConformance 2 }
+
+    esRaGuardMIBCompliance MODULE-COMPLIANCE
+        STATUS  current
+        DESCRIPTION
+            "The compliance statement for DLINKES-RA-GUARD-MIB"
+        MODULE
+
+        GROUP esRaGuardPolicyGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            configuration of RA Guard policy."
+
+        GROUP esRaGuardIfAttachGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            interface-specific configuration of attaching RA Guard policy."
+
+        ::= { esRaGuardMIBCompliances 1 }
+
+-- Units of Conformance
+
+    esRaGuardPolicyGroup OBJECT-GROUP
+        OBJECTS {
+            esRaGuardPolicyNumber,
+            esRaGuardPolicyDeviceRole,
+            esRaGuardPolicyMatchAclName,
+            esRaGuardPolicyRowStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to configure as
+            well as show information regarding the RA Guard policy."
+        ::= { esRaGuardMIBGroups 1 }
+
+    esRaGuardIfAttachGroup OBJECT-GROUP
+        OBJECTS {
+            esRaGuardIfAttachPolicy
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of object which are used to configure as
+            well as show information regarding the attaching policy
+            per interface."
+    ::= { esRaGuardMIBGroups 4 }
+
+END
+
+

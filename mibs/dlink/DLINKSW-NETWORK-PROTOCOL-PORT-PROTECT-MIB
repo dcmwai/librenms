@@ -1,6 +1,6 @@
 --  *****************************************************************
 --  DLINKSW-NETWORK-PORT-PROTECT-MIB.mib : DLINK discovery protocol MIB
-      
+
 --
 --  Copyright (c) 2013 D-Link Corporation, all rights reserved.
 --
@@ -9,18 +9,17 @@ DLINKSW-NETWORK-PROTOCOL-PORT-PROTECT-MIB DEFINITIONS ::= BEGIN
 
     IMPORTS
         MODULE-IDENTITY,
-        OBJECT-TYPE,
-        Unsigned32
+        OBJECT-TYPE
                 FROM SNMPv2-SMI
         TruthValue
-                FROM SNMPv2-TC 
-		MODULE-COMPLIANCE,
-		OBJECT-GROUP
-		FROM SNMPv2-CONF       
+                FROM SNMPv2-TC
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP
+        FROM SNMPv2-CONF
         dlinkIndustrialCommon
-            	FROM DLINK-ID-REC-MIB;
-            
-            
+                FROM DLINK-ID-REC-MIB;
+
+
     dlinkSwNetworkProtocolPortProtectMIB MODULE-IDENTITY
         LAST-UPDATED "201711270000Z"
         ORGANIZATION "D-Link Corp."
@@ -42,8 +41,10 @@ DLINKSW-NETWORK-PROTOCOL-PORT-PROTECT-MIB DEFINITIONS ::= BEGIN
         ::= { dlinkIndustrialCommon 194 }
 
 -- -----------------------------------------------------------------------------
+    dNetworkProtocolPortProtectNotifications    OBJECT IDENTIFIER ::= { dlinkSwNetworkProtocolPortProtectMIB 0 }
     dNetworkProtocolPortProtectObjects          OBJECT IDENTIFIER ::= { dlinkSwNetworkProtocolPortProtectMIB 1 }
-    
+    dNetworkProtocolPortProtectConformance      OBJECT IDENTIFIER ::= { dlinkSwNetworkProtocolPortProtectMIB 2 }
+
 -- -----------------------------------------------------------------------------
 -- Notifications
 -- -----------------------------------------------------------------------------
@@ -54,21 +55,52 @@ DLINKSW-NETWORK-PROTOCOL-PORT-PROTECT-MIB DEFINITIONS ::= BEGIN
     dNetworkProtocolPortProtectCtrl            OBJECT IDENTIFIER ::= { dNetworkProtocolPortProtectObjects 1 }
 
     dNetworkProtocolPortProtectTCPState  OBJECT-TYPE
-        SYNTAX        TruthValue    
+        SYNTAX        TruthValue
         MAX-ACCESS    read-write
         STATUS        current
         DESCRIPTION
             "When enable it switch will not response for the closed TCP port."
-       DEFVAL { true }   	
+       DEFVAL { true }
         ::= { dNetworkProtocolPortProtectCtrl 1 }
-       
+
       dNetworkProtocolPortProtectUDPState  OBJECT-TYPE
-        SYNTAX        TruthValue    
+        SYNTAX        TruthValue
         MAX-ACCESS    read-write
         STATUS        current
         DESCRIPTION
             "When enable it switch will not response for the closed UDP port."
-       DEFVAL { true }   	
+       DEFVAL { true }
         ::= { dNetworkProtocolPortProtectCtrl 2 }
+
+-- -----------------------------------------------------------------------------
+-- MIB Conformance statements
+-- -----------------------------------------------------------------------------
+    dNetworkProtocolPortProtectMIBCompliances  OBJECT IDENTIFIER
+                ::= { dNetworkProtocolPortProtectConformance 1 }
+
+    dNetworkProtocolPortProtectMIBGroups  OBJECT IDENTIFIER
+                ::= { dNetworkProtocolPortProtectConformance 2 }
+
+    dNetworkProtocolPortProtectMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKSW-NETWORK-PROTOCOL-PORT-PROTECT-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS    {
+            dNetworkProtocolPortProtectCfgGroup
+        }
+
+        ::= { dNetworkProtocolPortProtectMIBCompliances 1 }
+-- -----------------------------------------------------------------------------
+    dNetworkProtocolPortProtectCfgGroup OBJECT-GROUP
+        OBJECTS {
+            dNetworkProtocolPortProtectTCPState,
+            dNetworkProtocolPortProtectUDPState
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing management of the L3 port state."
+        ::= { dNetworkProtocolPortProtectMIBGroups 1 }
 
 END

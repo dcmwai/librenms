@@ -1,0 +1,737 @@
+--  *****************************************************************
+--  DLINKES-DHCP-SNOOPING-MIB.mib : DHCP SNOOPING MIB
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-DHCP-SNOOPING-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Unsigned32,
+        Integer32,
+        Counter32,
+        IpAddress
+                    FROM SNMPv2-SMI
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP
+                    FROM SNMPv2-CONF
+        MacAddress,
+        TruthValue,
+        RowStatus,
+        DateAndTime
+                    FROM SNMPv2-TC
+        SnmpAdminString
+                    FROM SNMP-FRAMEWORK-MIB
+        ifIndex,
+        InterfaceIndex,
+        InterfaceIndexOrZero
+                    FROM IF-MIB
+        VlanId,
+        VlanIdOrNone
+                    FROM Q-BRIDGE-MIB
+        Dlink2kVlanList
+                    FROM DLINKES-TC-MIB
+        dlinkCommon
+                    FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsDhcpSnpMIB MODULE-IDENTITY
+        LAST-UPDATED "201708070000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for DHCP snooping."
+
+        REVISION "201708070000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file for 'DHCP snooping'
+             functionality."
+
+        ::= { dlinkCommon 131 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsDhcpSnpMIB 0 }
+    esDhcpSnpMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsDhcpSnpMIB 1 }
+    esDhcpSnpMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsDhcpSnpMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpGlobalObjects          OBJECT IDENTIFIER ::= { esDhcpSnpMIBObjects 1 }
+
+    esDhcpSnpGlobalEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the global state of the DHCP snooping."
+        DEFVAL          { false }
+        ::= { esDhcpSnpGlobalObjects 1 }
+
+    esDhcpSnpVerifyMacAddressEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the DHCP snooping validates
+             the source MAC address matches the client hardware address
+             in the received DHCP request packet."
+        DEFVAL          { true }
+        ::= { esDhcpSnpGlobalObjects 2 }
+
+    esDhcpSnpStationMoveDenyEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether dynamic DHCP snooping binding entry
+            with same IP and MAC address on specific port can move to another port
+            if the Switch detects a new DHCP process belongs to same IP and MAC
+            address."
+        DEFVAL          { false }
+        ::= { esDhcpSnpGlobalObjects 3 }
+
+    esDhcpSnpOption82AllowUntrust OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the DHCP snooping allows
+             the DHCP request packets with relay option 82 on the untrusted
+             interface."
+        DEFVAL          { false }
+        ::= { esDhcpSnpGlobalObjects 4 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpDatabaseObjects          OBJECT IDENTIFIER ::= { esDhcpSnpMIBObjects 2 }
+
+    esDhcpSnpDatabaseUrl OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the URL to store the DHCP snooping binding
+            entries to local flash or remote site.
+            The empty URL indicates disable the storing."
+        ::= { esDhcpSnpDatabaseObjects 1 }
+
+    esDhcpSnpDatabaseUpdateInterval OBJECT-TYPE
+        SYNTAX          Integer32 (60..86400)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the time interval at which DHCP
+             bindings information will be written to the location that is
+             specified by esDhcpSnpDatabaseUrl.
+            "
+        DEFVAL          { 300 }
+        ::= { esDhcpSnpDatabaseObjects 2 }
+
+    esDhcpSnpRenewDatabaseUrl OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the URL to renew the DHCP binding database."
+        ::= { esDhcpSnpDatabaseObjects 3 }
+
+    esDhcpSnpRenewDatabase OBJECT-TYPE
+        SYNTAX          INTEGER {
+            renew(1),
+            noOp(2)
+                               }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object starts loading DHCP snooping binding entries, when set
+            to 'renew'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esDhcpSnpDatabaseObjects 4 }
+
+    esDhcpSnpClearDatabaseStatistics OBJECT-TYPE
+        SYNTAX          INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object clears the DHCP snooping database statistics,
+            when set to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esDhcpSnpDatabaseObjects 5 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpDbLastIgnoredCounters          OBJECT IDENTIFIER ::= { esDhcpSnpDatabaseObjects 9 }
+
+    esDhcpSnpStatBindingCollision OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of entry that DHCP snooping create
+            collisions with the entry exist in DHCP snooping database."
+        ::= { esDhcpSnpDbLastIgnoredCounters 1 }
+
+    esDhcpSnpStatExpiredLease OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of entry expires in DHCP snooping database."
+        ::= { esDhcpSnpDbLastIgnoredCounters 2 }
+
+    esDhcpSnpStatInvalidInterfaces OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of interfaces that receive the
+            DHCP message but DHCP snooping is not performed."
+        ::= { esDhcpSnpDbLastIgnoredCounters 3}
+
+    esDhcpSnpStatUnsupportedVlans OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of the entry's VLAN is disabled."
+        ::= { esDhcpSnpDbLastIgnoredCounters 4 }
+
+    esDhcpSnpStatParsingFailures OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of illegal DHCP packets."
+        ::= { esDhcpSnpDbLastIgnoredCounters 5 }
+
+    esDhcpSnpStatChecksumErrors  OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of calculated checksum value does
+            not equal the stored checksum."
+        ::= { esDhcpSnpDbLastIgnoredCounters 6 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpVlanObjects          OBJECT IDENTIFIER ::= { esDhcpSnpMIBObjects 3 }
+
+    esDhcpSnpVlanCrlFirst2K  OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the DHCP snooping enabled VLAN in a
+            string of octets containing one bit per VLAN for VLANs 1 to 2048.
+            If the bit is set to '1', then the VLAN is enabled for DHCP snooping.
+            "
+        ::= { esDhcpSnpVlanObjects 1 }
+
+    esDhcpSnpVlanCrlSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the DHCP snooping enabled VLAN in a
+            string of octets containing one bit per VLAN for VLANs 2049 to 4094.
+            If the bit is set to '1', then the VLAN is enabled for DHCP snooping.
+            "
+        ::= { esDhcpSnpVlanObjects 2 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpIfObjects          OBJECT IDENTIFIER ::= { esDhcpSnpMIBObjects 4 }
+
+    esDhcpSnpIfTrustTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDhcpSnpIfTrustEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to control the DHCP snooping
+             trust state for per interface."
+        ::= { esDhcpSnpIfObjects 1 }
+
+    esDhcpSnpIfTrustEntry OBJECT-TYPE
+        SYNTAX          EsDhcpSnpIfTrustEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration to enable
+             or disable trust state for per interface."
+        INDEX           { ifIndex }
+        ::= { esDhcpSnpIfTrustTable 1 }
+
+    EsDhcpSnpIfTrustEntry ::= SEQUENCE {
+        esDhcpSnpIfTrustEnabled            TruthValue
+    }
+
+    esDhcpSnpIfTrustEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the trust state of DHCP snooping in
+             this interface."
+        ::= { esDhcpSnpIfTrustEntry 1 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpIfRateLimitTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDhcpSnpIfRateLimitEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to control the DHCP snooping
+             rate limit for per interface."
+        ::= { esDhcpSnpIfObjects 2 }
+
+    esDhcpSnpIfRateLimitEntry OBJECT-TYPE
+        SYNTAX          EsDhcpSnpIfRateLimitEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration of rate limit
+             on an interface."
+        INDEX           { ifIndex }
+        ::= { esDhcpSnpIfRateLimitTable 1 }
+
+    EsDhcpSnpIfRateLimitEntry ::= SEQUENCE {
+        esDhcpSnpIfRateLimit               Integer32
+    }
+
+    esDhcpSnpIfRateLimit OBJECT-TYPE
+        SYNTAX          Integer32 ( -1 | 1 .. 300)
+        UNITS           "packets per second"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates rate limit in this interface.
+             The special value of -1 indicates not limit the DHCP packet to CPU
+            on the interface."
+    ::= { esDhcpSnpIfRateLimitEntry 1 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpIfBindingsLimitTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDhcpSnpIfBindingsLimitEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to control the DHCP snooping
+             bindings limit for per interface."
+        ::= { esDhcpSnpIfObjects 3 }
+
+    esDhcpSnpIfBindingsLimitEntry OBJECT-TYPE
+        SYNTAX          EsDhcpSnpIfBindingsLimitEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration of bindings limit value
+            on an interface."
+        INDEX           { ifIndex }
+        ::= { esDhcpSnpIfBindingsLimitTable 1 }
+
+    EsDhcpSnpIfBindingsLimitEntry ::= SEQUENCE {
+        esDhcpSnpIfBindingsLimit              Integer32
+        }
+
+    esDhcpSnpIfBindingsLimit OBJECT-TYPE
+        SYNTAX          Integer32 ( -1 | 0 .. 1024)
+        UNITS           "bindings per port"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates bindings limit in this interface.
+            The special value of 0 indicates dynamically learned binding entry
+            is not allowed on the interface.
+            The special value of -1 indicates no binding entry number limitation
+            on the interface.
+            "
+    ::= { esDhcpSnpIfBindingsLimitEntry 1 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpBindingsObjects          OBJECT IDENTIFIER ::= { esDhcpSnpMIBObjects 5 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpBindingsTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDhcpSnpBindingsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the DHCP snooping bindings information. A DHCP
+            snooping binding can be created manually or learned dynamically.
+            "
+        ::= { esDhcpSnpBindingsObjects 1 }
+
+    esDhcpSnpBindingsEntry OBJECT-TYPE
+        SYNTAX          EsDhcpSnpBindingsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry consists of information for a DHCP snooping binding."
+        INDEX           {
+            esDhcpSnpBindingsIpAddress,
+            esDhcpSnpBindingsMacAddress,
+            esDhcpSnpBindingsVlan,
+            esDhcpSnpBindingsInterface
+        }
+        ::= { esDhcpSnpBindingsTable 1 }
+
+    EsDhcpSnpBindingsEntry ::= SEQUENCE {
+        esDhcpSnpBindingsIpAddress  IpAddress,
+        esDhcpSnpBindingsMacAddress MacAddress,
+        esDhcpSnpBindingsVlan       VlanId,
+        esDhcpSnpBindingsInterface  InterfaceIndex,
+        esDhcpSnpBindingsLeasedTime Unsigned32,
+        esDhcpSnpBindingsStatus     RowStatus
+        }
+
+    esDhcpSnpBindingsIpAddress OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the allocated IP address of host."
+        ::= { esDhcpSnpBindingsEntry 1 }
+
+    esDhcpSnpBindingsMacAddress OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the MAC address of a host."
+        ::= { esDhcpSnpBindingsEntry 2 }
+
+    esDhcpSnpBindingsVlan OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the VLAN to which a host belongs."
+        ::= { esDhcpSnpBindingsEntry 3 }
+
+    esDhcpSnpBindingsInterface OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex value of the interface
+             where a host connects to."
+        ::= { esDhcpSnpBindingsEntry 4 }
+
+    esDhcpSnpBindingsLeasedTime OBJECT-TYPE
+        SYNTAX          Unsigned32 (60 .. 4294967295)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the leased (expiry) time of this DHCP
+             binding."
+        ::= { esDhcpSnpBindingsEntry 5 }
+
+     esDhcpSnpBindingsStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is used to manage the creation and deletion
+            of rows in this table."
+        ::= { esDhcpSnpBindingsEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpSnpBindingsClearTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDhcpSnpBindingsClearEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides mechanism to clear the DHCP snooping binding entries.
+            "
+        ::= { esDhcpSnpBindingsObjects 2 }
+
+    esDhcpSnpBindingsClearEntry OBJECT-TYPE
+        SYNTAX          EsDhcpSnpBindingsClearEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defines the criteria to clear DHCP snooping binding entries.
+            "
+        INDEX     { esDhcpSnpBindingsClearIndex }
+        ::= { esDhcpSnpBindingsClearTable 1 }
+
+    EsDhcpSnpBindingsClearEntry ::= SEQUENCE {
+        esDhcpSnpBindingsClearIndex        Unsigned32,
+        esDhcpSnpBindingsClearByMacAddr    MacAddress,
+        esDhcpSnpBindingsClearByVlan       VlanIdOrNone,
+        esDhcpSnpBindingsClearByIpAddress  IpAddress,
+        esDhcpSnpBindingsClearByInterface  InterfaceIndexOrZero,
+        esDhcpSnpBindingsClearStatus       INTEGER
+    }
+
+    esDhcpSnpBindingsClearIndex  OBJECT-TYPE
+        SYNTAX         Unsigned32 (1 .. 1)
+        MAX-ACCESS     not-accessible
+        STATUS current
+        DESCRIPTION
+            "The index uniquely identifies this row.
+             The only legal value for this object is 1."
+        ::= { esDhcpSnpBindingsClearEntry 1 }
+
+    esDhcpSnpBindingsClearByMacAddr OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the specific MAC address to clear binding entry.
+            When read, a special value of '000000000000'H is returned to indicate
+            this criterion is not specified.
+            "
+        ::= { esDhcpSnpBindingsClearEntry 2 }
+
+    esDhcpSnpBindingsClearByVlan OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the specific VLAN to clear binding entry.
+            When read, a special value of 0 is returned to indicate
+            this criterion is not specified.
+            "
+        ::= { esDhcpSnpBindingsClearEntry 3 }
+
+    esDhcpSnpBindingsClearByIpAddress OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the specific IP address to clear binding entry.
+            When read, a special value of 0.0.0.0 returned to indicate
+            this criterion is not specified.
+            "
+        ::= { esDhcpSnpBindingsClearEntry 4 }
+
+    esDhcpSnpBindingsClearByInterface OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the specific interface to clear binding entry.
+            When read, a special value of 0 returned to indicate
+            this criterion is not specified.
+            "
+        ::= { esDhcpSnpBindingsClearEntry 5 }
+
+    esDhcpSnpBindingsClearStatus  OBJECT-TYPE
+        SYNTAX      INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS current
+        DESCRIPTION
+            "This object is used to clear snooping binding entries when set to
+            'clear'.
+            No action is taken if this object is set to 'noOp'.
+            The clearing criteria depend on other non index objects.
+            Note: if no object is configured, all entries will be cleared."
+        DEFVAL      { noOp }
+        ::= { esDhcpSnpBindingsClearEntry 99 }
+-- -----------------------------------------------------------------------------
+
+    esDhcpSnpCompliances OBJECT IDENTIFIER ::= { esDhcpSnpMIBConformance 1 }
+    esDhcpSnpGroups OBJECT IDENTIFIER ::= { esDhcpSnpMIBConformance 2 }
+
+
+    esDhcpSnpCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+             DLINKES-DHCP-SNOOPING-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esDhcpSnpGlobalEnableGroup,
+            esDhcpSnpVlanEnableGroup,
+            esDhcpSnpIfTrustGroup,
+            esDhcpSnpBindingsGroup
+        }
+
+    GROUP          esDhcpSnpBindingsClearGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+         clearing the DHCP snooping bindings."
+
+    GROUP          esDhcpSnpVerifyMacAddressGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+        DHCP snooping verify Mac address."
+
+    GROUP      esDhcpSnpStationMoveGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+        DHCP snooping station move binding entry."
+
+    GROUP          esDhcpSnpRelayAgentInfoAllowGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+        allowing DHCP packet with Relay Agent information from untrust port."
+
+    GROUP          esDhcpSnpDatabaseGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+        storage or loading of DHCP bindings information."
+
+    GROUP          esDhcpSnpIfRateLimitGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+         DHCP snooping rate limit for per interface."
+
+    GROUP          esDhcpSnpIfBindingsLimitGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+         DHCP snooping bindings limit per interface."
+
+    ::= { esDhcpSnpCompliances 1 }
+
+    esDhcpSnpGlobalEnableGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpGlobalEnabled
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to configure as
+            well as show information regarding the feature enabling."
+        ::= { esDhcpSnpGroups 1 }
+
+    esDhcpSnpVlanEnableGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpVlanCrlFirst2K,
+            esDhcpSnpVlanCrlSecond2K
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to configure as
+            well as show information regarding the feature enabling
+            on each VLAN."
+        ::= { esDhcpSnpGroups 2 }
+
+    esDhcpSnpIfTrustGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpIfTrustEnabled
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to configure as
+             well as show information regarding the interface trust
+             state."
+        ::= { esDhcpSnpGroups 3 }
+
+    esDhcpSnpBindingsGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpBindingsLeasedTime,
+            esDhcpSnpBindingsStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to manage DHCP bindings
+            information."
+        ::= { esDhcpSnpGroups 4 }
+
+    esDhcpSnpBindingsClearGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpBindingsClearStatus,
+            esDhcpSnpBindingsClearByMacAddr,
+            esDhcpSnpBindingsClearByVlan,
+            esDhcpSnpBindingsClearByIpAddress,
+            esDhcpSnpBindingsClearByInterface
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to clear DHCP bindings
+            "
+        ::= { esDhcpSnpGroups 5 }
+
+    esDhcpSnpVerifyMacAddressGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpVerifyMacAddressEnabled
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of object which are used to configure as
+             well as show information regarding the verify Mac address state."
+        ::= { esDhcpSnpGroups 6 }
+
+    esDhcpSnpStationMoveGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpStationMoveDenyEnabled
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of object which are used to configure as
+             well as show information regarding the station move state."
+        ::= { esDhcpSnpGroups 7 }
+
+    esDhcpSnpRelayAgentInfoAllowGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpOption82AllowUntrust
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of object which are used to configure as
+             well as show information regarding the allow Relay Agent
+             information from untrust port state."
+        ::= { esDhcpSnpGroups 8 }
+
+    esDhcpSnpDatabaseGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpDatabaseUrl,
+            esDhcpSnpDatabaseUpdateInterval,
+            esDhcpSnpRenewDatabaseUrl,
+            esDhcpSnpRenewDatabase,
+            esDhcpSnpClearDatabaseStatistics,
+            esDhcpSnpStatBindingCollision,
+            esDhcpSnpStatExpiredLease,
+            esDhcpSnpStatInvalidInterfaces,
+            esDhcpSnpStatUnsupportedVlans,
+            esDhcpSnpStatParsingFailures,
+            esDhcpSnpStatChecksumErrors
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to configure as
+             well as show information regarding the DHCP snooping
+             database."
+        ::= { esDhcpSnpGroups 9 }
+
+    esDhcpSnpIfRateLimitGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpIfRateLimit
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to configure as
+             well as show information regarding the rate limit per
+             interface."
+        ::= { esDhcpSnpGroups 10 }
+
+    esDhcpSnpIfBindingsLimitGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcpSnpIfBindingsLimit
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects which are used to configure as
+             well as show information regarding the bindings limit per
+             interface."
+        ::= { esDhcpSnpGroups 11 }
+
+END
+
+
+
+

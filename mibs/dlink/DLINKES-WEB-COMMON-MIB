@@ -1,0 +1,152 @@
+-- *****************************************************************
+-- DLINKES-WEB-COMMON-MIB:  D-Link WEB Common MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-WEB-COMMON-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+	    MODULE-IDENTITY, OBJECT-IDENTITY, OBJECT-TYPE,
+	    Unsigned32
+		    FROM SNMPv2-SMI
+		TEXTUAL-CONVENTION, TruthValue, DisplayString
+	        FROM SNMPv2-TC
+	    MODULE-COMPLIANCE,	OBJECT-GROUP
+		    FROM SNMPv2-CONF
+	    dlinkCommon
+		    FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsWebCommonMIB MODULE-IDENTITY
+	    LAST-UPDATED	"201310280000Z"
+	    ORGANIZATION	"D-Link Corp."
+	    CONTACT-INFO
+		    "        D-Link Corporation
+
+                Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                        Taipei City 114, Taiwan, R.O.C
+                Tel:     +886-2-66000123
+                E-mail: tsd@dlink.com.tw
+            "
+	DESCRIPTION
+		"The MIB module	for configuring Web common feature.
+		This MIB module contains HTTP and HTTPS configuration."
+	REVISION	 "201310280000Z"
+	DESCRIPTION
+		"This is the first version of the MIB file."  
+	::= { dlinkCommon 162 }
+
+-- ******************************************************************
+-- Object Definition
+-- ******************************************************************
+    esWebCommonMIBNotifications 	OBJECT IDENTIFIER ::= { dlinkEsWebCommonMIB 0 }        
+    esWebMIBObjects    			OBJECT IDENTIFIER ::= { dlinkEsWebCommonMIB 1 }
+    esWebCommonMIBConformance	OBJECT IDENTIFIER ::= { dlinkEsWebCommonMIB 2 }
+    
+-- ----------------------------------------------------------------------------- 
+    esHttpServerObjects    		OBJECT IDENTIFIER ::= { esWebMIBObjects 1 }
+    esWebSslServerObjects    		OBJECT IDENTIFIER ::= { esWebMIBObjects 2 }
+
+-- -----------------------------------------------------------------------------
+-- esHttpServerObjects
+-- -----------------------------------------------------------------------------
+	esHttpServerStatus OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the HTTP server feature is support or not."
+		DEFVAL   { true }
+        ::= {  esHttpServerObjects 1  }
+ -- -----------------------------------------------------------------------------        
+	esHttpTcpPort OBJECT-TYPE
+    	SYNTAX     Unsigned32 (1..65535)
+    	MAX-ACCESS  read-write
+    	STATUS      current
+        DESCRIPTION
+            "This object is Used to configure the TCP port number for HTTP server.
+			The well-known TCP port for the HTTP server is 80."
+		DEFVAL   { 80 }
+        ::= { esHttpServerObjects 2}
+ -- -----------------------------------------------------------------------------        
+	esHttpIdleTimeoutVal OBJECT-TYPE
+    	SYNTAX     Unsigned32 (60..36000)
+    	MAX-ACCESS  read-write
+    	STATUS      current
+        DESCRIPTION
+            "This object is Used to set idle timeout of a http server connection in seconds."
+		DEFVAL   { 180 }
+        ::= { esHttpServerObjects 3}
+		
+-- -----------------------------------------------------------------------------
+-- esWebSslServerObjects
+-- -----------------------------------------------------------------------------
+    esWebSslServicePolicyName OBJECT-TYPE
+        SYNTAX          DisplayString  (SIZE (0..32))
+        MAX-ACCESS  	read-write
+        STATUS          current
+        DESCRIPTION   
+            "Indicates the name of the policy for SSL application.
+			This node is volatile; that is, it is lost if the SNMP 
+            agent is rebooted."
+        ::= { esWebSslServerObjects 1 }
+		
+	esWebSslServerStatus OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the SSL feature is support or not."
+		DEFVAL   { false }
+        ::= {  esWebSslServerObjects 2  }
+-- ******************************************************************
+-- Conformance and Compliance
+-- ******************************************************************
+
+    esWebCommonMIBCompliances  OBJECT IDENTIFIER ::= { esWebCommonMIBConformance 1 }
+    
+    esWebCommonGroups	      OBJECT IDENTIFIER ::= { esWebCommonMIBConformance 2 }
+
+    esWebMIBCompliance MODULE-COMPLIANCE
+	    STATUS	    current
+	    DESCRIPTION
+	        "The compliance statement for entities which implement the 
+	        DLINKES-WEB-COMMON-MIB.
+	        "
+	    MODULE	    -- this module
+	    MANDATORY-GROUPS
+	    {
+	      esHttpServerGroups,
+		  esSslServerGroups
+	    }
+   	    ::= { esWebCommonMIBCompliances 1 }
+
+
+-- units of conformance
+
+    esHttpServerGroups OBJECT-GROUP
+        OBJECTS {
+            esHttpServerStatus,
+			esHttpTcpPort,
+			esHttpIdleTimeoutVal
+        }
+        STATUS      current
+        DESCRIPTION
+            "Objects for globally configuring HTTP server feature.
+	        "
+        ::= { esWebCommonGroups 1 }
+		
+    esSslServerGroups OBJECT-GROUP
+        OBJECTS {
+			esWebSslServicePolicyName,
+            esWebSslServerStatus
+        }
+        STATUS      current
+        DESCRIPTION
+            "Objects for globally configuring SSL server feature.
+	        "
+        ::= { esWebCommonGroups 2 }
+END
+

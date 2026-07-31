@@ -1,0 +1,191 @@
+--  *****************************************************************
+--  DLINKES-TELNET-MIB.mib : TELNET MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+DLINKES-TELNET-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, Unsigned32
+                    FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP
+                    FROM SNMPv2-CONF
+        TruthValue
+                    FROM SNMPv2-TC
+        InetAddressType,InetAddress
+                    FROM INET-ADDRESS-MIB
+        SnmpAdminString
+                    FROM SNMP-FRAMEWORK-MIB
+        dlinkCommon
+                    FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsTelnetMIB MODULE-IDENTITY
+        LAST-UPDATED "201304220000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "         D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:    +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for TELNET application."
+
+        REVISION     "201304220000Z"
+        DESCRIPTION
+            "First release of this MIB."
+        ::= { dlinkCommon 40 }
+
+-- -----------------------------------------------------------------------------
+    esTelnetNotifications    OBJECT IDENTIFIER ::= { dlinkEsTelnetMIB 0 }
+    esTelnetObjects          OBJECT IDENTIFIER ::= { dlinkEsTelnetMIB 1 }
+    esTelnetConformance      OBJECT IDENTIFIER ::= { dlinkEsTelnetMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esTelnetServerEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS  current
+        DESCRIPTION
+            "This object specifies whether the TELNET server function on
+            the device is enabled."
+        DEFVAL { true }
+        ::= { esTelnetObjects 1 }
+
+    esTelnetServerTcpPort OBJECT-TYPE
+        SYNTAX         Unsigned32 (1..65535)
+        MAX-ACCESS     read-write
+        STATUS         current
+        DESCRIPTION
+            "This object indicates TCP port for the TELNET server.
+            The well-known TCP port for the TELNET server is 23.
+            "
+        DEFVAL { 23 }
+        ::= { esTelnetObjects 2 }
+
+-- -----------------------------------------------------------------------------
+    esTelnetSessionTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsTelnetSessionEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of TELNET users."
+        ::= { esTelnetObjects 4 }
+
+    esTelnetSessionEntry OBJECT-TYPE
+        SYNTAX          EsTelnetSessionEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the information of a TELNET session."
+        INDEX  { esTelnetSessionID }
+        ::= { esTelnetSessionTable 1 }
+
+    EsTelnetSessionEntry ::=        SEQUENCE {
+        esTelnetSessionID                  Unsigned32,
+        esTelnetSessionUserName            SnmpAdminString,
+        esTelnetSessionUserPrivilegeLvl    Unsigned32,
+        esTelnetSessionLoginDuration       Unsigned32,
+        esTelnetSessionHostAddrType        InetAddressType,
+        esTelnetSessionHostAddr            InetAddress
+    }
+
+    esTelnetSessionID OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A unique number that identifies the TELNET session."
+        ::= { esTelnetSessionEntry 1 }
+
+    esTelnetSessionUserName OBJECT-TYPE
+        SYNTAX          SnmpAdminString (SIZE (1..32))
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the TELNET user."
+        ::= { esTelnetSessionEntry 2 }
+
+    esTelnetSessionUserPrivilegeLvl OBJECT-TYPE
+        SYNTAX          Unsigned32 (1.. 15)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the privilege level of the entry."
+        ::= { esTelnetSessionEntry 3 }
+
+    esTelnetSessionLoginDuration OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the elapsed time the user has loginned."
+        ::= { esTelnetSessionEntry 4 }
+
+    esTelnetSessionHostAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The host address type of the TELNET client."
+        ::= { esTelnetSessionEntry 5 }
+
+    esTelnetSessionHostAddr OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The host address of the TELNET client."
+        ::= { esTelnetSessionEntry 6 }
+
+-- Conformance
+
+
+    esTelnetCompliances    OBJECT IDENTIFIER ::= { esTelnetConformance 1 }
+
+    esTelnetGroups         OBJECT IDENTIFIER ::= { esTelnetConformance 2 }
+
+
+    esTelnetCompliance MODULE-COMPLIANCE
+        STATUS   current
+        DESCRIPTION
+                "The compliance statement for entities which
+                 implement the DLINKES-TELNET-MIB."
+        MODULE MANDATORY-GROUPS {
+            esTelnetConfigGroup,
+            esTelnetSessionInfoGroup
+        }
+        ::= { esTelnetCompliances 1 }
+
+    esTelnetConfigGroup OBJECT-GROUP
+        OBJECTS   {
+            esTelnetServerEnabled,
+            esTelnetServerTcpPort
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects for TELNET configuration."
+        ::= { esTelnetGroups 1 }
+
+    esTelnetSessionInfoGroup OBJECT-GROUP
+        OBJECTS            {
+            esTelnetSessionUserName,
+            esTelnetSessionUserPrivilegeLvl,
+            esTelnetSessionLoginDuration,
+            esTelnetSessionHostAddrType,
+            esTelnetSessionHostAddr
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects to display TELNET connection related
+            information."
+        ::= { esTelnetGroups 2 }
+
+
+END
+

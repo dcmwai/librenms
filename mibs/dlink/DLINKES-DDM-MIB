@@ -1,0 +1,771 @@
+--  *****************************************************************
+--  DLINKES-DDM-MIB.mib : Digital Diagnostics Monitoring (DDM) MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-DDM-MIB DEFINITIONS ::= BEGIN
+    IMPORTS
+        DisplayString,TruthValue,RowStatus,TEXTUAL-CONVENTION   
+            FROM SNMPv2-TC
+        MODULE-IDENTITY,OBJECT-TYPE,Integer32,NOTIFICATION-TYPE
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE,OBJECT-GROUP,NOTIFICATION-GROUP
+		    FROM SNMPv2-CONF
+        SnmpAdminString					
+            FROM SNMP-FRAMEWORK-MIB
+        ifIndex, InterfaceIndex
+            FROM IF-MIB    
+        dlinkCommon		
+            FROM DLINK-ID-REC-MIB;
+   
+    dlinkEsDdmMIB	MODULE-IDENTITY
+   		LAST-UPDATED "201706160000Z"
+   		ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for DDM."
+            
+        REVISION "201706160000Z"
+        DESCRIPTION
+		    "The structure of DDM for the proprietary enterprise."
+        ::={ dlinkCommon 72 } 
+
+
+    DlinkThresholdState ::= TEXTUAL-CONVENTION
+        STATUS  current
+        DESCRIPTION
+            "Represents the state of a current monitoring value.
+             Valid values are:
+            
+            normal(0): the current value is within normal range.
+
+            higherAlarm(1):  the current value is higher than the high alarm threshold.
+
+            higherWarning(2): the current value is higher than the high warning threshold.       
+
+            lowerWarning(3):  the current value is lower than the low warning threshold.   
+
+            lowerAlarm(4): the current value is lower than the low alarm threshold.       
+            "
+        SYNTAX  INTEGER {
+            normal(0),
+            higherAlarm(1),
+            higherWarning(2),
+            lowerWarning(3),
+            lowerAlarm(4)                      
+        }
+                
+	esDdmMIBNotifications 		OBJECT IDENTIFIER ::= { dlinkEsDdmMIB 0 }
+	esDdmMIBObjects 			OBJECT IDENTIFIER ::= { dlinkEsDdmMIB 1 }
+	esDdmMIBConformance		    OBJECT IDENTIFIER ::= { dlinkEsDdmMIB 2 }
+
+-- -------------------------------------------------------------------------- 
+    esDdmCtrl			OBJECT IDENTIFIER ::= { esDdmMIBObjects 1 }
+    
+    esDdmNotifyEnable OBJECT-TYPE
+        SYNTAX          BITS {
+            alarm(0),
+            warning(1)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates whether a specified notification is enabled or not.
+            If a bit corresponding to a notification is set to 1, then 
+            the specified notification can be generated.
+
+            alarm(0)   - sending an alarm level notification. 
+            warning(1) - sending an warning level notification.              
+            "
+        ::= { esDdmCtrl 1 }
+        
+
+-- -------------------------------------------------------------------------- 		
+     esDdmIfCtrl			OBJECT IDENTIFIER ::= { esDdmMIBObjects 2 }
+            
+     esDdmIfCfgTable	OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsDdmIfCfgEntry
+		MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of interface-specific DDM configuration."
+        ::= {esDdmIfCtrl 1}
+      
+    esDdmIfCfgEntry	OBJECT-TYPE
+		SYNTAX	        EsDdmIfCfgEntry
+		MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry manages DDM state and action on an interface."
+        INDEX  {  ifIndex }
+      ::= {esDdmIfCfgTable 1}
+      
+    EsDdmIfCfgEntry ::=
+        SEQUENCE {
+            esDdmIfCfgEnabled     TruthValue,
+            esDdmShutdownLevel    INTEGER     
+        }  
+             
+    esDdmIfCfgEnabled OBJECT-TYPE
+		SYNTAX          TruthValue 	 	 
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the status of optical transceiver-monitoring
+            function for a SFP port.
+            When a SFP with transceiver-monitoring capability is plugged in a
+            port but the transceiver-monitoring function of the port is
+            disabled, system will not detect the SFP's abnormal status but user
+            still can check the current status via esDdmIfInfoTable."
+        ::= {esDdmIfCfgEntry 1} 
+    
+    esDdmShutdownLevel OBJECT-TYPE
+		SYNTAX  INTEGER {					
+            none(1),
+            alarm(2),
+            warning(3)
+        }
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION
+             "This object indicates the abnormal level which causes a port
+             enter into errDisabled state.
+             A value of 'none' indicates the shutdown action is disabled.
+             "
+        ::= {esDdmIfCfgEntry 2}    
+              
+-- --------------------------------------------------------------------------
+    esDdmThresholdMgmt			OBJECT IDENTIFIER ::= { esDdmMIBObjects 3 }
+    
+    esDdmThresholdCfgTable	OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsDdmThresholdCfgEntry
+		MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of interface-specific threshold configuration for
+            DDM."
+        ::= {esDdmThresholdMgmt 1}
+        
+    esDdmThresholdCfgEntry OBJECT-TYPE
+		SYNTAX          EsDdmThresholdCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in this table conists of one threshold configuration on an interface.
+            An entry is created/removed when a configuration is added/deleted.
+            "
+        INDEX  { 
+            ifIndex,
+            esDdmThresholdComponent,
+            esDdmThresholdAbnormalLevel
+        }
+        ::= { esDdmThresholdCfgTable 1 }
+
+    EsDdmThresholdCfgEntry	::=
+        SEQUENCE {
+            esDdmThresholdComponent          INTEGER,
+            esDdmThresholdAbnormalLevel      INTEGER,
+  		    esDdmThresholdCfgValue           Integer32,
+  		    esDdmThresholdCfgRowStatus       RowStatus
+  	    }
+        		             
+    esDdmThresholdComponent	OBJECT-TYPE
+		SYNTAX	INTEGER {
+            temperature(1),
+            voltage(2),
+            biasCurrent(3),
+            txPowerMw(4),
+            txPowerDbm(5),            
+            rxPowerMw(6),
+            rxPowerDbm(7)
+        }  
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the monitoring type.
+            Note:
+            Either txPowerMw(4) or txPowerDbm(5) can be configured on an interface.
+            Either rxPowerMw(6) or rxPowerDbm(7) can be configured on an interface.
+            In the above two cases, the existed entry will be deleted when the 
+            other new entry is created.
+            "
+        ::= {esDdmThresholdCfgEntry 1}  
+            
+    esDdmThresholdAbnormalLevel	OBJECT-TYPE
+		SYNTAX	INTEGER {
+            highAlarm(1),
+            highWarning(2),
+            lowWarning(3),
+            lowAlarm(4)       
+        }  
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the threshold type."
+        ::= { esDdmThresholdCfgEntry 2 }      
+        
+   esDdmThresholdCfgValue	OBJECT-TYPE
+		SYNTAX          Integer32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the configured threshold. The value is
+            interpreted within the context of esDdmThresholdComponent and
+            esDdmThresholdAbnormalLevel in the same row. The unit and valid range
+            are as follows:
+            Threshold Type     Unit                           Valid Range
+            =============      =====================          =================
+            Temperature        milli-degrees Celsius          -128,000 ~ 127,996 
+            voltage            centi-Volt                     0 ~ 655
+            biasCurrent        milli-amperes                  0 ~ 131 
+            txPowerMw          tenths of a microwatt            0 ~ 65,535
+            txPowerDbm         ten-thousandths of DBM         -400,000 ~ 81,647
+            rxPowerMw          tenths of a microwatt            0 ~ 65,535
+            rxPowerDbm         ten-thousandths of DBM         -400,000 ~ 81,647            
+            "
+        ::= { esDdmThresholdCfgEntry 3 }  
+        
+    esDdmThresholdCfgRowStatus 	OBJECT-TYPE
+		SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this conceptual row."
+        ::= { esDdmThresholdCfgEntry 4 }  
+                         
+-- -------------------------------------------------------------------------- 
+    esDdmInfo  OBJECT IDENTIFIER ::= {  esDdmMIBObjects 4 }
+
+    esDdmIfInfoTable	OBJECT-TYPE
+		SYNTAX	        SEQUENCE OF EsDdmIfInfoEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+        DESCRIPTION
+            "This table contains a list of information about current operating
+            parameters of interfaces. Only the applicable interfaces (i.e.SFP
+            module with DDM capability is plugged-in. ) will appear in this table.
+            Note: 
+            1. The threshold may be administratively configured or factory
+               preset value defined by vendors. esDdmThresholdCfgTable provides
+               the administrative threshold configuration.
+            2. It doesn't necessarily means the DDM is enabled on the interface
+               when an entry appears in this table. esDdmIfCfgTable provides such
+               information."
+        ::= {esDdmInfo 1}
+        
+    esDdmIfInfoEntry OBJECT-TYPE
+		SYNTAX	        EsDdmIfInfoEntry
+		MAX-ACCESS      not-accessible
+		STATUS	        current
+		DESCRIPTION
+			"An entry appears in this table contains current operating parameters
+			for transceiver monitoring of a port."       
+		INDEX  { ifIndex  }
+		::= { esDdmIfInfoTable 1}
+		
+    EsDdmIfInfoEntry ::=
+		SEQUENCE {		    
+		   esDdmIfInfoCurrentTemperature         Integer32,
+		   esDdmIfInfoTemperatureState           DlinkThresholdState,
+		   esDdmIfInfoHighAlarmTemperature       Integer32,
+		   esDdmIfInfoHighWarnTemperature        Integer32,           
+		   esDdmIfInfoLowWarnTemperature         Integer32,	
+		   esDdmIfInfoLowAlarmTemperature        Integer32,	   
+		   esDdmIfInfoCurrentVoltage             Integer32,
+		   esDdmIfInfoVoltageState               DlinkThresholdState,
+		   esDdmIfInfoHighAlarmVoltage           Integer32,
+		   esDdmIfInfoHighWarnVoltage            Integer32,           
+		   esDdmIfInfoLowWarnVoltage             Integer32,
+		   esDdmIfInfoLowAlarmVoltage            Integer32,		   
+		   esDdmIfInfoCurrentBiasCurrent         Integer32,
+		   esDdmIfInfoBiasCurrentState           DlinkThresholdState,
+		   esDdmIfInfoHighAlarmBiasCurrent       Integer32,
+		   esDdmIfInfoHighWarnBiasCurrent        Integer32,
+		   esDdmIfInfoLowWarnBiasCurrent         Integer32,   
+           esDdmIfInfoLowAlarmBiasCurrent        Integer32,		  
+		   esDdmIfInfoCurrentTxPower             Integer32,
+		   esDdmIfInfoTxPowerState               DlinkThresholdState,
+		   esDdmIfInfoHighAlarmTxPower           Integer32,
+		   esDdmIfInfoHighWarnTxPower            Integer32,
+		   esDdmIfInfoLowWarnTxPower             Integer32,
+           esDdmIfInfoLowAlarmTxPower            Integer32,           
+		   esDdmIfInfoCurrentRxPower             Integer32,
+		   esDdmIfInfoRxPowerState               DlinkThresholdState,		   
+		   esDdmIfInfoHighAlarmRxPower           Integer32,
+		   esDdmIfInfoHighWarnRxPower            Integer32,           
+		   esDdmIfInfoLowWarnRxPower             Integer32,
+		   esDdmIfInfoLowAlarmRxPower            Integer32
+        }
+ 
+    esDdmIfInfoCurrentTemperature OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-degrees Celsius"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current temperature in unit of 
+            'milli-degrees Celsius' on the interface."
+        ::= { esDdmIfInfoEntry 1 }
+        
+    esDdmIfInfoTemperatureState OBJECT-TYPE
+        SYNTAX          DlinkThresholdState   
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of current temperature."
+        ::= { esDdmIfInfoEntry 2 }
+    
+    esDdmIfInfoHighAlarmTemperature OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-degrees Celsius"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high alarm threshold, when the operating
+            temperature rises above this value, it indicates an alarm status.           
+            The value is in unit of 'milli-degrees Celsius'."
+        ::= { esDdmIfInfoEntry 3 }     
+      
+      
+    esDdmIfInfoHighWarnTemperature OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-degrees Celsius"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high warning threshold, when the operating
+            temperature rises above this value, it indicates a warning status.
+            The value is in unit of 'milli-degrees Celsius'."
+        ::= { esDdmIfInfoEntry 4 }       
+    
+    esDdmIfInfoLowWarnTemperature OBJECT-TYPE       
+        SYNTAX          Integer32
+        UNITS           "milli-degrees Celsius"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low warning threshold, when the operating
+            temperature falls below this value, it indicates a warning status.
+            The value is in unit of 'milli-degrees Celsius'."
+        ::= { esDdmIfInfoEntry 5 }     
+      
+    esDdmIfInfoLowAlarmTemperature OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-degrees Celsius"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low alarm threshold, when the operating
+            temperature falls below this value, it indicates an alarm status.
+            The value is in unit of 'milli-degrees Celsius'."
+        ::= { esDdmIfInfoEntry 6 }            
+   
+    esDdmIfInfoCurrentVoltage OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "centi-Volt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current voltage in unit of 
+            'centi-Volt' on the interface."
+        ::= { esDdmIfInfoEntry 7 }
+        
+    esDdmIfInfoVoltageState OBJECT-TYPE
+        SYNTAX          DlinkThresholdState             
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of current voltage."
+        ::= { esDdmIfInfoEntry 8 }
+    
+    esDdmIfInfoHighAlarmVoltage OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "centi-Volt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high alarm threshold, when the operating
+            voltage rises above this value, it indicates an alarm status.
+            The value is in unit of 'centi-Volt'."
+        ::= { esDdmIfInfoEntry 9 }     
+      
+    esDdmIfInfoHighWarnVoltage OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "centi-Volt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high warning threshold, when the operating
+            voltage rises above this value, it indicates a warning status.
+            The value is in unit of 'centi-Volt'."
+        ::= { esDdmIfInfoEntry 10 }       
+    
+    esDdmIfInfoLowWarnVoltage OBJECT-TYPE       
+        SYNTAX          Integer32
+        UNITS           "centi-Volt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low warning threshold, when the operating
+            voltage falls below this value, it indicates a warning status.
+            The value is in unit of 'centi-Volt'."
+        ::= { esDdmIfInfoEntry 11 }     
+      
+    esDdmIfInfoLowAlarmVoltage OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "centi-Volt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low alarm threshold, when the operating
+            voltage falls below this value, it indicates an alarm status.
+            The value is in unit of 'centi-Volt'."
+        ::= { esDdmIfInfoEntry 12 }             
+   
+   esDdmIfInfoCurrentBiasCurrent OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-amperes"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current bias current in unit of 
+            'milli-amperes' on the interface."
+        ::= { esDdmIfInfoEntry 13 }
+        
+    esDdmIfInfoBiasCurrentState OBJECT-TYPE
+        SYNTAX          DlinkThresholdState
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of current BiasCurrent."
+        ::= { esDdmIfInfoEntry 14 }
+    
+    esDdmIfInfoHighAlarmBiasCurrent OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-amperes"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high alarm threshold, when the operating
+            bias current rises above this value, it indicates an alarm status.
+            The value is in unit of 'milli-amperes'."
+        ::= { esDdmIfInfoEntry 15 }     
+      
+    esDdmIfInfoHighWarnBiasCurrent OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-amperes"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high warning threshold, when the operating
+            bias current rises above this value, it indicates a warning status.
+            The value is in unit of 'milli-amperes'."
+        ::= { esDdmIfInfoEntry 16 }       
+    
+    esDdmIfInfoLowWarnBiasCurrent OBJECT-TYPE       
+        SYNTAX          Integer32
+        UNITS           "milli-amperes"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low warning threshold, when the operating
+            bias current falls below this value, it indicates a warning status.
+            The value is in unit of 'milli-amperes'."
+        ::= { esDdmIfInfoEntry 17 }     
+      
+    esDdmIfInfoLowAlarmBiasCurrent OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "milli-amperes"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low alarm threshold, when the operating
+            bias current falls below this value, it indicates an alarm status.
+            The value is in unit of 'milli-amperes'."
+        ::= { esDdmIfInfoEntry 18 }            
+
+    esDdmIfInfoCurrentTxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current output power in unit of 
+            'tenths of a microwatt' on the interface."
+        ::= { esDdmIfInfoEntry 19 }
+        
+    esDdmIfInfoTxPowerState OBJECT-TYPE
+        SYNTAX          DlinkThresholdState
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of current output power."
+        ::= { esDdmIfInfoEntry 20 }
+    
+    esDdmIfInfoHighAlarmTxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high alarm threshold, when the operating
+            output power rises above this value, it indicates an alarm status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 21 }     
+      
+    esDdmIfInfoHighWarnTxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high warning threshold, when the operating
+            output power rises above this value, it indicates a warning status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 22 }       
+    
+    esDdmIfInfoLowWarnTxPower OBJECT-TYPE       
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low warning threshold, when the operating
+            output power falls below this value, it indicates a warning status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 23 }     
+      
+    esDdmIfInfoLowAlarmTxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low alarm threshold, when the operating
+            output power falls below this value, it indicates an alarm status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 24 }  
+        
+    esDdmIfInfoCurrentRxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current input power in unit of 
+            'tenths of a microwatt' on the interface."
+        ::= { esDdmIfInfoEntry 25 }
+        
+    esDdmIfInfoRxPowerState OBJECT-TYPE
+        SYNTAX          DlinkThresholdState
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of current input power."
+        ::= { esDdmIfInfoEntry 26 }
+    
+    esDdmIfInfoHighAlarmRxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high alarm threshold, when the operating
+            input power rises above this value, it indicates an alarm status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 27 }     
+      
+    esDdmIfInfoHighWarnRxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the high warning threshold, when the operating
+            input power rises above this value, it indicates a warning status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 28 }       
+    
+    esDdmIfInfoLowWarnRxPower OBJECT-TYPE       
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low warning threshold, when the operating
+            input power falls below this value, it indicates a warning status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 29 }     
+      
+    esDdmIfInfoLowAlarmRxPower OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "tenths of a microwatt"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the low alarm threshold, when the operating
+            input power falls below this value, it indicates an alarm status.
+            The value is in unit of 'tenths of a microwatt'."
+        ::= { esDdmIfInfoEntry 30 }  
+        
+-- --------------------------------------------------------------------------
+   esDdmNotifyInfo  OBJECT IDENTIFIER ::= {  esDdmMIBObjects 5 }
+
+   esDdmNotifyInfoIfIndex OBJECT-TYPE
+		SYNTAX 	        InterfaceIndex
+		MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+              "This object is used by esDdmAlarmTrap and esDdmWarningTrap to indicate 
+              the ifIndex on which the monitoring value rises above or falls below
+              the corresponding threshold."
+              ::= { esDdmNotifyInfo 1 }
+  
+    esDdmNotifyInfoComponent OBJECT-TYPE
+		SYNTAX 	INTEGER{
+			temperature(1),
+            voltage(2),
+            biasCurrent(3),
+            txPowerMw(4),                        
+            rxPowerMw(5)           
+	    }
+		MAX-ACCESS      accessible-for-notify
+        STATUS          current
+        DESCRIPTION
+              "This object is used by esDdmAlarmTrap and esDdmWarningTrap to indicate  
+              the abnormal component."
+        ::= { esDdmNotifyInfo 2 }
+         
+    esDdmNotifyInfoAbnormalLevel OBJECT-TYPE
+		SYNTAX 	INTEGER{
+			high(1),
+			low(2)
+		}
+		MAX-ACCESS  accessible-for-notify
+        STATUS  current
+        DESCRIPTION
+            "This object is used by esDdmAlarmTrap and esDdmWarningTrap to indicate  
+            the abnormal level."
+        ::= { esDdmNotifyInfo 3 }
+        
+    esDdmNotifyInfoThresholdExceedOrRecover OBJECT-TYPE
+		SYNTAX 	INTEGER{
+					exceed(1),
+					recover(2)
+			}
+		MAX-ACCESS  accessible-for-notify
+    STATUS  current
+    DESCRIPTION
+        "This object is used by esDdmAlarmTrap and esDdmWarningTrap to indicate the
+        GBIC is exceeding its threshold or recover to
+        normal status."
+        ::= {esDdmNotifyInfo 4}
+             
+ 
+-- --------------------------------------------------------------------------
+
+    esDdmAlarmTrap NOTIFICATION-TYPE
+        OBJECTS  {
+            esDdmNotifyInfoIfIndex,
+            esDdmNotifyInfoComponent,
+            esDdmNotifyInfoAbnormalLevel,
+            esDdmNotifyInfoThresholdExceedOrRecover    					
+        }        
+        STATUS          current
+        DESCRIPTION
+            "The trap is sent when esDdmNotifyEnable is 'true' and an abnormal 
+            alarm situation occurs or recovers from an abnormal alarm situation
+            to normal status."
+      ::= { esDdmMIBNotifications 1 }
+      
+    esDdmWarningTrap NOTIFICATION-TYPE
+        OBJECTS         {
+    	    esDdmNotifyInfoIfIndex,
+    	    esDdmNotifyInfoComponent, 
+    	    esDdmNotifyInfoAbnormalLevel,
+            esDdmNotifyInfoThresholdExceedOrRecover   						  					
+       }        
+       STATUS              current
+       DESCRIPTION
+            "The trap is sent when esDdmNotifyEnable is 'true' and an abnormal 
+            warning situation occurs or recovers from an abnormal warning
+            situation to normal status."
+      ::= { esDdmMIBNotifications 2 }
+
+--  ***************************************************************************	
+--  Conformance
+--  ***************************************************************************			   		
+	esDdmCompliances OBJECT IDENTIFIER ::= { esDdmMIBConformance 1 }
+		
+	esDdmCompliance MODULE-COMPLIANCE
+		STATUS current
+		DESCRIPTION 
+			"The compliance statement for entities which implement the 
+			DLINKES-DDM-MIB."
+		MODULE -- this module
+		MANDATORY-GROUPS { 
+		    esDdmInfoGroup,
+		    esDdmCfgGroup,
+		    esDdmNotifyGroup        		   
+		}						
+		::= { esDdmCompliances 1 }
+		
+	esDdmGroups OBJECT IDENTIFIER ::= { esDdmMIBConformance 2 }
+	
+	esDdmInfoGroup OBJECT-GROUP
+		OBJECTS { 
+             esDdmIfInfoCurrentTemperature, esDdmIfInfoTemperatureState,
+             esDdmIfInfoHighAlarmTemperature, esDdmIfInfoHighWarnTemperature,              
+             esDdmIfInfoLowWarnTemperature, esDdmIfInfoLowAlarmTemperature,              
+             esDdmIfInfoCurrentVoltage, esDdmIfInfoVoltageState,        
+             esDdmIfInfoHighAlarmVoltage, esDdmIfInfoHighWarnVoltage,                  
+             esDdmIfInfoLowWarnVoltage, esDdmIfInfoLowAlarmVoltage,     
+             esDdmIfInfoCurrentBiasCurrent, esDdmIfInfoBiasCurrentState,    
+             esDdmIfInfoHighAlarmBiasCurrent, esDdmIfInfoHighWarnBiasCurrent, 
+             esDdmIfInfoLowWarnBiasCurrent, esDdmIfInfoLowAlarmBiasCurrent, 
+             esDdmIfInfoCurrentTxPower, esDdmIfInfoTxPowerState,
+             esDdmIfInfoHighAlarmTxPower, esDdmIfInfoHighWarnTxPower,
+             esDdmIfInfoLowWarnTxPower, esDdmIfInfoLowAlarmTxPower,
+             esDdmIfInfoCurrentRxPower, esDdmIfInfoRxPowerState,
+             esDdmIfInfoHighAlarmRxPower, esDdmIfInfoHighWarnRxPower,
+             esDdmIfInfoLowWarnRxPower, esDdmIfInfoLowAlarmRxPower,
+             esDdmNotifyInfoIfIndex, esDdmNotifyInfoComponent,
+             esDdmNotifyInfoAbnormalLevel,
+             esDdmNotifyInfoThresholdExceedOrRecover    						
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects provides DDM operating information."
+		::= { esDdmGroups 1 }
+        
+    esDdmCfgGroup OBJECT-GROUP
+		OBJECTS { 
+			esDdmNotifyEnable,
+			esDdmIfCfgEnabled, esDdmShutdownLevel,
+			esDdmThresholdCfgValue,	esDdmThresholdCfgRowStatus 
+			
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects provides DDM configuration."
+		::= { esDdmGroups 2 }    
+	
+	esDdmNotifyGroup NOTIFICATION-GROUP
+		NOTIFICATIONS { 
+			esDdmAlarmTrap,
+			esDdmWarningTrap
+		}
+		STATUS current
+		DESCRIPTION 
+			"The collection of notifications used for DDM."
+		::= { esDdmGroups 3 }      
+      
+END

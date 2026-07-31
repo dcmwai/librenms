@@ -1,0 +1,461 @@
+--  *****************************************************************
+--  DLINKES-GVRP-MIB.mib : GVRP MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+DLINKES-GVRP-MIB DEFINITIONS ::= BEGIN
+
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Unsigned32
+                    FROM SNMPv2-SMI
+        TruthValue
+                    FROM SNMPv2-TC
+        MODULE-COMPLIANCE, 
+        OBJECT-GROUP
+                    FROM SNMPv2-CONF
+        dot1dBasePort
+                    FROM BRIDGE-MIB
+        Dlink2kVlanList
+                    FROM DLINKES-TC-MIB
+        dlinkCommon
+                    FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsGvrpMIB MODULE-IDENTITY
+        LAST-UPDATED "201304170000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "         D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:    +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for GVRP."
+        REVISION "201304170000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+    ::= { dlinkCommon 33 }
+
+-- -----------------------------------------------------------------------------
+    esGvrpMIBNotifications     OBJECT IDENTIFIER ::= { dlinkEsGvrpMIB 0 }
+    esGvrpMIBObjects           OBJECT IDENTIFIER ::= { dlinkEsGvrpMIB 1 }
+    esGvrpMIBConformance       OBJECT IDENTIFIER ::= { dlinkEsGvrpMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esGvrpGlobalMgmt  OBJECT IDENTIFIER ::={esGvrpMIBObjects 1}
+
+    esGvrpGlobalState OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether GVRP state is enabled."
+        ::= { esGvrpGlobalMgmt 1 }
+
+    esGvrpDynamicVlanCreation OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether dynamic VLAN creation is enabled."
+        ::= { esGvrpGlobalMgmt 2 }
+
+    esGvrpNniGvrpBpduAddress OBJECT-TYPE
+        SYNTAX          INTEGER {
+            dot1d(1),
+            dot1ad(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the GVRP BPDU address in service provider
+            site.
+            'dot1d' - The GVRP BPDU protocol address is 802.1d GVRP address:
+                      01:80:CC:00:00:21
+            'dot1ad' - The GVRP BPDU protocol address is 802.1ad GVRP address:
+                      01:80:CC:00:00:0D
+            "
+       ::= { esGvrpGlobalMgmt 3 }
+
+-- -----------------------------------------------------------------------------
+    esGvrpInterface OBJECT IDENTIFIER ::= { esGvrpMIBObjects 2 }
+
+    esGvrpInterfaceTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsGvrpInterfaceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains the interface-specific GVRP parameters."
+        ::= { esGvrpInterface 1 }
+
+    esGvrpInterfaceEntry OBJECT-TYPE
+        SYNTAX          EsGvrpInterfaceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry indicates the GVRP parameters for a port/port-channel."
+        INDEX { dot1dBasePort }
+        ::= { esGvrpInterfaceTable 1 }
+
+    EsGvrpInterfaceEntry ::=
+        SEQUENCE {
+            esGvrpIfAdvertiseVlanLstFirst2K     Dlink2kVlanList,
+            esGvrpIfAdvertiseVlanLstSecond2K    Dlink2kVlanList,
+            esGvrpIfForbiddenVlanLstFirst2K     Dlink2kVlanList,
+            esGvrpIfForbiddenVlanLstSecond2K    Dlink2kVlanList,
+            esGvrpIfGvrpState                   TruthValue,
+            esGvrpIfTimerJoin                   Unsigned32,
+            esGvrpIfTimerLeave                  Unsigned32,
+            esGvrpIfTimerLeaveAll               Unsigned32
+        }
+
+    esGvrpIfAdvertiseVlanLstFirst2K  OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the VLANs in a string of octets containing
+            one bit per VLAN for VLANs 1 to 2048.
+            If the bit is set to '1', then the VLAN is allowed to be
+            advertised by the GVRP protocol on the interface.
+            "
+        ::= { esGvrpInterfaceEntry 1 }
+
+    esGvrpIfAdvertiseVlanLstSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the VLANs in a string of octets containing
+            one bit per VLAN for VLANs 2049 to 4094.
+            If the bit is set to '1', then the VLAN is allowed to be
+            advertised by the GVRP protocol on the interface.
+            "
+        ::= { esGvrpInterfaceEntry 2 }
+
+    esGvrpIfForbiddenVlanLstFirst2K  OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the VLANs in a string of octets containing
+            one bit per VLAN for VLANs 1 to 2048.
+            If the bit is set to '1', then the interface is forbidden to be the
+            VLAN's member."
+        ::= { esGvrpInterfaceEntry 3 }
+
+    esGvrpIfForbiddenVlanLstSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the VLANs in a string of octets containing
+            one bit per VLAN for VLANs 2049 to 4094.
+            If the bit is set to '1', then the interface is forbidden to be the
+            VLAN's member."
+        ::= { esGvrpInterfaceEntry 4 }
+
+    esGvrpIfGvrpState OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether GVRP state is enabled."
+        ::= { esGvrpInterfaceEntry 5 }
+
+    esGvrpIfTimerJoin OBJECT-TYPE
+        SYNTAX          Unsigned32 (10..10000)
+        UNITS           "second"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the join time for the interface.
+            The leave time should be no less than 3 * join time and
+            the leave all time should be greater than the leave time."
+        ::= { esGvrpInterfaceEntry 6 }
+
+    esGvrpIfTimerLeave OBJECT-TYPE
+        SYNTAX          Unsigned32 (10..10000)
+        UNITS           "second"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the leave time for the interface.
+            The leave time should be no less than 3 * join time and
+            the leave all time should be greater than the leave time."
+        ::= { esGvrpInterfaceEntry 7 }
+
+    esGvrpIfTimerLeaveAll OBJECT-TYPE
+        SYNTAX          Unsigned32 (10..10000)
+        UNITS           "second"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the leave-all time for the interface.
+            The leave time should be no less than 3 * join time and
+            the leave all time should be greater than the leave time."
+        ::= { esGvrpInterfaceEntry 8 }
+
+-- -----------------------------------------------------------------------------
+    esGvrpStatistics OBJECT IDENTIFIER ::= { esGvrpMIBObjects 3 }
+
+    esGvrpClearAllStatistics OBJECT-TYPE
+        SYNTAX          INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to clear GVRP statistics on all interfaces when
+            set to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esGvrpStatistics 1 }
+
+-- -----------------------------------------------------------------------------
+    esGvrpIfStatisticsTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsGvrpIfStatisticsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains the statistics for GVRP capable ports."
+        ::= { esGvrpStatistics 2 }
+
+    esGvrpIfStatisticsEntry OBJECT-TYPE
+        SYNTAX          EsGvrpIfStatisticsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry represents the statistics of a GVRP capable port."
+        INDEX    { dot1dBasePort }
+        ::= { esGvrpIfStatisticsTable 1 }
+
+    EsGvrpIfStatisticsEntry ::= SEQUENCE {
+        esGvrpIfStatRxJoinEmpty      Unsigned32,
+        esGvrpIfStatRxJoinIn         Unsigned32,
+        esGvrpIfStatRxLeaveEmpty     Unsigned32,
+        esGvrpIfStatRxLeaveIn        Unsigned32,
+        esGvrpIfStatRxLeaveAll       Unsigned32,
+        esGvrpIfStatRxEmpty          Unsigned32,
+        esGvrpIfStatTxJoinEmpty      Unsigned32,
+        esGvrpIfStatTxJoinIn         Unsigned32,
+        esGvrpIfStatTxLeaveEmpty     Unsigned32,
+        esGvrpIfStatTxLeaveIn        Unsigned32,
+        esGvrpIfStatTxLeaveAll       Unsigned32,
+        esGvrpIfStatTxEmpty          Unsigned32,
+        esGvrpIfStatClear            INTEGER
+    }
+
+    esGvrpIfStatRxJoinEmpty OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP JoinEmpty message received
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 1}
+
+    esGvrpIfStatRxJoinIn OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP JoinIn message received
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 2 }
+
+    esGvrpIfStatRxLeaveEmpty OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP LeaveEmpty message received
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 3 }
+
+    esGvrpIfStatRxLeaveIn OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP LeaveIn message received
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 4 }
+
+    esGvrpIfStatRxLeaveAll OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP LeaveAll message received
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 5 }
+
+    esGvrpIfStatRxEmpty OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP Empty message received
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 6 }
+
+    esGvrpIfStatTxJoinEmpty OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP JoinEmpty message transmitted
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 7 }
+
+    esGvrpIfStatTxJoinIn OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP JoinIn message transmitted
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 8 }
+
+    esGvrpIfStatTxLeaveEmpty OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP LeaveEmpty message transmitted
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 9 }
+
+    esGvrpIfStatTxLeaveIn OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP LeaveIn message transmitted
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 10 }
+
+    esGvrpIfStatTxLeaveAll OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP LeaveAll message transmitted
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 11 }
+
+    esGvrpIfStatTxEmpty OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of GVRP Empty message transmitted
+            on the interface."
+        ::= { esGvrpIfStatisticsEntry 12 }
+
+    esGvrpIfStatClear OBJECT-TYPE
+        SYNTAX  INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to clear GVRP statistics on the interface when
+            set to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esGvrpIfStatisticsEntry 13 }
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esGvrpCompliances  OBJECT IDENTIFIER         ::= { esGvrpMIBConformance 1 }
+
+    esGvrpGroups  OBJECT IDENTIFIER        ::= { esGvrpMIBConformance 2 }
+
+    esGvrpCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-GVRP-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS    {
+            esGvrpBasicCfgGroup
+        }
+
+        GROUP esGvrpServiceProviderCfgGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            the VLAN tunnel.
+            "
+
+        GROUP esGvrpStatisticsGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            the management of GVRP statistics.
+            "
+
+        ::= { esGvrpCompliances 1 }
+
+    esGvrpBasicCfgGroup OBJECT-GROUP
+        OBJECTS             {
+            esGvrpGlobalState,
+            esGvrpDynamicVlanCreation,
+            esGvrpIfAdvertiseVlanLstFirst2K,
+            esGvrpIfAdvertiseVlanLstSecond2K,
+            esGvrpIfForbiddenVlanLstFirst2K,
+            esGvrpIfForbiddenVlanLstSecond2K,
+            esGvrpIfGvrpState,
+            esGvrpIfTimerJoin,
+            esGvrpIfTimerLeave,
+            esGvrpIfTimerLeaveAll
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects configures basic GVRP functions."
+        ::= { esGvrpGroups 1 }
+
+    esGvrpServiceProviderCfgGroup OBJECT-GROUP
+        OBJECTS             {
+            esGvrpNniGvrpBpduAddress
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects configures GVRP in service provider site."
+        ::= { esGvrpGroups 2 }
+
+    esGvrpStatisticsGroup OBJECT-GROUP
+        OBJECTS    {
+            esGvrpClearAllStatistics,
+            esGvrpIfStatRxJoinEmpty,
+            esGvrpIfStatRxJoinIn,
+            esGvrpIfStatRxLeaveEmpty,
+            esGvrpIfStatRxLeaveIn,
+            esGvrpIfStatRxLeaveAll,
+            esGvrpIfStatRxEmpty,
+            esGvrpIfStatTxJoinEmpty,
+            esGvrpIfStatTxJoinIn,
+            esGvrpIfStatTxLeaveEmpty,
+            esGvrpIfStatTxLeaveIn,
+            esGvrpIfStatTxLeaveAll,
+            esGvrpIfStatTxEmpty,
+            esGvrpIfStatClear
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides the management of GVRP statistics.
+            "
+        ::= { esGvrpGroups 4 }
+
+END
+

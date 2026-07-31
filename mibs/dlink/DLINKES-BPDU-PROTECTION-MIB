@@ -1,0 +1,205 @@
+--  *****************************************************************
+--  DLINKES-BPDU-PROTECTION-MIB.mib : BPDU Protection MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+    DLINKES-BPDU-PROTECTION-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        NOTIFICATION-TYPE               FROM SNMPv2-SMI       
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP,
+        NOTIFICATION-GROUP              FROM SNMPv2-CONF
+        TruthValue                      FROM SNMPv2-TC
+        ifIndex                         FROM IF-MIB
+        dlinkCommon           FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsBpduProtectionMIB MODULE-IDENTITY
+        LAST-UPDATED "201302190000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+             "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for BPDU Protection."
+
+        REVISION "201302190000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+        ::= { dlinkCommon 47 }
+
+-- ---------------------------------------------------------------------------------------------
+    esBpduProtectionNotifications    OBJECT IDENTIFIER ::= { dlinkEsBpduProtectionMIB 0 }
+    esBpduProtectionObjects          OBJECT IDENTIFIER ::= { dlinkEsBpduProtectionMIB 1 }
+    esBpduProtectionConformance      OBJECT IDENTIFIER ::= { dlinkEsBpduProtectionMIB 2 }
+
+-- ---------------------------------------------------------------------------------------------
+    esBpduProtectionGlobalEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the global BPDU Protection state.    
+            'true' - The BPDU Protection is enabled globally.                   
+            'false' - The lBPDU Protection is disabled globally."
+        ::= { esBpduProtectionObjects 1 }
+
+    esBpduProtectionNotifyEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue   
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether sending SNMP notifications for BPDU Protection.                                              
+            "
+        ::= { esBpduProtectionObjects 2 }
+
+-- ---------------------------------------------------------------------------------------------
+    esBpduProtectionIfTable    OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsBpduProtectionIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS              current
+        DESCRIPTION            
+            "This table consists of a list of interface-specific BPDU Protection
+            information entries."            
+        ::= { esBpduProtectionObjects 3 }
+
+    esBpduProtectionIfEntry    OBJECT-TYPE
+        SYNTAX         EsBpduProtectionIfEntry
+        MAX-ACCESS     not-accessible       
+        STATUS         current
+        DESCRIPTION            
+            "An entry indicates the state and attack status of BPDU Protection 
+            on an interface."
+        INDEX  { ifIndex }
+        ::= { esBpduProtectionIfTable 1 }
+
+    EsBpduProtectionIfEntry ::= SEQUENCE     {
+        esBpduProtectionIfCfgMode            INTEGER,
+        esBpduProtectionIfAttackStatus       INTEGER
+    }
+
+    esBpduProtectionIfCfgMode    OBJECT-TYPE
+        SYNTAX           INTEGER        {
+            disabled(1),
+            drop(2),
+            block(3),
+            shutdown(4)
+        }
+        MAX-ACCESS       read-write
+        STATUS           current
+        DESCRIPTION
+            "This object indicates the operational mode of BPDU Protection on the interface.
+
+            disabled(1) - The BPDU Protection is disabled.
+
+            drop(2) - Drop all received BPDU packets when the interface enters the attacked state.
+
+            block(3) - Drop all packets (include BPDU and normal packets) when the interface
+                       enters the attacked state.
+
+            shutdown(4) - Shut down the interface when the interface enters he attacked state.
+            "             
+        ::= { esBpduProtectionIfEntry 1 }
+
+    esBpduProtectionIfAttackStatus    OBJECT-TYPE
+        SYNTAX               INTEGER        {
+            normal(1),
+            underAttack(2)
+        }
+        MAX-ACCESS           read-only
+        STATUS               current
+        DESCRIPTION
+            "This object indicates the status of BPDU Protection on an interface.
+            normal(1) - The interface is under normal status.
+            underAttack(2) - The inter is under attack status."
+        ::= { esBpduProtectionIfEntry 2 }
+
+-- ---------------------------------------------------------------------------------------------
+-- MIB Notifications statements
+-- ---------------------------------------------------------------------------------------------
+    esBpduProtectionAttackOccur    NOTIFICATION-TYPE
+        OBJECTS         {
+            ifIndex,
+            esBpduProtectionIfCfgMode
+        }
+        STATUS             current
+        DESCRIPTION
+            "This trap is sent when the BPDU attack happened on an interface."
+        ::= { esBpduProtectionNotifications 1 }
+
+    esBpduProtectionAttackRecover    NOTIFICATION-TYPE
+        OBJECTS         {
+            ifIndex
+        }
+        STATUS               current
+        DESCRIPTION
+            "This trap is sent when the BPDU attack recovered on an interface."
+        ::= { esBpduProtectionNotifications 2 }
+
+-- ---------------------------------------------------------------------------------------------
+-- MIB Conformance statements
+-- ---------------------------------------------------------------------------------------------
+    esBpduProtectionMIBCompliances    OBJECT IDENTIFIER
+        ::= { esBpduProtectionConformance 1 }
+
+    esBpduProtectionMIBGroups    OBJECT IDENTIFIER
+        ::= { esBpduProtectionConformance 2 }
+
+-- ---------------------------------------------------------------------------------------------
+    esBpduProtectionMIBCompliance    MODULE-COMPLIANCE
+        STATUS               current
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+            DLINKES-BPDU-PROTECTION-MIB."
+        MODULE               -- this module
+        MANDATORY-GROUPS
+        {
+            esBpduProtectionCfgGroup,
+            esBpduProtectionIfGroup           
+        }
+        ::= { esBpduProtectionMIBCompliances 1 }
+
+-- ---------------------------------------------------------------------------------------------
+    esBpduProtectionCfgGroup    OBJECT-GROUP
+        OBJECTS         {
+            esBpduProtectionGlobalEnabled,
+            esBpduProtectionNotifyEnabled
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects providing management of the BPDU 
+            Protection feature."
+        ::= { esBpduProtectionMIBGroups 1 }
+
+    esBpduProtectionIfGroup    OBJECT-GROUP
+        OBJECTS        { 
+            esBpduProtectionIfCfgMode,
+            esBpduProtectionIfAttackStatus
+        }
+        STATUS            current
+        DESCRIPTION
+            "A collection of objects providing management and information for 
+            BPDU Protection a per-interface basis."
+        ::= { esBpduProtectionMIBGroups 2 }
+
+    esBpduProtectionNotifyGroup    NOTIFICATION-GROUP
+        NOTIFICATIONS        {
+            esBpduProtectionAttackOccur,
+            esBpduProtectionAttackRecover
+        }
+        STATUS             current
+        DESCRIPTION
+            "A collection of notifications for BPDU Protection."
+        ::= { esBpduProtectionMIBGroups 3 }
+
+END

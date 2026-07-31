@@ -1,0 +1,358 @@
+--  *****************************************************************
+--  DLINKES-WRED-MIB.mib : Weighted Random Early Detection MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+DLINKES-WRED-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS    	        
+        MODULE-IDENTITY,
+        OBJECT-TYPE,       
+        Unsigned32, Counter64
+            FROM SNMPv2-SMI        
+        MODULE-COMPLIANCE, 
+        OBJECT-GROUP
+		    FROM SNMPv2-CONF     
+	    TruthValue
+		    FROM SNMPv2-TC
+        InterfaceIndex   				
+            FROM IF-MIB                       
+        dlinkCommon                     
+            FROM DLINK-ID-REC-MIB;        		
+        
+                                       
+    dlinkEsWredMIB MODULE-IDENTITY
+        LAST-UPDATED "201307090000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for Weighted Random Early Detection (WRED).
+            Acronyms and terms:
+            ECN: Explicit Congestion Notification
+            "
+            
+        REVISION "201305280000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+	REVISION "201307090000Z"
+        DESCRIPTION
+            "1.Add Conformance"           
+        ::= { dlinkCommon 156 } 
+      
+      
+-- -----------------------------------------------------------------------------
+    esWredMIBNotifications   OBJECT IDENTIFIER ::= { dlinkEsWredMIB 0 }
+    esWredMIBObjects         OBJECT IDENTIFIER ::= { dlinkEsWredMIB 1 }
+    esWredMIBConformance     OBJECT IDENTIFIER ::= { dlinkEsWredMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esWredStateTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsWredStateEntry        
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION 
+            "This table consists of a list of configurations for WRED"
+        ::= { esWredMIBObjects 1 }
+
+    esWredStateEntry OBJECT-TYPE
+        SYNTAX          EsWredStateEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defines WRED state of a queue on an interface."
+        INDEX        { 
+            esWredStateIfIndex,
+            esWredStateQueId            
+                    }
+    ::= { esWredStateTable 1 }
+
+    EsWredStateEntry ::= SEQUENCE {
+        esWredStateIfIndex          		InterfaceIndex,
+        esWredStateQueId         		Unsigned32,
+        esWredStateEnabled        		TruthValue,  
+        esWredStateExpWeight             Unsigned32,
+        esWredStateProfile				Unsigned32
+    }
+
+    esWredStateIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the ifIndex of the port."    
+        ::= { esWredStateEntry 1 }
+
+    esWredStateQueId OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 0 .. 7 )
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the queue ID of the entry."    
+        ::= { esWredStateEntry 2 }
+
+    esWredStateEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION
+            "Indicates the WRED state of this entry.
+            Setting the value to 'true' will enable WRED function.
+            "
+        ::= { esWredStateEntry 3 } 
+    
+    esWredStateExpWeight OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 0 .. 15 )
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION
+            "Indicates the weight used in the average queue size calculation."
+        ::= { esWredStateEntry 4 }
+	
+	esWredStateProfile OBJECT-TYPE
+        SYNTAX          Unsigned32  ( 1 .. 128 )
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION
+            "Indicates the WRED profile that will be applied."
+        ::= { esWredStateEntry 5 }	
+
+-- -----------------------------------------------------------------------------
+    esWredProfileTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsWredProfileEntry        
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table controls WRED profile configuration."
+        ::= { esWredMIBObjects 2 }
+
+    esWredProfileEntry OBJECT-TYPE
+        SYNTAX          EsWredProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry configures the threshold and drop rate for this profile."
+        INDEX        { 
+            esWredProfileId,
+            esWredProfileType            
+                    }
+    ::= { esWredProfileTable 1 }
+
+    EsWredProfileEntry ::= SEQUENCE {
+        esWredProfileId          		Unsigned32,
+        esWredProfileType         		INTEGER,
+        esWredProfileMinThresh       	Unsigned32,  
+        esWredProfileMaxThresh        	Unsigned32,
+        esWredProfileMaxDropRate        	Unsigned32   
+        }
+
+    esWredProfileId OBJECT-TYPE
+        SYNTAX          Unsigned32  ( 1 .. 128 )
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the profile id."    
+        ::= { esWredProfileEntry 1 }
+
+    esWredProfileType OBJECT-TYPE
+        SYNTAX      INTEGER {
+			green(1),
+			yellow(2),
+			red(3)
+        }
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the profile type."    
+        ::= { esWredProfileEntry 2 }
+
+    esWredProfileMinThresh OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 0 .. 100 )
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION
+            "Indicates the Minimum queue size (in cells) 
+            to start WRED dropping."
+        ::= { esWredProfileEntry 3 } 
+    
+    esWredProfileMaxThresh OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 0 .. 100 )
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION
+            "Indicates Maximum queue size (in cells) over which 
+            WRED will drop all packets destined for this queue."
+        ::= { esWredProfileEntry 4 }
+	
+	esWredProfileMaxDropRate OBJECT-TYPE
+        SYNTAX          Unsigned32  ( 0 .. 14 )
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION
+            "Indicates the drop probability when the average 
+            queue size reaches max threshold."
+        ::= { esWredProfileEntry 5 }
+
+-- -----------------------------------------------------------------------------
+	esWredCntObjects OBJECT IDENTIFIER ::= { esWredMIBObjects 3 } 
+	                           
+	esWredClearAllCnt OBJECT-TYPE
+        SYNTAX      INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to clear WRED drop counters on all interfaces when
+            set to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esWredCntObjects 1 }
+
+   	esWredDropCntTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsWredDropCntEntry        
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table controls WRED drop counter."
+        ::= { esWredCntObjects 2 }
+
+    esWredDropCntEntry OBJECT-TYPE
+        SYNTAX          EsWredDropCntEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is used to display and clear WRED drop counters on an interface."
+        INDEX        { 
+            esWredDropCntIfIndex         
+                    }
+    ::= { esWredDropCntTable 1 }
+
+    EsWredDropCntEntry ::= SEQUENCE {
+        esWredDropCntIfIndex         InterfaceIndex,
+        esWredDropCntGreen       	Counter64,  
+        esWredDropCntYellow        	Counter64,
+        esWredDropCntRed        		Counter64,
+        esWredDropCntClear			INTEGER   
+        }
+
+    esWredDropCntIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the ifIndex of the port."    
+        ::= { esWredDropCntEntry 1 }
+
+    esWredDropCntGreen OBJECT-TYPE
+        SYNTAX          Counter64        
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the drop counter for green packets."    
+        ::= { esWredDropCntEntry 2 }
+
+    esWredDropCntYellow OBJECT-TYPE
+        SYNTAX          Counter64 
+        MAX-ACCESS      read-only
+        STATUS           current
+        DESCRIPTION
+            "Indicates the drop counter for yellow packets."
+        ::= { esWredDropCntEntry 3 } 
+    
+    esWredDropCntRed OBJECT-TYPE
+        SYNTAX          Counter64 
+        MAX-ACCESS      read-only
+        STATUS           current
+        DESCRIPTION
+            "Indicates the drop counter for red packets."
+        ::= { esWredDropCntEntry 4 }  
+        
+	esWredDropCntClear OBJECT-TYPE
+        SYNTAX          INTEGER {
+            clear(1),
+            noOp(2)
+        } 
+        MAX-ACCESS      read-write
+        STATUS           current
+        DESCRIPTION                           
+            "Indicates the ifIndex of the interface on which
+            the drop counter of WRED will be cleared when
+            set to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esWredDropCntEntry 5 }
+
+--  ***************************************************************************	
+--  Conformance
+--  ***************************************************************************			   		
+	esWredCompliances OBJECT IDENTIFIER ::= { esWredMIBConformance 1 }
+		
+	esWredCompliance MODULE-COMPLIANCE
+		STATUS current
+		DESCRIPTION
+			"The compliance statement for entities which implement the
+			DLINKES-WRED-MIB."
+		MODULE -- this module
+		MANDATORY-GROUPS {
+		    esWredStateGroup
+		}
+		
+	GROUP       esWredProfileGroup
+           DESCRIPTION
+              "This group is required only if WRED profile feature
+              is implemented by the agent."
+		
+        GROUP       esWredDropCntGroup
+           DESCRIPTION
+              "This group is required only if WRED drop counter
+              is supported by the agent."
+
+		::= { esWredCompliances 1 }
+		
+	esWredGroups OBJECT IDENTIFIER ::= { esWredMIBConformance 2 }
+	
+	esWredStateGroup OBJECT-GROUP
+		OBJECTS {
+			esWredStateEnabled,
+            esWredStateExpWeight,
+            esWredStateProfile            
+		}
+		STATUS current
+		DESCRIPTION
+			"A collection of objects providing WRED state configuration."
+		::= { esWredGroups 1 }
+	
+	esWredProfileGroup OBJECT-GROUP
+		OBJECTS {
+		   	esWredProfileMinThresh,
+		   	esWredProfileMaxThresh,
+		   	esWredProfileMaxDropRate
+		}
+		STATUS current
+		DESCRIPTION
+			"A collection of objects providing WRED profile configuration."
+		::= { esWredGroups 2 }
+
+    esWredDropCntGroup OBJECT-GROUP
+		OBJECTS {
+		   	esWredClearAllCnt,
+		   	esWredDropCntGreen,
+		   	esWredDropCntYellow,
+		   	esWredDropCntRed,
+		   	esWredDropCntClear
+		}
+		STATUS current
+		DESCRIPTION
+			"A collection of objects providing WRED drop counter configuration."
+		::= { esWredGroups 3 }
+END
+

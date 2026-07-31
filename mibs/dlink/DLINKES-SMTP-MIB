@@ -1,0 +1,307 @@
+--  *****************************************************************
+--  DLINKES-SMTP-MIB.mib : D-Link SMTP MIB
+--
+--  Copyright (c) 2014 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-SMTP-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        IpAddress,
+        Unsigned32
+                FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP
+                FROM SNMPv2-CONF
+        DisplayString,
+        RowStatus
+                FROM SNMPv2-TC
+        Ipv6Address
+                FROM IPV6-TC
+        dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+    dlinkEsSmtpMIB MODULE-IDENTITY
+        LAST-UPDATED "201406160000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "The Structure of SMTP for the proprietary enterprise."
+
+        REVISION "201406160000Z"
+        DESCRIPTION
+            "Move esSmtpMailReceiverRowStatus to the end of the object."
+
+        REVISION "201406110000Z"
+        DESCRIPTION
+            "Change MODULE-IDENTITY from dlinkSmtpMIB to dlinkEsSmtpMIB."
+
+        REVISION "201405060000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+
+        ::= { dlinkCommon 177 }
+
+-- -----------------------------------------------------------------------------
+    esSmtpMIBNotifications      OBJECT IDENTIFIER ::= { dlinkEsSmtpMIB 0 }
+    esSmtpMIBObjects            OBJECT IDENTIFIER ::= { dlinkEsSmtpMIB 1 }
+    esSmtpMIBConformance        OBJECT IDENTIFIER ::= { dlinkEsSmtpMIB 2 }
+
+    esSmtpCtrl                  OBJECT IDENTIFIER ::= { esSmtpMIBObjects 1 }
+    esSmtpTest                  OBJECT IDENTIFIER ::= { esSmtpMIBObjects 2 }
+-- -----------------------------------------------------------------------------
+
+-- ********************************************************************
+--      esSmtpCtrl    OBJECT IDENTIFIER ::= { esSmtpMIBObjects  1 }
+-- ********************************************************************
+
+    esSmtpSendInterval OBJECT-TYPE
+        SYNTAX      Unsigned32 (0..65535)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object describes the interval in minutes at which the switch
+             sends the email message. If set to 0, switch will send a email
+             for each event immediately."
+        ::= { esSmtpCtrl 1 }
+
+    esSmtpSrvVrfName OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the name of the routing forwarding instance.
+             A zero length string indicates the VRF name is not specified."
+        ::= { esSmtpCtrl 2 }
+
+    esSmtpIpv4SrvAddr OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is the SMTP IPv4 server's IP address."
+        ::= { esSmtpCtrl 3 }
+
+    esSmtpIpv4SrvPort OBJECT-TYPE
+        SYNTAX  Unsigned32 (0..65535)
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object is the SMTP IPv4 server's TCP port number.
+             The default value is 25.
+             You can configure it from 1 to 65535."
+        ::= { esSmtpCtrl 4 }
+
+    esSmtpIpv6SrvAddr OBJECT-TYPE
+        SYNTAX      Ipv6Address
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is the SMTP IPv6 server's IP address."
+        ::= { esSmtpCtrl 5 }
+
+    esSmtpIpv6SrvIfName OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (0..12))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This node is used to specify the interface name
+             when esSmtpIpv6SrvAddr is the link local address."
+        ::= { esSmtpCtrl 6 }
+
+    esSmtpIpv6SrvPort OBJECT-TYPE
+        SYNTAX  Unsigned32 (0..65535)
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object is the SMTP IPv6 server's TCP port number.
+             The default value is 25.
+             You can configure it from 1 to 65535."
+        ::= { esSmtpCtrl 7 }
+
+    esSmtpMailSelfAddr OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (0..254))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object describes the mail address of the sender."
+        ::= { esSmtpCtrl 8 }
+
+    esSmtpMailReceiverTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsSmtpMailReceiverEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object describes the address list of the mail receivers."
+        ::= { esSmtpCtrl 9 }
+
+    esSmtpMailReceiverEntry OBJECT-TYPE
+        SYNTAX      EsSmtpMailReceiverEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This is a list of information contained in the esSmtpMailReceiverTable."
+        INDEX   { esSmtpMailReceiverIndex }
+        ::= { esSmtpMailReceiverTable 1 }
+
+    EsSmtpMailReceiverEntry ::=
+        SEQUENCE {
+          esSmtpMailReceiverIndex       Unsigned32,
+          esSmtpMailReceiverName        DisplayString,
+          esSmtpMailReceiverRowStatus   RowStatus
+        }
+
+    esSmtpMailReceiverIndex OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..8)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This is the index of the mail receiver information."
+        ::= { esSmtpMailReceiverEntry 1 }
+
+    esSmtpMailReceiverName OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (1..254))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object describes the address of the mail receiver."
+        ::= { esSmtpMailReceiverEntry 2 }
+
+    esSmtpMailReceiverRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+              "This object describes the state of the mail receiver."
+        ::= { esSmtpMailReceiverEntry 99 }
+
+
+-- ********************************************************************
+--    esSmtpTest            OBJECT IDENTIFIER ::= { esSmtpMIBObjects 2 }
+-- ********************************************************************
+    esSmtpTestMsgSubject OBJECT-TYPE
+        SYNTAX      DisplayString  (SIZE (0..128))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This is the subject of test mail."
+        ::= { esSmtpTest 1 }
+
+    esSmtpTestMsgContent OBJECT-TYPE
+        SYNTAX      DisplayString  (SIZE (0..512))
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This is the content of test mail."
+        ::= { esSmtpTest 2 }
+
+    esSmtpSendTestMsg    OBJECT-TYPE
+        SYNTAX  INTEGER {
+            send(1),
+            noAction(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "When check Send(1), it will send mail.
+             smtpSendTestStatus will indicate the test status.
+             "
+        ::= { esSmtpTest 3 }
+
+    esSmtpSendTestStatus OBJECT-TYPE
+        SYNTAX  INTEGER {
+            success(1),
+            failed(2),
+            inProcessing(3)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object describes the latest test result."
+        ::= { esSmtpTest 4 }
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esSmtpCompliances   OBJECT IDENTIFIER ::= { esSmtpMIBConformance 1 }
+
+    esSmtpCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+             DLINKES-SMTP-MIB."
+        MODULE -- this module
+
+        GROUP    esSmtpCtrlGroup
+        DESCRIPTION
+            "This group is conditionally mandatory and must be implemented by
+             the agent only if SMTP feature is supported."
+
+        OBJECT      esSmtpSrvVrfName
+        MIN-ACCESS  read-only
+        DESCRIPTION
+            "This object is conditionally mandatory and must be implemented by
+             the agent only if the implementation supports VRF."
+
+        GROUP    esSmtpIpv6SrvGroup
+        DESCRIPTION
+            "This group is conditionally mandatory and must be implemented by
+             the agent only if IPv6 feature is supported."
+
+        GROUP    esSmtpTestGroup
+        DESCRIPTION
+            "This group is conditionally mandatory and must be implemented by
+             the agent only if SMTP feature is supported."
+
+        ::= { esSmtpCompliances 1 }
+
+-- units of conformance
+    esSmtpGroups OBJECT IDENTIFIER ::= { esSmtpMIBConformance 2 }
+
+    esSmtpCtrlGroup OBJECT-GROUP
+        OBJECTS {
+            esSmtpSendInterval,
+            esSmtpSrvVrfName,
+            esSmtpIpv4SrvAddr,
+            esSmtpIpv4SrvPort,
+            esSmtpMailSelfAddr,
+            esSmtpMailReceiverRowStatus,
+            esSmtpMailReceiverName
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides configuration for SMTP."
+        ::= { esSmtpGroups 1 }
+
+    esSmtpIpv6SrvGroup OBJECT-GROUP
+        OBJECTS {
+            esSmtpIpv6SrvAddr,
+            esSmtpIpv6SrvIfName,
+            esSmtpIpv6SrvPort
+         }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects provides configuration for SMTP IPv6 server."
+        ::= { esSmtpGroups 2 }
+
+    esSmtpTestGroup OBJECT-GROUP
+        OBJECTS {
+            esSmtpTestMsgSubject,
+            esSmtpTestMsgContent,
+            esSmtpSendTestMsg,
+            esSmtpSendTestStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides test for SMTP."
+            ::= { esSmtpGroups 3 }
+
+END

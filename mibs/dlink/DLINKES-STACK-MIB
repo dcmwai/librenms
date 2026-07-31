@@ -1,0 +1,648 @@
+--  *****************************************************************
+--  DLINKES-STACK-MIB.mib : Stack MIB
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-STACK-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE, Gauge32,
+        Integer32, Unsigned32
+                FROM SNMPv2-SMI
+        DisplayString, TruthValue, MacAddress
+                FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
+                FROM SNMPv2-CONF
+        dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+    dlinkEsStackMIB    MODULE-IDENTITY
+        LAST-UPDATED "201907250000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for stacking lite feature."
+
+        REVISION "202103170000Z"
+        DESCRIPTION
+            "Modify the following MIB object.
+            esStackBandwidth."
+
+        REVISION "202006010000Z"
+        DESCRIPTION
+            "Add the following MIB object.
+            esStackMIBNotifications, esStackTrapStateEnabled, esStackNotifyInfoBoxId,
+            esStackNotifyInfoTopologyType, esStackTPChangeNotification and esStackNotifGroup."
+
+        REVISION "201907250000Z"
+        DESCRIPTION
+            "Add the following MIB object.
+            esStackTopology."
+
+        REVISION "201812220000Z"
+        DESCRIPTION
+            "Add the following MIB objects.
+            esStackInfoStartPort and esStackInfoPortRange."
+
+        REVISION "201811300000Z"
+        DESCRIPTION
+            "Add the following MIB objects.
+            esStackMaxNumOfDevices,esStackMaxNumOfCost, esStackNumOfCost, esStackStackTechnology, 
+            and esStackInfoUnitCost"
+
+        REVISION "201806210000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+     ::= { dlinkCommon 9 }
+
+--
+--    MIB OBJECTS
+--
+    esStackMIBNotifications      OBJECT IDENTIFIER ::= { dlinkEsStackMIB 0 }
+    esStackMIBObjects            OBJECT IDENTIFIER ::= { dlinkEsStackMIB 1 }
+    esStackMIBConformance        OBJECT IDENTIFIER ::= { dlinkEsStackMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esStackMgmt            OBJECT IDENTIFIER ::= { esStackMIBObjects 1 }
+
+
+    esStackMyBoxId     OBJECT-TYPE
+        SYNTAX          Integer32 (1..255)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the box ID of the device.
+           "
+        ::= { esStackMgmt 2 }
+
+    esStackMasterBoxId     OBJECT-TYPE
+        SYNTAX          Integer32 (1..255)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the master box ID.
+           "
+        ::= { esStackMgmt 3 }
+
+    esStackBackupBoxId     OBJECT-TYPE
+        SYNTAX          Integer32 (0..255)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the backup box ID, 0 is no backup box
+           selected."
+        ::= { esStackMgmt 4 }
+
+    esStackNumOfDevices    OBJECT-TYPE
+        SYNTAX          Integer32 (1..255)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current number of devices in the stacking
+            system. The number of devices(boxes) can be stacked is restricted by max box count and max stack cost."
+        ::= {  esStackMgmt 5 }
+
+    esStackAdminEnabled     OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS            current
+        DESCRIPTION
+            "This object indicates whether the administrative stacking mode has
+            been enabled or not.
+            The new setting will not take effect until the next reboot.
+            "
+        ::= {  esStackMgmt 6 }
+
+
+    esStackTrapStateEnabled        OBJECT-TYPE
+        SYNTAX            TruthValue
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+            "This object indicates whether the sending of stacking related traps
+            is enabled or not."
+        DEFVAL { false }
+        ::= {  esStackMgmt 8 }
+
+    esStackBandwidth        OBJECT-TYPE
+        SYNTAX            INTEGER {
+            twoPortSfp(1),
+            fourPortSfp(2),
+            twoPort10BaseT(3),
+            fourPortHybrid(4),
+	    twoPortSfp28(5),
+	    fourPortSfp28(6)
+        }
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+            "This object indicates the stacking port bandwidth.
+            twoPortSfp - two SFP+ ports are used for stacking
+            fourPortSFP - four SFP+ ports are used for stacking
+            twoPort10BaseT - two 10-BaseT ports are used for stacking
+            fourPortHybrid - two SFP+ and two 10-BaseT ports are used for stacking
+            The stacking port bandwidth setting of a switch device must be set
+            before the switch unit can be chained with other switch devices.
+            The setting will be saved on local switch unit if the user saves
+            the configuration.
+            The change of stacking port bandwidth will not take effect until
+            the next reboot.
+            "
+        DEFVAL { twoPortSfp }
+        ::= { esStackMgmt 9 }
+
+    esStackRunningConfigSyncStatus OBJECT-TYPE
+        SYNTAX      INTEGER {
+                     synchronized(1),
+                     stale(2),
+                     nobackupbox(3)
+                    }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Indicates whether the running configuration on the backup box includes
+             all changes made on the master box.
+
+            synchronized:   The running configuration on the backup box is the same as
+                            on the master box.
+            stale:          The running configuration has not yet been copied to
+                            the backup box or has been synchronized, but
+                            it is out of date.
+            nobackupbox:    No backup unit has been elected."
+
+        ::= { esStackMgmt 10 }
+
+     esStackRunningConfigLastSync OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Age of the running configuration on the backup unit. The time since
+             the running configuration was last synchronized to the backup unit.
+            "
+        ::= { esStackMgmt 11 }
+
+     esStackRunningConfigNextSync OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of seconds until the running configuration will be
+             synchronized to the backup unit. The special value of 0 represents
+             the running configuration synchronization is unnecessary and
+             the running configuration on the backup box is synchronized.
+            "
+        ::= { esStackMgmt 12 }
+        
+    esStackMaxNumOfDevices    OBJECT-TYPE
+        SYNTAX          Integer32 (1..255)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the maximum number of devices allowed in the stacking
+            system. The number of devices(boxes) can be stacked is restricted by max box count and max stack cost."
+        ::= { esStackMgmt 15 }
+
+    esStackMaxNumOfCost    OBJECT-TYPE
+        SYNTAX          Integer32 (1..255)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the maximum cost allowed in the stacking
+            system. The devices(boxes) that can be stacked is limited by the device number and the cost."
+        ::= { esStackMgmt 16 }
+
+    esStackNumOfCost    OBJECT-TYPE
+        SYNTAX          Integer32 (1..255)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current cost in the stacking
+            system. The number of devices(boxes) can be stacked is restricted by max box count and max stack cost."
+        ::= { esStackMgmt 17 }   
+        
+    esStackStackTechnology    OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..255))
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the Stack technology information."
+        ::= { esStackMgmt 18 }
+
+    esStackTopology     OBJECT-TYPE
+        SYNTAX          INTEGER {
+            standAlone(1),
+            duplexChain(2),
+            duplexRing(3)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the state of the stacking topology."
+        ::= { esStackMgmt 19 }
+
+
+
+-- -----------------------------------------------------------------------------
+    esStackUnitInfoTable   OBJECT-TYPE
+        SYNTAX         SEQUENCE OF EsStackUnitInfoEntry
+        MAX-ACCESS     not-accessible
+        STATUS         current
+        DESCRIPTION
+           "This table displays the information of the devices in the stacking
+           system.
+           When stacking mode is not effectively enabled, there is no entry in
+           this table.
+           "
+        ::= { esStackMgmt 13 }
+
+    esStackUnitInfoEntry OBJECT-TYPE
+        SYNTAX         EsStackUnitInfoEntry
+        MAX-ACCESS     not-accessible
+        STATUS         current
+        DESCRIPTION
+            "An entry (conceptual row) in esStackUnitInfoTable."
+        INDEX       { esStackInfoBoxId }
+        ::= { esStackUnitInfoTable 1}
+
+    EsStackUnitInfoEntry ::=   SEQUENCE {
+        esStackInfoBoxId                   Integer32,
+        esStackInfoExist                   TruthValue,
+        esStackInfoRole                    INTEGER,
+        esStackInfoUserSetBoxId            Integer32,
+        esStackInfoModuleName              DisplayString,
+        esStackInfoPriority                Integer32,
+        esStackInfoMacAddr                 MacAddress,
+        esStackInfoPromVersion             DisplayString,
+        esStackInfoFirmwareVer             DisplayString,
+        esStackInfoHardwareVer             DisplayString,
+        esStackInfoUnitStatus              INTEGER,
+        esStackInfoUnitCost                Integer32,
+        esStackInfoStartPort               Integer32,
+        esStackInfoPortRange               Integer32
+    }
+
+    esStackInfoBoxId        OBJECT-TYPE
+        SYNTAX            Integer32 (1..255)
+        MAX-ACCESS        not-accessible
+        STATUS            current
+        DESCRIPTION
+           "This object indicates box ID of the entry."
+        ::= { esStackUnitInfoEntry 1 }
+
+    esStackInfoExist        OBJECT-TYPE
+        SYNTAX            TruthValue
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "The state of existence of the unit."
+        ::= { esStackUnitInfoEntry 2 }
+
+    esStackInfoRole    OBJECT-TYPE
+        SYNTAX        INTEGER {
+            unknown(1),
+            standAlone(3),
+            master(4),
+            slave(5),
+            backupmaster(6)
+        }
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "The stacking role of the unit."
+       ::= { esStackUnitInfoEntry 3 }
+
+    esStackInfoUserSetBoxId    OBJECT-TYPE
+        SYNTAX            Integer32 (0..255)
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+            "Allows setting the unit number associated with this unit.  This number must 
+            be less than the value supported. Setting 
+            this object to a non-zero value will initate unit renumbering. The switch will 
+            be reset to perform unit renumbering and the configuration of switch interfaces 
+            will be cleared. If the unit being renumbered is the manager of the stack, then
+            all the switches in the stack will be reset to perform Manager unit renumbering 
+            and the configuration of Manager switch interfaces will be cleared."
+        ::= { esStackUnitInfoEntry 4 }
+
+    esStackInfoModuleName        OBJECT-TYPE
+        SYNTAX            DisplayString (SIZE (0..32))
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "This object indicates the module name of the device."
+        ::= { esStackUnitInfoEntry 5 }
+
+    esStackInfoPriority        OBJECT-TYPE
+        SYNTAX            Integer32 (0..15)
+        MAX-ACCESS        read-write
+        STATUS            current
+        DESCRIPTION
+            "Indicates the configured preference value assigned to the unit. 
+            The preference value indicates how likely this unit is to be 
+            chosen as the management unit. A value of 0 indicates an 
+            unassigned preference.
+            1 - 15 indicates a specified preference and the higher number
+            means a higher priority."
+        ::= { esStackUnitInfoEntry 6 }
+
+    esStackInfoMacAddr        OBJECT-TYPE
+        SYNTAX            MacAddress
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "The MAC address of the device."
+        ::= { esStackUnitInfoEntry 7 }
+
+    esStackInfoPromVersion        OBJECT-TYPE
+        SYNTAX            DisplayString (SIZE (0..255))
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "A textual string containing the PROM version of the
+            stacking device."
+        ::= { esStackUnitInfoEntry 8 }
+
+    esStackInfoFirmwareVer    OBJECT-TYPE
+        SYNTAX            DisplayString (SIZE (0..255))
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "A textual string containing the firmware version of the
+        stacking device."
+        ::= { esStackUnitInfoEntry 9 }
+
+    esStackInfoHardwareVer    OBJECT-TYPE
+        SYNTAX            DisplayString (SIZE (0..255))
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "A textual string containing the hardware version of the
+            stacking device."
+        ::= { esStackUnitInfoEntry 10 }
+
+    esStackInfoUnitStatus    OBJECT-TYPE
+        SYNTAX            INTEGER {
+            unknown(0),
+            ok(1),
+            unsupported(2),
+            codeMismatch(3),
+            notPresent(4),
+            codeUpdate(5)
+        }
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "The unit status of this stacking box."
+        ::= { esStackUnitInfoEntry 14 }
+
+     esStackInfoUnitCost        OBJECT-TYPE
+        SYNTAX            Integer32 (0..15)
+        MAX-ACCESS        read-only
+        STATUS            current
+        DESCRIPTION
+            "The unit cost."
+        ::= { esStackUnitInfoEntry 15 }
+
+     esStackInfoStartPort		OBJECT-TYPE
+        SYNTAX			Integer32 (0..65535)
+        MAX-ACCESS		read-only
+        STATUS			current
+        DESCRIPTION
+            "The start front port number of this stacking box."
+        ::= { esStackUnitInfoEntry 16 }
+
+     esStackInfoPortRange		OBJECT-TYPE
+        SYNTAX			Integer32 (0..65535)
+        MAX-ACCESS		read-only
+        STATUS			current
+        DESCRIPTION
+            "The total front ports of this unit."
+        ::= { esStackUnitInfoEntry 17 }
+
+-- -----------------------------------------------------------------------------
+    esStackUnitStackPortTable   OBJECT-TYPE
+        SYNTAX         SEQUENCE OF EsStackUnitStackPortEntry
+        MAX-ACCESS     not-accessible
+        STATUS         current
+        DESCRIPTION
+           "This table displays contains information for all stack ports present 
+           in the stacking system.
+           When stacking mode is not effectively enabled, there is no entry in
+           this table.
+           "
+        ::= { esStackMgmt 14 }
+
+    esStackUnitStackPortEntry OBJECT-TYPE
+        SYNTAX         EsStackUnitStackPortEntry
+        MAX-ACCESS     not-accessible
+        STATUS         current
+        DESCRIPTION
+            "An entry (conceptual row) in esStackUnitStackPortTable."
+        INDEX       { esStackStackPortIndex }
+        ::= { esStackUnitStackPortTable 1}
+
+    EsStackUnitStackPortEntry ::=   SEQUENCE {
+        esStackStackPortIndex              Unsigned32,
+        esStackStackPortBoxId              Integer32,
+        esStackStackPortTag                DisplayString,
+        esStackStackPortLinkStatus         INTEGER,
+        esStackStackPortLinkSpeed          Gauge32,
+        esStackStackPortNeighborBoxId      Integer32
+    }
+
+    esStackStackPortIndex        OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+           "An arbitrary index used to reference Stack Ports in the table."
+        ::= { esStackUnitStackPortEntry 1 }
+
+    esStackStackPortBoxId       OBJECT-TYPE
+        SYNTAX      Integer32 (1..255)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The Box Index this Stack Port is physically located on."
+        ::= { esStackUnitStackPortEntry 2 }
+
+    esStackStackPortTag         OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The name of the Stack Port for this instance."
+        ::= { esStackUnitStackPortEntry 3 }
+
+    esStackStackPortLinkStatus  OBJECT-TYPE
+        SYNTAX      INTEGER {
+                     up(1),
+                     down(2)
+                    }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Link status of the Stack Port."
+        ::= { esStackUnitStackPortEntry 4 }
+
+    esStackStackPortLinkSpeed   OBJECT-TYPE
+        SYNTAX      Gauge32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Speed of the Stack Port measured in Gb/s."
+        ::= { esStackUnitStackPortEntry 5 }
+
+    esStackStackPortNeighborBoxId   OBJECT-TYPE
+        SYNTAX      Integer32 (1..255)
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The Neighbor Box Index this Stack Port is physically connected to.
+             When the link status of this Stack Port is down, box ID 0 is always 
+             returned."
+        ::= { esStackUnitStackPortEntry 6 }
+
+-- -----------------------------------------------------------------------------
+    esStackNotificationInfo    OBJECT IDENTIFIER ::= { esStackMIBObjects 2 }
+
+    esStackNotifyInfoBoxId OBJECT-TYPE
+        SYNTAX            Integer32 (1..255)
+        MAX-ACCESS        accessible-for-notify
+        STATUS            current
+        DESCRIPTION
+           "This object indicates box ID of the notification."
+        ::= { esStackNotificationInfo 1 }
+
+    esStackNotifyInfoTopologyType OBJECT-TYPE
+        SYNTAX          INTEGER    {
+            chain(1),
+            ring(2)
+        }
+        MAX-ACCESS        accessible-for-notify
+        STATUS            current
+        DESCRIPTION
+           "This object indicates the current stacking topology of the
+           notification."
+        ::= { esStackNotificationInfo 2 }
+
+
+--  ***************************************************************************
+--  Notifications
+--  ***************************************************************************
+
+    esStackTPChangeNotification NOTIFICATION-TYPE
+        OBJECTS            {
+            esStackNotifyInfoTopologyType,
+            esStackNotifyInfoBoxId,
+            esStackInfoMacAddr
+        }
+       STATUS          current
+       DESCRIPTION     "The stacking topology change notification."
+       ::= { esStackMIBNotifications 4 }
+
+
+-- -----------------------------------------------------------------------------
+-- MIB Conformance statements
+-- -----------------------------------------------------------------------------
+    esStackMIBCompliances    OBJECT IDENTIFIER ::= { esStackMIBConformance 1 }
+    esStackMIBGroups         OBJECT IDENTIFIER ::= { esStackMIBConformance 2 }
+
+    esStackCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKSW-STACK-MIB."
+
+        MODULE          -- this module
+        MANDATORY-GROUPS    {
+            esStackBasicMgmtGroup,
+            esStackNotifGroup
+        }
+
+        GROUP esStackBandwidthMgmtGroup
+        DESCRIPTION
+            "This group is mandatory if configurable stacking port bandwidth
+            is supported."
+
+        ::= { esStackMIBCompliances 1 }
+
+-- Units of Conformance
+
+     esStackBasicMgmtGroup OBJECT-GROUP
+        OBJECTS {
+            esStackMyBoxId,
+            esStackMasterBoxId,
+            esStackBackupBoxId,
+            esStackNumOfDevices,
+            esStackAdminEnabled,
+            esStackTrapStateEnabled,
+            esStackRunningConfigSyncStatus,
+            esStackRunningConfigLastSync,
+            esStackRunningConfigNextSync,
+            esStackMaxNumOfDevices,
+            esStackMaxNumOfCost, 
+            esStackNumOfCost, 
+            esStackStackTechnology,
+            esStackTopology,
+            esStackInfoExist,
+            esStackInfoRole,
+            esStackInfoUserSetBoxId,
+            esStackInfoModuleName,
+            esStackInfoPriority,
+            esStackInfoMacAddr,
+            esStackInfoPromVersion,
+            esStackInfoFirmwareVer,
+            esStackInfoHardwareVer,
+            esStackNotifyInfoBoxId,
+            esStackNotifyInfoTopologyType,
+            esStackInfoUnitStatus,
+            esStackInfoUnitCost
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides basic management and information
+            for stacking feature."
+        ::= { esStackMIBGroups 1 }
+
+    esStackBandwidthMgmtGroup OBJECT-GROUP
+        OBJECTS {
+            esStackBandwidth,
+            esStackStackPortBoxId,
+            esStackStackPortTag,
+            esStackStackPortLinkStatus,
+            esStackStackPortLinkSpeed,
+            esStackStackPortNeighborBoxId
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing management and information for
+            stacking port bandwidth."
+        ::= { esStackMIBGroups 2 }
+
+    esStackNotifGroup NOTIFICATION-GROUP
+        NOTIFICATIONS {
+            esStackTPChangeNotification
+        }
+        STATUS  current
+        DESCRIPTION
+             "A collection of notifications for indicating the status change
+             of stacking."
+        ::= { esStackMIBGroups 3 }
+
+
+
+END
+

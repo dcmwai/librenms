@@ -1,0 +1,493 @@
+--  *****************************************************************
+--  DLINKES-DHCP-FILTER-MIB.mib : DHCP Filter MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+DLINKES-DHCP-FILTER-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP
+            FROM SNMPv2-CONF
+        NOTIFICATION-TYPE,
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        IpAddress,
+        Unsigned32
+            FROM SNMPv2-SMI
+        DisplayString,
+        MacAddress,
+        DateAndTime,
+        TruthValue,
+        RowStatus        
+            FROM SNMPv2-TC
+        ifIndex
+            FROM IF-MIB
+        VlanId
+            FROM Q-BRIDGE-MIB
+        Dlink2kVlanList                 
+            FROM DLINKES-TC-MIB            
+        dlinkCommon                     
+            FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsDhcpFilterMIB MODULE-IDENTITY
+        LAST-UPDATED "201312300000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for filtering DHCP packet to 
+            implement the feature of DHCP Server Screening."
+            
+        REVISION "201312300000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."             
+        ::= { dlinkCommon 133 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpFilterMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsDhcpFilterMIB 0 }
+    esDhcpFilterMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsDhcpFilterMIB 1 }
+    esDhcpFilterMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsDhcpFilterMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpFilterGlobalObjects       OBJECT IDENTIFIER ::= { esDhcpFilterMIBObjects 1 }
+
+    esDhcpFilterLogBufferSize OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..1024)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the log buffer size for storing the 
+             illegal server information.
+
+             The special value of 0 indicates logging buffer is disabled."             
+        DEFVAL          { 32 } 
+        ::= { esDhcpFilterGlobalObjects 1 }
+
+    esDhcpFilterClearLogBuffer OBJECT-TYPE
+        SYNTAX          INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object triggers clearing the log buffer of DHCP Server Screen 
+            information when set to 'clear'.
+
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."            
+        ::= { esDhcpFilterGlobalObjects 2 }
+
+    esDhcpFilterGlobalNotifsEnabled  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION   
+            "Set to 'true' to enable global SNMP notification
+            for DHCP Server Screen feature.  Setting the object to
+            'false' will disable SNMP notifications."
+        DEFVAL      { false }              
+        ::= { esDhcpFilterGlobalObjects 3}
+
+-- -----------------------------------------------------------------------------
+    esDhcpFilterProfileObjects          OBJECT IDENTIFIER ::= { esDhcpFilterMIBObjects 2 }
+    
+    esDhcpFilterProfileTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DDhcpFilterProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the configuration of DHCP Server Screen profile."
+        ::= { esDhcpFilterProfileObjects 1 }
+
+    esDhcpFilterProfileEntry OBJECT-TYPE
+        SYNTAX          DDhcpFilterProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration of DHCP Server Screen profile."
+        INDEX           { esDhcpFilterProfileName} 
+        ::= { esDhcpFilterProfileTable 1 }
+
+    DDhcpFilterProfileEntry ::= SEQUENCE {
+        esDhcpFilterProfileName             DisplayString,
+        esDhcpFilterProfileStatus           RowStatus
+    }
+
+    esDhcpFilterProfileName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE  (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS  current        
+        DESCRIPTION
+            "This object indicates the profile name of the corresponding entry."   
+        ::= { esDhcpFilterProfileEntry 1 }
+
+    esDhcpFilterProfileStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is used to manage the creation and deletion
+             of rows in this table. 
+            " 
+        ::= { esDhcpFilterProfileEntry 99 }
+
+-- ----------------------------------------------------------------------------- 
+    esDhcpFilterProfileClientTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DDhcpFilterProfileClientEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides a list of client MAC addresses for profiles."
+        ::= { esDhcpFilterProfileObjects 2 }
+
+    esDhcpFilterProfileClientEntry OBJECT-TYPE
+        SYNTAX          DDhcpFilterProfileClientEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains a client MAC address on a profile. The first 
+            index element value identifies the profile (esDhcpFilterProfileEntry) 
+            that a client MAC address (esDhcpFilterProfileClientEntry) belongs 
+            to. An entry is removed from this table when its corresponding 
+            esDhcpFilterProfileEntry is deleted."
+        INDEX           { 
+            esDhcpFilterProfileName,
+            esDhcpFilterClientMacAddress
+            } 
+        ::= { esDhcpFilterProfileClientTable 1 }
+
+    DDhcpFilterProfileClientEntry ::= SEQUENCE {
+        esDhcpFilterClientMacAddress             MacAddress,
+        esDhcpFilterClientRowStatus              RowStatus
+        }
+
+    esDhcpFilterClientMacAddress OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the MAC address of a DHCP Client." 
+        ::= { esDhcpFilterProfileClientEntry 1 }  
+
+    esDhcpFilterClientRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is used to manage the creation and deletion
+             of rows in this table. 
+            " 
+        ::= { esDhcpFilterProfileClientEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esDhcpFilterIfObjects          OBJECT IDENTIFIER ::= { esDhcpFilterMIBObjects 3 }
+ 
+ -- -----------------------------------------------------------------------------
+    esDhcpFilterIfStateTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DDhcpFilterIfStateEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to control the state of DHCP Server Screen
+            per interface."
+        ::= { esDhcpFilterIfObjects 1 }
+
+    esDhcpFilterIfStateEntry OBJECT-TYPE
+        SYNTAX          DDhcpFilterIfStateEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the configuration to enable or disable DHCP Server
+            Screen on an interface."
+        INDEX           { ifIndex } 
+        ::= { esDhcpFilterIfStateTable 1 }
+
+    DDhcpFilterIfStateEntry ::= SEQUENCE {
+        esDhcpFilterIfStateEnabled            TruthValue,
+        esDhcpFilterIfStateVlansFirst2K       Dlink2kVlanList,
+        esDhcpFilterIfStateVlansSecond2K       Dlink2kVlanList
+        }
+
+    esDhcpFilterIfStateEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the DHCP Server Screen is enabled on
+            the interface." 
+        ::= { esDhcpFilterIfStateEntry 1 }
+        
+    esDhcpFilterIfStateVlansFirst2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object sets the DHCP server check VLAN(s) in a 
+           string of octets containing one bit per VLAN for VLANs 1 to 2048. 
+           If the bit is set to '1', then the VLAN should be checked.
+
+           (1) If a port is enabled with this VLAN parameter, the 
+               DHCP server packets arrive on this port in enabled 
+               VLANs will be checked, for those packets in disabled 
+               VLANs will bypass.
+           (2) If a port is enabled without VLAN parameter, all DHCP 
+               server packets arrive on this port will be checked.            
+            "
+        ::= { esDhcpFilterIfStateEntry 3 }
+
+    esDhcpFilterIfStateVlansSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object sets the DHCP server check VLAN(s) in a 
+           string of octets containing one bit per VLAN for VLANs 2049 to 4094. 
+           If the bit is set to '1', then the VLAN should be checked.
+
+           (1) If a port is enabled with this VLAN parameter, the 
+               DHCP server packets arrive on this port in enabled 
+               VLANs will be checked, for those packets in disabled 
+               VLANs will bypass.
+           (2) If a port is enabled without VLAN parameter, all DHCP 
+               server packets arrive on this port will be checked.            
+            " 
+       ::= { esDhcpFilterIfStateEntry 4 }    
+       
+ -- -----------------------------------------------------------------------------  
+    esDhcpFilterIfTrustServerTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DDhcpFilterIfTrustServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to configure trusted DHCP servers 
+            on a per interface basis."
+        ::= { esDhcpFilterIfObjects 2 }
+
+    esDhcpFilterIfTrustServerEntry OBJECT-TYPE
+        SYNTAX          DDhcpFilterIfTrustServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the configuration to specify trusted DHCP server
+            on an interface.
+            "
+        INDEX           { 
+            ifIndex,
+            esDhcpFilterTrustServerIpAddress
+        } 
+        ::= { esDhcpFilterIfTrustServerTable 1 }
+
+    DDhcpFilterIfTrustServerEntry ::= SEQUENCE {
+        esDhcpFilterTrustServerIpAddress     IpAddress,
+        esDhcpFilterTrustProfileName         DisplayString,
+        esDhcpFilterTrustRowStatus           RowStatus
+    }
+
+    esDhcpFilterTrustServerIpAddress OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the DHCP Server IP address of the entry."
+        ::= { esDhcpFilterIfTrustServerEntry 1 }
+
+    esDhcpFilterTrustProfileName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE  (0..32))
+        MAX-ACCESS      read-create
+        STATUS  current        
+        DESCRIPTION
+            "This object indicates the profile which contains a list of client
+            MAC addresses.
+            A zero length string indicates the profile is not specified, and
+            the server message with the specified server IP address is forwarded.
+            "
+        ::= { esDhcpFilterIfTrustServerEntry 2 }
+
+    esDhcpFilterTrustRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is used to manage the creation and deletion
+            of rows in this table." 
+        ::= { esDhcpFilterIfTrustServerEntry 99 }
+
+-- -----------------------------------------------------------------------------      
+    esDhcpFilterLogBufferObjects          OBJECT IDENTIFIER ::= { esDhcpFilterMIBObjects 4 }
+ 
+    esDhcpFilterLogBufferTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DDhcpFilterLogBufferEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the log for illegal DHCP Servers."
+        ::= { esDhcpFilterLogBufferObjects 1 }
+
+    esDhcpFilterLogBufferEntry OBJECT-TYPE
+        SYNTAX          DDhcpFilterLogBufferEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the information of an illegal DHCP Server."
+        INDEX           { 
+            esDhcpFilterLogBufferIndex
+        } 
+        ::= { esDhcpFilterLogBufferTable 1 }
+
+    DDhcpFilterLogBufferEntry ::= SEQUENCE {
+        esDhcpFilterLogBufferIndex           Unsigned32,
+        esDhcpFilterLogBufServerIpAddr       IpAddress,
+        esDhcpFilterLogBufClientMacAddr      MacAddress,
+        esDhcpFilterLogBufferVlanId          VlanId,
+        esDhcpFilterLogBufferOccurrence      Unsigned32,
+        esDhcpFilterLogBufferOccurTime       DateAndTime
+        }
+
+    esDhcpFilterLogBufferIndex OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..1024)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object uniquely identifies an item of the logged illegal
+            DHCP Server information in the buffer."
+        ::= { esDhcpFilterLogBufferEntry 1 }
+
+    esDhcpFilterLogBufServerIpAddr OBJECT-TYPE
+        SYNTAX      IpAddress
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the DHCP Server Internet address"
+        ::= { esDhcpFilterLogBufferEntry 2 }
+
+    esDhcpFilterLogBufClientMacAddr OBJECT-TYPE
+        SYNTAX      MacAddress
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the DHCP Client MAC address."
+        ::= { esDhcpFilterLogBufferEntry 3 }
+
+    esDhcpFilterLogBufferVlanId OBJECT-TYPE
+        SYNTAX      VlanId
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the VLAN number which the logged
+             server belongs to."
+        ::= { esDhcpFilterLogBufferEntry 4 }
+
+    esDhcpFilterLogBufferOccurrence OBJECT-TYPE
+        SYNTAX      Unsigned32 
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object counts the number of received DHCP packet originated
+            from the illegal DHCP Server."
+        ::= { esDhcpFilterLogBufferEntry 5 }
+
+    esDhcpFilterLogBufferOccurTime OBJECT-TYPE
+        SYNTAX      DateAndTime
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the timestamp when the illegal DHCP 
+             Server packet arriving."
+        ::= { esDhcpFilterLogBufferEntry 6 }
+ 
+--  ***************************************************************************    
+--  Notifications
+--  ***************************************************************************               
+     esDhcpFilterAttackDetected NOTIFICATION-TYPE
+        OBJECTS { 
+                  esDhcpFilterLogBufServerIpAddr,
+                  esDhcpFilterLogBufClientMacAddr, 
+                  esDhcpFilterLogBufferVlanId,
+                  esDhcpFilterLogBufferOccurTime
+                }
+        STATUS  current
+        DESCRIPTION
+            "This trap is sent when esDhcpFilterGlobalNotifsEnabled is 'true' and 
+            the DHCP Server Sceen occurs to detect the dropped attack packets."
+        ::= { esDhcpFilterMIBNotifications 1 }                                    
+        
+--  ***************************************************************************    
+--  Conformance
+--  ***************************************************************************
+    esDhcpFilterCompliances OBJECT IDENTIFIER ::= { esDhcpFilterMIBConformance 1 }
+    esDhcpFilterGroups OBJECT IDENTIFIER ::= { esDhcpFilterMIBConformance 2 }
+
+    esDhcpFilterCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION 
+        "The compliance statement for entities which implement the 
+        DLINKES-DHCP-FILTER-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS { 
+            esDhcpFilterTrustSrvCfgGroup,
+            esDhcpFilterIfStateGroup
+        }
+
+    GROUP          esDhcpFilterLogGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+        logging illegal DHCP server for DHCP Server Screen feature."
+
+    ::= { esDhcpFilterCompliances 1 }
+
+    esDhcpFilterTrustSrvCfgGroup OBJECT-GROUP
+        OBJECTS { 
+            esDhcpFilterProfileStatus,
+            esDhcpFilterClientMacAddress,
+            esDhcpFilterClientRowStatus,
+            esDhcpFilterTrustServerIpAddress,
+            esDhcpFilterTrustProfileName,
+            esDhcpFilterTrustRowStatus
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects which are used to configure as
+             well as show information regarding the trust DHCP Server Screen."
+        ::= { esDhcpFilterGroups 1 }
+
+    esDhcpFilterIfStateGroup OBJECT-GROUP
+        OBJECTS { 
+            esDhcpFilterIfStateEnabled,
+            esDhcpFilterIfStateVlansFirst2K,
+            esDhcpFilterIfStateVlansSecond2K
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects which are used to configure as
+             well as show information regarding the state of DHCP Server Screen
+             on the interface."
+        ::= { esDhcpFilterGroups 2 }
+
+    esDhcpFilterLogGroup OBJECT-GROUP
+        OBJECTS { 
+            esDhcpFilterLogBufferSize,
+            esDhcpFilterClearLogBuffer,
+            esDhcpFilterLogBufServerIpAddr,
+            esDhcpFilterLogBufClientMacAddr,
+            esDhcpFilterLogBufferVlanId,
+            esDhcpFilterLogBufferOccurrence,
+            esDhcpFilterLogBufferOccurTime            
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects which are used to configure as
+             well as show information regarding the DHCP Server Screen logging feature."
+        ::= { esDhcpFilterGroups 3 }
+END
+
+

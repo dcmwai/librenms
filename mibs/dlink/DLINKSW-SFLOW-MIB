@@ -22,7 +22,7 @@ DLINKSW-SFLOW-MIB DEFINITIONS ::= BEGIN
             FROM DLINK-ID-REC-MIB;
 
     dlinkSwSFlowMIB MODULE-IDENTITY
-        LAST-UPDATED "201304100000Z"
+        LAST-UPDATED "201904290000Z"
         ORGANIZATION "D-Link Corp."
         CONTACT-INFO
             "         D-Link Corporation
@@ -33,7 +33,10 @@ DLINKSW-SFLOW-MIB DEFINITIONS ::= BEGIN
              E-mail: tsd@dlink.com.tw
             "      
         DESCRIPTION
-		        "The structure of sFlow for the proprietary enterprise."  
+		        "Add two objects: dSFlowCfgAgentAddressIPv4 and dSFlowCfgAgentAddressIPv6. "  
+        REVISION "201904290000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."
             
         REVISION "201304100000Z"
         DESCRIPTION
@@ -154,17 +157,39 @@ DLINKSW-SFLOW-MIB DEFINITIONS ::= BEGIN
         MAX-ACCESS      read-only
         STATUS          current
         DESCRIPTION
-	          "The IPv4 address associated with this agent."
+	          "The IPv4 address used as the agent IP address"
         ::= { dSFlowMIBObjects 2 }
-
+        
     dSFlowAgentAddressIPv6 OBJECT-TYPE
 	      SYNTAX        InetAddressIPv6
 	      MAX-ACCESS    read-only
 	      STATUS        current
 	      DESCRIPTION
-		        "The IPv6 address associated with this agent. If the IPv6
+		        "The IPv6 address used as the IPv6 agent IP address. If the IPv6
 		        is not supported on this agent, 0::0 will be displayed."
-	     ::= { dSFlowMIBObjects 3 }   
+	     ::= { dSFlowMIBObjects 3 }       
+       
+   dSFlowGblMIBObjects OBJECT IDENTIFIER ::= { dSFlowMIBObjects 7 }
+
+    dSFlowCfgAgentAddressIPv4 OBJECT-TYPE
+        SYNTAX          InetAddressIPv4
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+	          "Configure the IPv4 agent IP address. If not configured, 
+	          IP address of the IP interface with the lowest VLAN ID will be used 
+	          as the agent IP."
+        ::= { dSFlowGblMIBObjects 1 }
+        
+    dSFlowCfgAgentAddressIPv6 OBJECT-TYPE
+	      SYNTAX        InetAddressIPv6
+	      MAX-ACCESS    read-write
+	      STATUS        current
+	      DESCRIPTION
+		        "Configure the IPv6 agent IP address. If not configured, 
+		        IPv6 address of the IP interface with the lowest VLAN ID will be used  
+		        as the IPv6 agent IP."
+	     ::= { dSFlowGblMIBObjects 2 }	     
 
 -- -----------------------------------------------------------------------------
 -- Receiver Table
@@ -592,7 +617,8 @@ DLINKSW-SFLOW-MIB DEFINITIONS ::= BEGIN
 
     dSFlowAgentGroup OBJECT-GROUP
         OBJECTS { 
-        	dSFlowVersion, dSFlowAgentAddressIPv4, dSFlowAgentAddressIPv6,
+        	dSFlowVersion, dSFlowAgentAddressIPv4, dSFlowAgentAddressIPv6, 
+        	dSFlowCfgAgentAddressIPv4, dSFlowCfgAgentAddressIPv6,
             dSFlowRcvrOwner,dSFlowRcvrAdminTimeout,dSFlowRcvrCurrentTimeout,
             dSFlowRcvrMaximumDatagramSize, dSFlowRcvrAddressType, 
             dSFlowRcvrAddress, dSFlowRcvrPort, dSFlowRcvrVrfName,

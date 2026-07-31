@@ -1,0 +1,55 @@
+-- *****************************************************************************
+-- proprietary management MIB
+-- *****************************************************************************
+SWDGM3130PRIMGMT-MIB    DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        dlink-mgmt, dlink-products  FROM DLINK-ID-REC-MIB;
+
+--
+--   DMS-3130 Series Product
+--
+    dlink-proj-DMS-3130Series       OBJECT IDENTIFIER ::= { dlink-mgmt 176 }
+
+    dlink-proj-DMS-3130-30TS        OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130Series 1 }
+    dlink-proj-DMS-3130-30TSax      OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130-30TS 1 }
+    dlink-proj-DMS-3130-30PS        OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130Series 2 }
+    dlink-proj-DMS-3130-30PSax      OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130-30PS 1 }
+    dlink-proj-DMS-3130-32XY        OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130Series 3 }
+    dlink-proj-DMS-3130-32XYSax     OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130-32XY 1 }
+    dlink-proj-DMS-3130-32SY        OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130Series 4 }
+    dlink-proj-DMS-3130-32SYax      OBJECT IDENTIFIER ::= { dlink-proj-DMS-3130-32SY 1 }
+
+    dlink-DMS-3130Series            OBJECT IDENTIFIER ::= { dlink-products 176 }
+
+    dlink-DMS-3130-30TS             OBJECT IDENTIFIER ::= { dlink-DMS-3130Series 1 }
+    dlink-DMS-3130-30TSax           OBJECT IDENTIFIER ::= { dlink-DMS-3130-30TS 1 }
+    dlink-DMS-3130-30PS             OBJECT IDENTIFIER ::= { dlink-DMS-3130Series 2 }
+    dlink-DMS-3130-30PSax           OBJECT IDENTIFIER ::= { dlink-DMS-3130-30PS 1 }
+    dlink-DMS-3130-32XY             OBJECT IDENTIFIER ::= { dlink-DMS-3130Series 3 }
+    dlink-DMS-3130-32XYSax          OBJECT IDENTIFIER ::= { dlink-DMS-3130-32XY 1 }
+    dlink-DMS-3130-32SY             OBJECT IDENTIFIER ::= { dlink-DMS-3130Series 4 }
+    dlink-DMS-3130-32SYSax          OBJECT IDENTIFIER ::= { dlink-DMS-3130-32SY 1 }
+
+--
+--   DXS-3130 Series Product
+--
+    dlink-proj-DXS-3130Series       OBJECT IDENTIFIER ::= { dlink-mgmt 184 }
+
+    dlink-proj-DXS-3130-28P         OBJECT IDENTIFIER ::= { dlink-proj-DXS-3130Series 1 }
+    dlink-proj-DXS-3130-28Pax       OBJECT IDENTIFIER ::= { dlink-proj-DXS-3130-28P 1 }
+    dlink-proj-DXS-3130-28          OBJECT IDENTIFIER ::= { dlink-proj-DXS-3130Series 2 }
+    dlink-proj-DXS-3130-28ax        OBJECT IDENTIFIER ::= { dlink-proj-DXS-3130-28 1 }
+    dlink-proj-DXS-3130-32S         OBJECT IDENTIFIER ::= { dlink-proj-DXS-3130Series 3 }
+    dlink-proj-DXS-3130-32Sax       OBJECT IDENTIFIER ::= { dlink-proj-DXS-3130-32S 1 }
+
+    dlink-DXS-3130Series            OBJECT IDENTIFIER ::= { dlink-products 184 }
+
+    dlink-DXS-3130-28P              OBJECT IDENTIFIER ::= { dlink-DXS-3130Series 1 }
+    dlink-DXS-3130-28Pax            OBJECT IDENTIFIER ::= { dlink-DXS-3130-28P  1 }
+    dlink-DXS-3130-28               OBJECT IDENTIFIER ::= { dlink-DXS-3130Series 2 }
+    dlink-DXS-3130-28ax             OBJECT IDENTIFIER ::= { dlink-DXS-3130-28  1 }
+    dlink-DXS-3130-32S              OBJECT IDENTIFIER ::= { dlink-DXS-3130Series 3 }
+    dlink-DXS-3130-32Sax            OBJECT IDENTIFIER ::= { dlink-DXS-3130-32S  1 }
+
+END

@@ -1,0 +1,508 @@
+-- *****************************************************************
+-- DLINKES-RIP-MIB.mib : D-Link Access Control List MIB
+--
+-- Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+
+DLINKES-RIP-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,OBJECT-TYPE,
+        Integer32,Unsigned32,IpAddress      FROM SNMPv2-SMI
+        TruthValue,DisplayString,
+        RowStatus                           FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP     FROM SNMPv2-CONF
+        InterfaceIndex                      FROM IF-MIB
+        dlinkCommon                         FROM DLINK-ID-REC-MIB;
+
+    dlinkEsRipMIB MODULE-IDENTITY
+        LAST-UPDATED "201711220000Z"
+        ORGANIZATION    "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+                "The Structure of RIP Information for the
+                 proprietary enterprise."
+
+        REVISION         "201711220000Z"
+        DESCRIPTION
+            "Modify esRipRedistMetric description of esRipRedistributeTable."
+
+        REVISION         "201709200000Z"
+        DESCRIPTION
+            "Remove unsupported 'esRipIfBfdState', 'esRipRedistMatchType',
+             'esRipGlobalDefInfoOriginMetric', 'esRipGlobalHoldDownTimer'
+             and related groups."
+
+        REVISION         "201709190000Z"
+        DESCRIPTION
+            "Remove unsupported 'esRipNeighborTable' and related groups."
+
+        REVISION         "201709180000Z"
+        DESCRIPTION
+            "Remove unsupported 'esRipKeyChainTable', 'esRipKeyChainConfTable'
+             and 'esRipKeyChainConfGroup'."
+
+        REVISION         "201708180000Z"
+        DESCRIPTION
+            "Remove unsupported index object in tables.
+             Change 'esRipGlobalTable' to 'esRipGlobal'."
+
+        REVISION         "201701040000Z"
+        DESCRIPTION
+            "Change OID from dlinkIndustrialCommon to dlinkCommon.
+             Change Object Name from dlinkSwXXXX to dlinkEsXXXXX"
+
+        REVISION        "201511300000Z"
+        DESCRIPTION
+            "Add a new 'v1Orv2' value for object esRipIfReceiveVersion."
+
+        REVISION        "201510150000Z"
+        DESCRIPTION
+            "Add a node 'esRipIfBfdState' in table 'esRipIfTable'."
+
+        REVISION        "201509230000Z"
+        DESCRIPTION
+            "Move the node 'dRipPassiveIfDefault' to 'dRipVrfGlobalTable'
+            and renamed to 'dRipVrfGlobalPassiveIfDefault'."
+
+        REVISION        "201503160000Z"
+        DESCRIPTION
+            "Add a new 'isis' value for object esRipRedistProtocol."
+
+        REVISION        "201408060000Z"
+        DESCRIPTION
+            "Modify the value of RowStatus to 99. Remove unsupported objects."
+
+        REVISION        "201304230000Z"
+        DESCRIPTION
+            "Initial revision of this MIB module."
+
+        ::= { dlinkCommon 120 }
+
+-- -----------------------------------------------------------------------------
+    esRipMIBNotifications       OBJECT IDENTIFIER ::= { dlinkEsRipMIB 0 }
+    esRipMIBObjects             OBJECT IDENTIFIER ::= { dlinkEsRipMIB 1 }
+    esRipMIBConformance         OBJECT IDENTIFIER ::= { dlinkEsRipMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esRipGlobalCtrl          OBJECT IDENTIFIER ::= { esRipMIBObjects 1 }
+
+    esRipGlobalEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS  current
+        DESCRIPTION
+           "This object indicates whether the global RIP is enabled."
+        ::= { esRipGlobalCtrl 1 }
+
+-- -----------------------------------------------------------------------------
+    esRipGlobal          OBJECT IDENTIFIER ::= { esRipMIBObjects 2 }
+
+    esRipGlobalDefaultMetric OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "The default metric for routes redistributed to RIP."
+        DEFVAL {0}
+        ::= { esRipGlobal 3 }
+
+    esRipGlobalVersion OBJECT-TYPE
+        SYNTAX INTEGER {
+            default(0),
+            v1(1),
+            v2(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the default RIP version for the interfaces
+           on which the send or receive RIP version is not explicitly configured.
+           'default' - Receive both version 1 and version 2 packets and send
+                       only version 1 packets.
+           'v1' - Only receive and transmit RIP Version 1 packets.
+           'v2' - Only receive and transmit RIP Version 2 packets.
+           "
+        DEFVAL { default }
+        ::= { esRipGlobal 4 }
+
+    esRipGlobalUpdateTimer OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the update interval in seconds at which the
+           update message is sent."
+        DEFVAL { 30 }
+        ::= { esRipGlobal 5 }
+
+    esRipGlobalInvalidTimer OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the interval of time in seconds after which
+           a route is declared invalid."
+        DEFVAL { 180 }
+        ::= { esRipGlobal 6 }
+
+    esRipGlobalFlushTimer OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the amount of time in seconds that must pass
+            before the route is removed from the garbage list."
+        DEFVAL { 240 }
+        ::= { esRipGlobal 7 }
+
+    esRipGlobalPassiveIfDefault OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the default passive state for the interfaces
+           on which the passive state is not explicitly configured.
+           When this object is true(1), the default passive state is enabled.
+           When false(2), the default passive state is disabled."
+        ::= { esRipGlobal 8 }
+
+-- -----------------------------------------------------------------------------
+    esRipNetworkTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsRipNetworkEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table provides a mechanism to specify a network as one that runs
+            RIP in VRF address family."
+        ::= { esRipMIBObjects 3 }
+
+    esRipNetworkEntry OBJECT-TYPE
+        SYNTAX          EsRipNetworkEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esRipNetworkTable containing the operational
+            characteristics of RIP network."
+        INDEX    {
+            esRipNetworkPrefix
+        }
+        ::= { esRipNetworkTable 1 }
+
+    EsRipNetworkEntry ::= SEQUENCE {
+        esRipNetworkPrefix               IpAddress,
+        esRipNetworkRowStatus            RowStatus
+    }
+
+    esRipNetworkPrefix OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the subnet prefix of the network."
+        ::= { esRipNetworkEntry 1 }
+
+    esRipNetworkRowStatus OBJECT-TYPE
+         SYNTAX          RowStatus
+         MAX-ACCESS      read-create
+         STATUS          current
+         DESCRIPTION
+         "This object indicates the status of this entry.
+            Only createAndGo(4) and destroy(6) can be set."
+     ::= { esRipNetworkEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esRipIfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsRipIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of subnets which require separate
+            configuration in RIP."
+        ::= { esRipMIBObjects 4 }
+
+    esRipIfEntry OBJECT-TYPE
+        SYNTAX          EsRipIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the esRipIfTable containing the operational
+            characteristics of RIP interface."
+        INDEX    { esRipIfIndex }
+        ::= { esRipIfTable 1 }
+
+    EsRipIfEntry ::= SEQUENCE {
+        esRipIfIndex                     InterfaceIndex,
+        esRipIfAddress                   IpAddress,
+        esRipIfMask                      IpAddress,
+        esRipIfReceiveVersion            INTEGER,
+        esRipIfSendVersion               INTEGER,
+        esRipIfPassiveMode               INTEGER,
+        esRipIfAuthType                  INTEGER,
+        esRipIfAuthKeyChain              DisplayString
+    }
+
+    esRipIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The ifIndex value of the RIP interface."
+        ::= { esRipIfEntry 1 }
+
+    esRipIfAddress OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Network address of RIP interface."
+        ::= { esRipIfEntry 2 }
+
+    esRipIfMask OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Network mask of RIP interface."
+        ::= { esRipIfEntry 3 }
+
+    esRipIfReceiveVersion OBJECT-TYPE
+        SYNTAX       INTEGER {
+            v1(1),
+            v2(2),
+            v1Orv2(3),
+            no(4)
+        }
+        MAX-ACCESS   read-write
+        STATUS       current
+        DESCRIPTION
+            "This object indicates the RIP version to receive on the interface.
+            'v1' - Only receive RIP Version 1 packets.
+            'v2' - Only receive RIP Version 2 packets.
+            'v1Orv2' - Receive both RIP Version 1 and 2 packets.
+            'no' - Do not receive RIP packets.
+            "
+        ::= { esRipIfEntry 4 }
+
+    esRipIfSendVersion OBJECT-TYPE
+        SYNTAX          INTEGER {
+            v1(1),
+            v2(2),
+            v1c(3),
+            no(4)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the RIP version to send on an interface.
+            'v1'  - Only send RIP Version 1 packets.
+            'v2'  - Only send RIP Version 2 packets.
+            'v1c' - Send RIP Version 2 packets as broadcast packets instead of multicast packets.
+            'no'  - Dont send RIP update packets.
+            "
+        ::= { esRipIfEntry 5 }
+
+    esRipIfPassiveMode OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            followGlobal(0),
+            disabled(1),
+            enabled(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the RIP passive state on the interface.
+            The value of 'followGlobal' indicates the passive state is not explicitly
+            specified on the interface, and global default passive state is followed.
+            "
+        ::= { esRipIfEntry 7 }
+
+    esRipIfAuthType OBJECT-TYPE
+        SYNTAX          INTEGER {
+            noAuthentication(0),
+            simplePassword(1)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the RIP authentication type on the interface."
+        ::= { esRipIfEntry 8 }
+
+    esRipIfAuthKeyChain OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(0..16))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the RIP authentication key chain
+            on the interface."
+        ::= { esRipIfEntry 9 }
+
+-- -----------------------------------------------------------------------------
+    esRipRedistributeTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsRipRedistributeEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table provides mechanism to configure redistribute routes from
+            other routing domain into RIP in VRF address family."
+        ::= { esRipMIBObjects 5 }
+
+    esRipRedistributeEntry OBJECT-TYPE
+        SYNTAX       EsRipRedistributeEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+            "An entry in the esRipRedistributeTable containing the operational
+             characteristics of RIP redistribution."
+        INDEX    {
+            esRipRedistProtocol
+        }
+        ::= { esRipRedistributeTable 1 }
+
+    EsRipRedistributeEntry ::= SEQUENCE {
+        esRipRedistProtocol             INTEGER,
+        esRipRedistMetric               Unsigned32,
+        esRipRedistRouteMap             DisplayString,
+        esRipRedistRowStatus            RowStatus
+    }
+
+    esRipRedistProtocol OBJECT-TYPE
+        SYNTAX          INTEGER {
+            connected(1),
+            static(2),
+            ospf(3)
+        }
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source routing protocol to be imported
+            into RIP."
+        ::= { esRipRedistributeEntry 1 }
+
+    esRipRedistMetric OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the value to be used as metric for the redistributed routes.
+            0 indicates non-configured."
+        ::= { esRipRedistributeEntry 2 }
+
+    esRipRedistRouteMap OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the route map that is used
+            to filter the routes to be redistributed to the RIP.
+            A zero length string indiates that the route map is not specified and
+            all routes are redistributed."
+        ::= { esRipRedistributeEntry 3 }
+
+    esRipRedistRowStatus OBJECT-TYPE
+         SYNTAX       RowStatus
+         MAX-ACCESS   read-create
+         STATUS       current
+         DESCRIPTION
+            "This object indicates the status of this entry.
+            Only createAndGo(4) and destroy(6) can be set."
+         ::= { esRipRedistributeEntry 99 }
+
+-- Conformance Information
+
+    esRipMIBGroups      OBJECT IDENTIFIER ::= { esRipMIBConformance 1 }
+    esRipMIBCompliances OBJECT IDENTIFIER ::= { esRipMIBConformance 2 }
+
+-- Compliance Statements
+
+    esRipFullCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION     "The compliance statement"
+        MODULE          -- this module
+        MANDATORY-GROUPS {
+            esRipGlobalCtrlGroup,
+            esRipGlobalGroup,
+            esRipNetworkGroup,
+            esRipIfGroup,
+            esRipRedistributeGroup
+        }
+
+        ::= { esRipMIBCompliances 1 }
+
+    -- units of conformance
+
+    esRipGlobalCtrlGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipGlobalEnabled
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects provides RIP global configurations."
+        ::= { esRipMIBGroups 1 }
+
+    esRipGlobalGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipGlobalDefaultMetric,
+            esRipGlobalVersion,
+            esRipGlobalUpdateTimer,
+            esRipGlobalInvalidTimer,
+            esRipGlobalFlushTimer,
+            esRipGlobalPassiveIfDefault
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects are used for managing/monitoring
+            the RIP global configurations."
+       ::= { esRipMIBGroups 2 }
+
+    esRipNetworkGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipNetworkRowStatus
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects are used for managing/monitoring
+            the RIP network in VRF address family."
+        ::= { esRipMIBGroups 3 }
+
+    esRipIfGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipIfAddress,
+            esRipIfMask,
+            esRipIfReceiveVersion,
+            esRipIfSendVersion,
+            esRipIfPassiveMode,
+            esRipIfAuthType,
+            esRipIfAuthKeyChain
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects are used for managing/monitoring
+            the RIP interface."
+        ::= { esRipMIBGroups 4 }
+
+    esRipRedistributeGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipRedistMetric,
+            esRipRedistRouteMap,
+            esRipRedistRowStatus
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects are used for managing/monitoring
+            the redistribution in VRF address family."
+        ::= { esRipMIBGroups 5 }
+
+END

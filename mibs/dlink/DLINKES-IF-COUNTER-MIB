@@ -1,0 +1,2291 @@
+--  *****************************************************************
+--  DLINKES-IF-COUNTER-MIB.mib : Interface Counters MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-IF-COUNTER-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Unsigned32,
+        Counter64
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, 
+        OBJECT-GROUP
+            FROM SNMPv2-CONF
+        RowStatus,
+		DateAndTime        
+            FROM SNMPv2-TC
+        ifIndex,
+        InterfaceIndexOrZero         
+            FROM IF-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+    dlinkEsIfCounterMIB MODULE-IDENTITY
+        LAST-UPDATED "201509060000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for displaying counters."
+
+        REVISION "201302050000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+			
+        REVISION "201406240000Z"
+        DESCRIPTION
+            "Add esifCounterL2VlanStatisticsCtrl for layer 2 VLAN interface
+            statistics which use ACL resources."
+        REVISION "201503160000Z"  
+        DESCRIPTION
+            "Add esIfCounterRateStatistics for displaying packets and bits rate ."				
+      
+		REVISION "201506230000Z"  
+        DESCRIPTION
+            "Add esIfCounterHistoryStatistics for displaying history counters.
+			Add esIfCounterHistoryUtilization for displaying history switch utilization of cpu and memory."
+		
+		REVISION "201509030000Z"  
+        DESCRIPTION
+			"Delete esIfCounterHistoryUtilization for displaying history switch utilization of cpu and memory."				
+        ::= { dlinkCommon 66 }
+
+-- -----------------------------------------------------------------------------
+    esIfCounterNotifications    OBJECT IDENTIFIER ::= { dlinkEsIfCounterMIB 0 }
+    esIfCounterObjects          OBJECT IDENTIFIER ::= { dlinkEsIfCounterMIB 1 }
+    esIfCounterConformance      OBJECT IDENTIFIER ::= { dlinkEsIfCounterMIB 2 }
+
+
+-- -----------------------------------------------------------------------------
+--  Objects
+-- -----------------------------------------------------------------------------
+    esIfCounterGernal              OBJECT IDENTIFIER ::= {esIfCounterObjects 1}
+    esIfCounterClearCtrl           OBJECT IDENTIFIER ::= {esIfCounterObjects 2}
+    esIfCounterRxStatistics        OBJECT IDENTIFIER ::= {esIfCounterObjects 3}
+    esIfCounterTxStatistics        OBJECT IDENTIFIER ::= {esIfCounterObjects 4}
+    esifCounterL2VlanStatisticsCtrl   OBJECT IDENTIFIER ::= {esIfCounterObjects 5} 
+    esIfCounterRateStatistics         OBJECT IDENTIFIER ::= {esIfCounterObjects 6}
+	esIfCounterHistoryStatistics      OBJECT IDENTIFIER ::= {esIfCounterObjects 7}
+-- -----------------------------------------------------------------------------
+    esIfCounterIfLinkChangeTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfCounterIfLinkChangeEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION           
+            "This table is used to display the number of interface link 
+            change events."
+        ::= { esIfCounterGernal 1}    
+
+    esIfCounterIfLinkChangeEntry OBJECT-TYPE
+        SYNTAX          EsIfCounterIfLinkChangeEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Entry containing the number of interface link change events for a 
+            particular interface."
+        INDEX                 { ifIndex }
+        ::= { esIfCounterIfLinkChangeTable 1 }
+        
+    EsIfCounterIfLinkChangeEntry ::= SEQUENCE     	{
+    	esIfCounterIfLinkChange        Counter64
+    }
+    
+    esIfCounterIfLinkChange OBJECT-TYPE 
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of interface link change events."
+        ::= { esIfCounterIfLinkChangeEntry 1 } 
+  
+-- -----------------------------------------------------------------------------
+    esIfCounterIfUtilizationTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfCounterIfUtilizationEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION           
+            "This table is used to display the utilization of ports."
+        ::= { esIfCounterGernal 2}    
+
+    esIfCounterIfUtilizationEntry OBJECT-TYPE
+        SYNTAX          EsIfCounterIfUtilizationEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Entry contains the utilization information of a port."
+        INDEX                 { ifIndex }
+        ::= { esIfCounterIfUtilizationTable 1 }
+        
+    EsIfCounterIfUtilizationEntry ::= SEQUENCE     	{
+        esIfCounterIfUtilizationRx        Unsigned32,
+    	esIfCounterIfUtilizationTx        Unsigned32,
+    	esIfCounterIfUtilizationUtil      Unsigned32
+    }
+
+    esIfCounterIfUtilizationRx OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "packets per second"
+        MAX-ACCESS      read-only
+        STATUS          deprecated
+        DESCRIPTION
+            "This object indicates the current rate of received frames on the interface.
+	        This object is deprecated in favour of esIfCounterRateStatsRxPkts."
+        ::= { esIfCounterIfUtilizationEntry 1 }
+            
+    esIfCounterIfUtilizationTx OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "packets per second"
+        MAX-ACCESS      read-only
+        STATUS          deprecated
+        DESCRIPTION
+            "This object indicates the current rate of transmitted frames on the interface.
+	         This object is deprecated in favour of esIfCounterRateStatsTxPkts."
+        ::= { esIfCounterIfUtilizationEntry 2 }
+        
+    esIfCounterIfUtilizationUtil OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..100)
+        UNITS           "percentage"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the percentage of the utilization on the
+            interface."
+        ::= { esIfCounterIfUtilizationEntry 3 }  
+                              
+
+-- -----------------------------------------------------------------------------
+    esIfCounterClearAll  OBJECT-TYPE
+        SYNTAX        INTEGER     {
+            clear(1),
+            noOp(2)
+            }
+        MAX-ACCESS    read-write
+        STATUS        current
+        DESCRIPTION
+            "This object clears all counters, when set to 'clear'. 
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esIfCounterClearCtrl 1}
+       
+    esIfCounterClearIf OBJECT-TYPE 
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS	    read-write
+        STATUS		    current
+        DESCRIPTION
+            "This object indicates the ifIndex of the physical 
+            port interface on which the counters will be cleared.            
+            When read, a value of 0 is returned."   
+        ::= { esIfCounterClearCtrl 2 } 
+ 
+-- -----------------------------------------------------------------------------
+    esIfRxStatsTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfRxStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current 
+        DESCRIPTION           
+            "This table is used to display the receiving statistics 
+            not covered in standard MIBs (IF-MIB, 
+            RMON, BRIDGE-MIB, Etherlike-MIB) or extend the standard defined 
+            objects to 64 bits."
+        ::= { esIfCounterRxStatistics 1}    
+
+    esIfRxStatsEntry OBJECT-TYPE
+        SYNTAX           EsIfRxStatsEntry
+        MAX-ACCESS       not-accessible
+        STATUS           current
+        DESCRIPTION
+            "An entry contains receiving statistics on an interface."
+        INDEX                 { ifIndex }
+        ::= { esIfRxStatsTable 1 }
+        
+    EsIfRxStatsEntry ::= SEQUENCE     	{
+    	esIfRxStatsHCPkts                    Counter64,
+    	esIfRxStatsHCPkts64Octets            Counter64,
+    	esIfRxStatsHCPkts65to127Octets       Counter64,
+    	esIfRxStatsHCPkts128to255Octets      Counter64,
+    	esIfRxStatsHCPkts256to511Octets      Counter64,
+    	esIfRxStatsHCPkts512to1023Octets     Counter64,
+    	esIfRxStatsHCPkts1024to1518Octets    Counter64,
+    	esIfRxStatsHCPkts1519to1522Octets    Counter64,
+    	esIfRxStatsHCPkts1519to2047Octets    Counter64,
+    	esIfRxStatsHCPkts2048to4095Octets    Counter64,
+    	esIfRxStatsHCPkts4096to9216Octets    Counter64
+    }
+
+    esIfRxStatsHCPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of packets received on the interface.  
+            This object is a 64-bit version of etherStatsPkts.
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."
+        ::= { esIfRxStatsEntry 1 } 
+
+    esIfRxStatsHCPkts64Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            received that were 64 octets in length (excluding 
+            framing bits but including FCS octets).
+            This object is a 64-bit version of etherStatsPkts64Octets.
+           
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 2 } 
+
+    esIfRxStatsHCPkts65to127Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            received that were between 65 and 127 octets in length
+            inclusive (excluding framing bits but including FCS octets).
+            This object is a 64-bit version of etherStatsPkts65to127Octets.
+           
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 3 }   	
+    	
+    esIfRxStatsHCPkts128to255Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            received that were between 128 and 255 octets in length
+            inclusive (excluding framing bits but including FCS octets).
+            This object is a 64-bit version of etherStatsPkts128to255Octets.           
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 4 }     	
+    	
+    esIfRxStatsHCPkts256to511Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            received that were between 256 and 511 octets in length
+            inclusive (excluding framing bits but including FCS octets).
+            This object is a 64-bit version of etherStatsPkts256to511Octets.           
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 5 } 
+    	    	
+    esIfRxStatsHCPkts512to1023Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            received that were between 512 and 1023 octets in length
+            inclusive (excluding framing bits but including FCS octets.
+            This object is a 64-bit version of etherStatsPkts512to1023Octets.           
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 6 } 
+    	    	
+    esIfRxStatsHCPkts1024to1518Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            received that were between 1024 and 1518 octets in length
+            inclusive (excluding framing bits but including FCS octets).  
+            This object is a 64-bit version of etherStatsPkts1024to1518Octets.           
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 7 } 
+    	    	
+    esIfRxStatsHCPkts1519to1522Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of good VLAN packets received that were
+            between 1519 and 1522 octets in length inclusive
+            (excluding framing bits but including FCS octets).  
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 8 } 
+    	    	
+    esIfRxStatsHCPkts1519to2047Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            received that were between 1519 and 2047 octets in length
+            inclusive (excluding framing bits but including FCS octets).  
+ 
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 9 } 
+    	    	
+    esIfRxStatsHCPkts2048to4095Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            received that were between 2048 and 4095 octets in length
+            inclusive (excluding framing bits but including FCS octets).  
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+       ::= { esIfRxStatsEntry 10 } 
+    	    	
+    esIfRxStatsHCPkts4096to9216Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            received that were between 4096 and 9216 octets in length
+            inclusive (excluding framing bits but including FCS octets).  
+ 
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfRxStatsEntry 11 } 
+
+-- -----------------------------------------------------------------------------
+    esIfCounterRxDropTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfCounterRxDropEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of receiving statistics for discarded 
+            packets on interfaces."
+        ::= { esIfCounterRxStatistics 2 }
+
+    esIfCounterRxDropEntry OBJECT-TYPE
+        SYNTAX          EsIfCounterRxDropEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the receiving statistics for discarded packets on 
+            an interface."
+        INDEX   { ifIndex }
+        ::= { esIfCounterRxDropTable 1 }
+
+    EsIfCounterRxDropEntry ::= SEQUENCE     	{
+        esIfCounterRxBufferFullDrops	            Counter64,
+        esIfCounterRxACLDrops                    Counter64,
+        esIfCounterRxMulticastDrops              Counter64,
+        esIfCounterRxVLANIngressDrops            Counter64,
+        esIfCounterRxIPv6Drops                   Counter64,
+        esIfCounterRxSTPDrops                    Counter64,
+        esIfCounterRxStormAndTableDiscard        Counter64,
+        esIfCounterRxMTUDrops                    Counter64,
+        esIfCounterRxInvalidDestPort             Counter64,   
+        esIfCounterRxBandwidthCtrlDrops          Counter64
+   	}
+
+    esIfCounterRxBufferFullDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets discarded while input buffer full."
+    	::= { esIfCounterRxDropEntry 1 }
+
+    esIfCounterRxACLDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of received packets denied by ACLs."
+    	::= { esIfCounterRxDropEntry 2 }
+
+    esIfCounterRxMulticastDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of received multicast packet that is discarded."
+    	::= { esIfCounterRxDropEntry 3 }
+
+    esIfCounterRxVLANIngressDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets discarded by VLAN ingress checking."
+    	::= { esIfCounterRxDropEntry 4 }    	
+
+    esIfCounterRxIPv6Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of IPv6 packets dropped by routing process."
+    	::= { esIfCounterRxDropEntry 5 }
+
+    esIfCounterRxSTPDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets discarded when ingress 
+             port is not in forwarding state."
+    	::= { esIfCounterRxDropEntry 6 }
+
+    esIfCounterRxStormAndTableDiscard OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets discarded by receiving policy
+            (e.g. the source or destination MAC is not allowed, rate limit, etc.)"
+    	::= { esIfCounterRxDropEntry 7 }
+
+    esIfCounterRxMTUDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets discarded by frames received, which 
+            exceeds Maximum Frame in length and contains a valid or invalid FCS."
+    	::= { esIfCounterRxDropEntry 8 }
+
+    esIfCounterRxInvalidDestPort OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets dropped due to no destination port can
+            be forwarded to."
+    	::= { esIfCounterRxDropEntry 9 }
+
+    esIfCounterRxBandwidthCtrlDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets discarded by port ingress bandwidth 
+            control."
+    	::= { esIfCounterRxDropEntry 10 }
+
+-- -----------------------------------------------------------------------------
+    esIfTxStatsTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfTxStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current 
+        DESCRIPTION           
+            "This table is used to display the transmitting statistics 
+            information not covered in standard MIBs (IF-MIB, 
+            RMON, BRIDGE-MIB, Etherlike-MIB) or extend the standard defined 
+            objects to 64 bits.
+            "
+        ::= { esIfCounterTxStatistics 1}    
+
+    esIfTxStatsEntry OBJECT-TYPE
+        SYNTAX          EsIfTxStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains transmitting statistics on an interface."
+        INDEX                 { ifIndex }
+        ::= { esIfTxStatsTable 1 }
+        
+    EsIfTxStatsEntry ::= SEQUENCE     	{
+    	esIfTxStatsHCPkts                        Counter64,
+    	esIfTxStatsHCPkts64Octets                Counter64,
+    	esIfTxStatsHCPkts65to127Octets           Counter64,
+    	esIfTxStatsHCPkts128to255Octets          Counter64,
+    	esIfTxStatsHCPkts256to511Octets          Counter64,
+    	esIfTxStatsHCPkts512to1023Octets         Counter64,
+    	esIfTxStatsHCPkts1024to1518Octets        Counter64,
+    	esIfTxStatsHCPkts1519to1522Octets        Counter64,
+    	esIfTxStatsHCPkts1519to2047Octets        Counter64,
+    	esIfTxStatsHCPkts2048to4095Octets        Counter64,
+    	esIfTxStatsHCPkts4096to9216Octets        Counter64,
+    	esIfTxStatsFCSErrors                     Counter64
+    }
+
+    esIfTxStatsHCPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of packets transmitted on the interface.  
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."
+        ::= { esIfTxStatsEntry 1 } 
+
+    esIfTxStatsHCPkts64Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            transmitted that were 64 octets in length (excluding
+            framing bits but including FCS octets).       
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 2 } 
+
+    esIfTxStatsHCPkts65to127Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets)
+            transmitted that were between 65 and 127 octets in length
+            inclusive (excluding framing bits but including FCS octets).          
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 3 }   	
+    	
+    esIfTxStatsHCPkts128to255Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            transmitted that were between 128 and 255 octets in length
+            inclusive (excluding framing bits but including FCS octets).         
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."
+        ::= { esIfTxStatsEntry 4 }     	
+    	
+    esIfTxStatsHCPkts256to511Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            transmitted that were between 256 and 511 octets in length
+            inclusive (excluding framing bits but including FCS octets).
+           
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 5 }     	
+    	
+    esIfTxStatsHCPkts512to1023Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            transmitted that were between 512 and 1023 octets in length 
+            inclusive (excluding framing bits but including FCS octets).
+           
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 6 }     	
+    	
+    esIfTxStatsHCPkts1024to1518Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            transmitted that were between 1024 and 1518 octets in length 
+            inclusive (excluding framing bits but including FCS octets).           
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 7 }     	
+    	
+    esIfTxStatsHCPkts1519to1522Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of good VLAN packets transmitted that were 
+            between 1519 and 1522 octets in length inclusive 
+            (excluding framing bits but including FCS octets).  
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 8 }     	
+    	
+    esIfTxStatsHCPkts1519to2047Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            transmitted that were between 1519 and 2047 octets in length 
+            inclusive (excluding framing bits but including FCS octets).  
+ 
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 9 }     	
+    	
+    esIfTxStatsHCPkts2048to4095Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            transmitted that were between 2048 and 4095 octets in length 
+            inclusive (excluding framing bits but including FCS octets).  
+
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 10 }     	
+    	
+    esIfTxStatsHCPkts4096to9216Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets (including bad packets) 
+            transmitted that were between 4096 and 9216 octets in length 
+            inclusive (excluding framing bits but including FCS octets).  
+ 
+            Discontinuities in the value of this counter can occur at
+            re-initialization of the management system, and at other
+            times as indicated by the value of
+            ifCounterDiscontinuityTime."           
+        ::= { esIfTxStatsEntry 11 } 
+
+    esIfTxStatsFCSErrors OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of packets to be transmitted that 
+            are not pass the FCS check."           
+        ::= { esIfTxStatsEntry 12 }
+
+-- -----------------------------------------------------------------------------
+    esIfCounterTxDropTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfCounterTxDropEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current 
+        DESCRIPTION           
+            "This table is used to display transmiting statistics for 
+            discarded packets on interfaces."
+        ::= { esIfCounterTxStatistics 2}    
+
+    esIfCounterTxDropEntry OBJECT-TYPE
+        SYNTAX          EsIfCounterTxDropEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains transmiting statistics for discarded packets
+            on an interface"
+        INDEX                 { ifIndex }
+        ::= { esIfCounterTxDropTable 1 }
+        
+    EsIfCounterTxDropEntry ::= SEQUENCE 
+    	{
+            esIfCounterTxSTPDrops      Counter64,
+            esIfCounterTxHOLDrops      Counter64,
+            esIfCounterTxCOS0Drops     Counter64,
+            esIfCounterTxCOS1Drops     Counter64,
+            esIfCounterTxCOS2Drops     Counter64,
+            esIfCounterTxCOS3Drops     Counter64,
+            esIfCounterTxCOS4Drops     Counter64,
+            esIfCounterTxCOS5Drops     Counter64,
+            esIfCounterTxCOS6Drops     Counter64,
+            esIfCounterTxCOS7Drops     Counter64       
+    	}
+
+    esIfCounterTxSTPDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for packets dropped when egress port is
+            not in forwarding state."
+    	::= { esIfCounterTxDropEntry 1}
+    	
+    esIfCounterTxHOLDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet dropped due to Head Of Line blocking."
+    	::= { esIfCounterTxDropEntry 2 }
+
+    esIfCounterTxCOS0Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet dropped due to Head of Line blocking
+            on the egress CoS queue 0."
+    	::= { esIfCounterTxDropEntry 3 }
+
+    esIfCounterTxCOS1Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking  
+            on the egress CoS queue 1."
+    	::= { esIfCounterTxDropEntry 4 }
+ 
+     esIfCounterTxCOS2Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to
+            Head of Line blocking on the egress CoS queue 2."
+    	::= { esIfCounterTxDropEntry 5 }
+ 
+    esIfCounterTxCOS3Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to
+            Head of Line blocking on the egress CoS queue 3."
+    	::= { esIfCounterTxDropEntry 6 } 
+ 
+    esIfCounterTxCOS4Drops OBJECT-TYPE
+	    SYNTAX          Counter64
+	    MAX-ACCESS      read-only
+	    STATUS          current
+	    DESCRIPTION
+            "Incremented for each packet drop due to
+            Head of Line blocking on the egress CoS queue 4."
+    	::= { esIfCounterTxDropEntry 7 } 
+ 
+    esIfCounterTxCOS5Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to
+            Head of Line blocking on the egress CoS queue 5."
+    	::= { esIfCounterTxDropEntry 8 } 
+ 
+    esIfCounterTxCOS6Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to
+            Head of Line blocking on the egress CoS queue 6."
+    	::= { esIfCounterTxDropEntry 9 } 
+ 
+    esIfCounterTxCOS7Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to
+            Head of Line blocking on the egress CoS queue 7."
+    	::= { esIfCounterTxDropEntry 10 } 
+
+
+-- -----------------------------------------------------------------------------
+    esIfCounterL2VlanTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsIfCounterL2VlanEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A table that creates control entries for counting the received or transmitted
+            packets and bytes at VLAN level and displays the statistics."
+        ::= { esifCounterL2VlanStatisticsCtrl 1 }
+
+    esIfCounterL2VlanEntry OBJECT-TYPE
+        SYNTAX  EsIfCounterL2VlanEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "A list of entries for counting the received or transmitted
+            packets bytes at VLAN level and displays the statistics.
+            The 'ifIndex' represent layer 2 VLAN interface index and
+            the 'esIfCounterL2VlanPortIndex' represent physical port interface index.
+            The physical port interface index should be zero for VLAN-based counting."
+        INDEX   { esIfCounterL2VlanDirection,ifIndex,esIfCounterL2VlanPortIndex,esIfCounterL2VlanPktType }
+        ::= { esIfCounterL2VlanTable 1 }
+
+    EsIfCounterL2VlanEntry ::=
+        SEQUENCE {
+            esIfCounterL2VlanDirection
+                INTEGER,
+            esIfCounterL2VlanPortIndex
+                 InterfaceIndexOrZero,            
+            esIfCounterL2VlanPktType
+                 INTEGER,                        
+            esIfCounterL2VlanPktsStatstics
+                Counter64,
+            esIfCounterL2VlanBytesStatstics
+                Counter64,
+            esIfCounterL2VlanRowStatus
+                RowStatus
+                 }
+                 
+     esIfCounterL2VlanDirection OBJECT-TYPE
+        SYNTAX INTEGER {
+               rx(1),
+               tx(2),
+               both(3)
+               }
+        MAX-ACCESS  read-only
+        STATUS current
+        DESCRIPTION
+            "This object indicates the VLAN counter is counting for
+            received and/or transmitted traffic."
+    	::= { esIfCounterL2VlanEntry 1 }
+
+	  esIfCounterL2VlanPortIndex OBJECT-TYPE
+		SYNTAX      InterfaceIndexOrZero
+		MAX-ACCESS  read-only
+		STATUS      current
+		DESCRIPTION
+		    "This object indicates the counting entry is VLAN-based or 
+		    port-based. A value of physical interface's index for this object means
+		    the counting entry port-based on the specified physical
+		    port interface. A value of zero for this object means that the
+		    counting entry is VLAN-based."
+   		::= { esIfCounterL2VlanEntry 2 }
+		
+    esIfCounterL2VlanPktType OBJECT-TYPE
+        SYNTAX INTEGER {
+               broadcast(1),
+               multicast(2),
+               unicast(3),
+               any(4)
+               }
+        MAX-ACCESS  read-only
+        STATUS current
+        DESCRIPTION
+            "This object indicates the type of packet."
+    	::= { esIfCounterL2VlanEntry 3 }
+    	   	
+    esIfCounterL2VlanPktsStatstics OBJECT-TYPE
+        SYNTAX Counter64
+        MAX-ACCESS  read-only
+        STATUS current
+        DESCRIPTION
+            "This object indicates the statistics by packets."
+    	::= { esIfCounterL2VlanEntry 4 }
+
+    esIfCounterL2VlanBytesStatstics OBJECT-TYPE
+        SYNTAX Counter64
+        MAX-ACCESS  read-only
+        STATUS current
+        DESCRIPTION
+            "This object indicates the statistics by bytes."
+    	::= { esIfCounterL2VlanEntry 5 }
+	
+    esIfCounterL2VlanRowStatus OBJECT-TYPE
+        SYNTAX  RowStatus
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the status of this entry."
+        ::= { esIfCounterL2VlanEntry 99 }
+-- -----------------------------------------------------------------------------
+ esIfCounterRateStatsRxTable  OBJECT-TYPE
+        SYNTAX        SEQUENCE OF EsIfCounterRateStatsRxEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+           "This Table consists of receiving rate statistics, such as
+			packets rate and bits rate, on interfaces."
+        ::= { esIfCounterRateStatistics 1}
+
+    esIfCounterRateStatsRxEntry OBJECT-TYPE
+        SYNTAX           EsIfCounterRateStatsRxEntry
+        MAX-ACCESS       not-accessible
+        STATUS           current
+        DESCRIPTION
+           "A list of entries contain receiving rate statistics 
+		   on specified interfaces."
+        INDEX                 { ifIndex }
+        ::= { esIfCounterRateStatsRxTable 1 }     
+        
+        
+     EsIfCounterRateStatsRxEntry ::= SEQUENCE     	{
+     esIfCounterRateStatsRxPkts      Counter64,
+     esIfCounterRateStatsRxBits      Counter64
+    }
+
+    esIfCounterRateStatsRxPkts OBJECT-TYPE
+        SYNTAX          Counter64
+		UNITS           "packets per second"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates packets receiving rate."    
+        ::= { esIfCounterRateStatsRxEntry 1 }
+    esIfCounterRateStatsRxBits OBJECT-TYPE
+        SYNTAX          Counter64
+		UNITS           "bits per second"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates bits receiving rate."
+        ::= { esIfCounterRateStatsRxEntry 2 }
+
+ -- ----------------------------------------------------------------------------- 
+ esIfCounterRateStatsTxTable  OBJECT-TYPE
+        SYNTAX        SEQUENCE OF EsIfCounterRateStatsTxEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+           "This Table consists of transmitting rate statistics, such as
+			packets rate and bits rate, on interfaces."
+        ::= { esIfCounterRateStatistics 2}  
+             
+    esIfCounterRateStatsTxEntry OBJECT-TYPE
+        SYNTAX           EsIfCounterRateStatsTxEntry
+        MAX-ACCESS       not-accessible
+        STATUS           current
+        DESCRIPTION
+           "A list of entries contain transmitting rate statistics 
+		   on specified interfaces."
+        INDEX                 { ifIndex }
+        ::= { esIfCounterRateStatsTxTable 1 }
+        
+     EsIfCounterRateStatsTxEntry ::= SEQUENCE     	{
+     esIfCounterRateStatsTxPkts      Counter64,
+     esIfCounterRateStatsTxBits      Counter64
+    }
+
+    esIfCounterRateStatsTxPkts OBJECT-TYPE
+        SYNTAX          Counter64
+		UNITS           "packets per second"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates packets transmitting rate."
+        ::= { esIfCounterRateStatsTxEntry 1 }
+    esIfCounterRateStatsTxBits OBJECT-TYPE
+        SYNTAX          Counter64
+		UNITS           "bits per second"		
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates bits transmitting rate."
+        ::= { esIfCounterRateStatsTxEntry 2 }	
+-- -----------------------------------------------------------------------------	
+esIfCounterHistoryStatsRxTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfHistoryStatsRxEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current 
+        DESCRIPTION           
+            "This table is used to display the receiving historical statistics 
+            not covered in standard MIBs (IF-MIB, 
+            RMON, BRIDGE-MIB, Etherlike-MIB) or extend the standard defined 
+            objects to 64 bits."
+        ::= { esIfCounterHistoryStatistics 1}    
+
+    esIfHistoryStatsRxEntry OBJECT-TYPE
+        SYNTAX           EsIfHistoryStatsRxEntry
+        MAX-ACCESS       not-accessible
+        STATUS           current
+        DESCRIPTION
+            "An entry contains receiving historical statistics on an interface.
+			 The 'ifIndex' just represent physical port index now.
+			 the 'esIfHistoryCntType'represent type of historical statistics,including fifteen-minute and one-day.
+			 the 'esIfHistoryCntSlot'represent the number of time slot. For fifteen-minute historical counter,
+			 the slot number is 1-5,and for one-day's,the slot number is 1-2."
+        INDEX          { ifIndex,esIfHistoryCntType,esIfHistoryCntSlot }
+        ::= { esIfCounterHistoryStatsRxTable 1 }
+        
+    EsIfHistoryStatsRxEntry ::= SEQUENCE     	{
+		esIfHistoryCntType                   	   INTEGER,
+		esIfHistoryCntSlot                      	   INTEGER,
+		esIfHistoryRxStatsHCPkts                    Counter64,
+		esIfHistoryRxStatsHCBytes                   Counter64,
+		esIfHistoryRxStatsHCUnicastPkts             Counter64,
+		esIfHistoryRxStatsHCMulticastPkts           Counter64,
+		esIfHistoryRxStatsHCBroadcastPkts           Counter64,
+		esIfHistoryRxStatsHCPkts64Octets            Counter64,
+		esIfHistoryRxStatsHCPkts65to127Octets       Counter64,
+		esIfHistoryRxStatsHCPkts128to255Octets      Counter64,
+		esIfHistoryRxStatsHCPkts256to511Octets      Counter64,
+		esIfHistoryRxStatsHCPkts512to1023Octets     Counter64,
+		esIfHistoryRxStatsHCPkts1024to1518Octets    Counter64,
+		esIfHistoryRxStatsHCPkts1519to1522Octets    Counter64,
+		esIfHistoryRxStatsHCPkts1519to2047Octets    Counter64,
+		esIfHistoryRxStatsHCPkts2048to4095Octets    Counter64,
+		esIfHistoryRxStatsHCPkts4096to9216Octets    Counter64,
+		esIfHistoryRxStatsStartTime                 DateAndTime,
+		esIfHistoryRxStatsEndTime                   DateAndTime		 
+    }
+		
+	esIfHistoryCntType OBJECT-TYPE
+        SYNTAX  INTEGER{
+			fifteen-minute(1),
+			one-day(2)
+                }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the time slot for counters."
+        ::= { esIfHistoryStatsRxEntry 1 } 
+		
+	esIfHistoryCntSlot OBJECT-TYPE
+        SYNTAX          INTEGER (1..10)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of time slot for counters.
+            e.g.         
+           		when swHistoryCntTime is equal to fifteen-minute(1):
+           			1: indicates slot 1(relate to the previous  0 ~ 15 minutes)
+           			2: indicates slot 2(relate to the previous 15 ~ 30 minutes)
+           			3: indicates slot 3(relate to the previous 30 ~ 45 minutes)
+           			... 
+           			n: indicates slot n(relate to the previous (n-1)*15 ~ n*15 minutes)
+
+            	when swHistoryCntTime is equal to one-day(2):
+            		1: indicates slot 1(relate to the previous  0 ~ 24 hours)
+            		2: indicates slot 2(relate to the previous 24 ~ 48 hours)
+            		3: indicates slot 3(relate to the previous 48 ~ 72 hours)
+            		...
+            		m: indicates slot m(relate to the previous (m-1)*24 ~ m*24 hours)
+            		
+           		For each case, one or more historical statistic entries can be supported, the
+           	    maximum	slot number is project depended."
+        ::= { esIfHistoryStatsRxEntry 2 } 
+		
+    esIfHistoryRxStatsHCPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number of packets received on the interface during a special time range.  
+            This object is a 64-bit version of etherStatsPkts."
+        ::= { esIfHistoryStatsRxEntry 3 } 
+		
+	esIfHistoryRxStatsHCBytes OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number of Bytes received on the interface during a special time range.  
+            This object is a 64-bit version of etherStatsPkts."
+        ::= { esIfHistoryStatsRxEntry 4 } 
+		
+	esIfHistoryRxStatsHCUnicastPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number of unicast packets received on the interface during a special time range.  
+            This object is a 64-bit version of etherStatsPkts."
+        ::= { esIfHistoryStatsRxEntry 5 } 
+		
+	esIfHistoryRxStatsHCMulticastPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number of Multicast packets received on the interface during a special time range.  
+            This object is a 64-bit version of etherStatsPkts."
+        ::= { esIfHistoryStatsRxEntry 6 } 		
+
+	esIfHistoryRxStatsHCBroadcastPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number of Broadcast packets received on the interface during a special time range.  
+            This object is a 64-bit version of etherStatsPkts."
+        ::= { esIfHistoryStatsRxEntry 7 }
+		
+    esIfHistoryRxStatsHCPkts64Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets)
+            received that were 64 octets in length (excluding 
+            framing bits but including FCS octets) during a special time range.
+            This object is a 64-bit version of etherStatsPkts64Octets."           
+        ::= { esIfHistoryStatsRxEntry 8 } 
+
+    esIfHistoryRxStatsHCPkts65to127Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets)
+            received that were between 65 and 127 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range.
+            This object is a 64-bit version of etherStatsPkts65to127Octets."           
+        ::= { esIfHistoryStatsRxEntry 9 }   	
+    	
+    esIfHistoryRxStatsHCPkts128to255Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets)
+            received that were between 128 and 255 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range.
+            This object is a 64-bit version of etherStatsPkts128to255Octets."           
+        ::= { esIfHistoryStatsRxEntry 10 }     	
+    	
+    esIfHistoryRxStatsHCPkts256to511Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets)
+            received that were between 256 and 511 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range.
+            This object is a 64-bit version of etherStatsPkts256to511Octets."           
+        ::= { esIfHistoryStatsRxEntry 11 } 
+    	    	
+    esIfHistoryRxStatsHCPkts512to1023Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets)
+            received that were between 512 and 1023 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range.
+            This object is a 64-bit version of etherStatsPkts512to1023Octets."           
+        ::= { esIfHistoryStatsRxEntry 12 } 
+    	    	
+    esIfHistoryRxStatsHCPkts1024to1518Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets)
+            received that were between 1024 and 1518 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range.  
+            This object is a 64-bit version of etherStatsPkts1024to1518Octets."           
+        ::= { esIfHistoryStatsRxEntry 13 } 
+    	    	
+    esIfHistoryRxStatsHCPkts1519to1522Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of good VLAN packets received that were
+            between 1519 and 1522 octets in length inclusive
+            (excluding framing bits but including FCS octets) during a special time range. "           
+        ::= { esIfHistoryStatsRxEntry 14 } 
+    	    	
+    esIfHistoryRxStatsHCPkts1519to2047Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets)
+            received that were between 1519 and 2047 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range."           
+        ::= { esIfHistoryStatsRxEntry 15 } 
+    	    	
+    esIfHistoryRxStatsHCPkts2048to4095Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets) 
+            received that were between 2048 and 4095 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range."           
+       ::= { esIfHistoryStatsRxEntry 16 } 
+    	    	
+    esIfHistoryRxStatsHCPkts4096to9216Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets (including bad packets) 
+            received that were between 4096 and 9216 octets in length
+            inclusive (excluding framing bits but including FCS octets) during a special time range."          
+        ::= { esIfHistoryStatsRxEntry 17 } 
+		
+	esIfHistoryRxStatsStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+          "This object indicates the start time of the specified slot."
+        ::= { esIfHistoryStatsRxEntry 18 } 
+		
+	esIfHistoryRxStatsEndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the end time of the specified slot."
+        ::= { esIfHistoryStatsRxEntry 19 } 
+-- -----------------------------------------------------------------------------
+ esIfHistoryCntRxErrorTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfHistoryCntRxErrorEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of receiving historical statistics for error 
+            packets on interfaces during an specified historical time range."
+        ::= { esIfCounterHistoryStatistics 2 }
+
+    esIfHistoryCntRxErrorEntry OBJECT-TYPE
+        SYNTAX          EsIfHistoryCntRxErrorEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the receiving statistics  for error packets on 
+            an interface during a specified historical time range."
+        INDEX   { ifIndex,esIfHistoryCntType,esIfHistoryCntSlot }
+		
+        ::= { esIfHistoryCntRxErrorTable 1 }
+
+    EsIfHistoryCntRxErrorEntry ::= SEQUENCE     	{
+		esIfHistoryCntRxCRCErrorPkts 	            Counter64,
+		esIfHistoryCntRxUndersizePkts                Counter64,
+		esIfHistoryCntRxOversizePkts           		Counter64,
+		esIfHistoryCntRxFragment            			Counter64,
+		esIfHistoryCntRxJabberPkts                	Counter64,
+		esIfHistoryCntRxCodeErrors                   Counter64,
+		esIfHistoryCntRxFalseCarrie       			Counter64,
+		esIfHistoryCntRxAlignmentErrorsPkts          Counter64,
+		esIfHistoryCntRxErrStartTime					DateAndTime,
+		esIfHistoryCntRxErrEndTime		            DateAndTime 
+   	}
+
+    esIfHistoryCntRxCRCErrorPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates receiving total  historical number of CRC(FCS)Error packets during
+			a specified historical time range.	The CRC Error packets that are an integral number of octets
+			in length but do not pass the FCS check.This count does not include frames received 
+			with frame-too-long or frame-too-short error."
+    	::= { esIfHistoryCntRxErrorEntry 1 }
+		
+	esIfHistoryCntRxUndersizePkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "The receiving total historical number of Undersize packets during a specified historical
+		   time range.The Undersize packets were less than 64 octets long (excluding framing bits but 
+		   including FCS octets) and were otherwise well formed."
+    	::= { esIfHistoryCntRxErrorEntry 2 }
+		
+	esIfHistoryCntRxOversizePkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The receiving total historical number of Oversize packets during a specified historical
+			time range.The Oversize packets were longer than 1518 octets (excluding framing bits but
+			including FCS octets) but were otherwise well formed."
+    	::= { esIfHistoryCntRxErrorEntry 3 }
+		
+	esIfHistoryCntRxFragment OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The receiving total historical number of Fragment packets during a specified historical 
+			time range.The Fragment packets were less than 64 octets in length(excluding framing bits 
+			but including FCS octets) and had either a bad Frame Check Sequence(FCS) with an integral
+			number of octets (FCS Error) or a bad FCS with a non-integral number of octets(Alignment Error)"
+    	::= { esIfHistoryCntRxErrorEntry 4 }
+		
+	esIfHistoryCntRxJabberPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The receiving total historical number  of Jabber packets during a specified historical 
+			time range.The Jabber packets were longer than 1518 octets (excluding framing bits,
+			but including FCS octets),and had either a bad Frame Check Sequence (FCS)with an integral 
+			number of octets (FCS Error) or a bad FCS with a non-integral number of octets (Alignment Error)."
+    	::= { esIfHistoryCntRxErrorEntry 5 }
+		
+	esIfHistoryCntRxCodeErrors OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The receiving total historical number of times where there was an invalid data symbol
+			when a valid carrier was present during a specified historical time range."
+    	::= { esIfHistoryCntRxErrorEntry 6 }
+		
+	esIfHistoryCntRxFalseCarrie OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The receiving total historical number of times where the carrier sense	condition 
+			was lost or never asserted when attempting to transmit a frame on a particular
+			interface during  a specified historical time range."
+    	::= { esIfHistoryCntRxErrorEntry 7 }
+		
+	esIfHistoryCntRxAlignmentErrorsPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The receiving total historical number of Alignment Errors packets during 
+			a specified historical time range.The Alignment Errors packets that are not an 
+			integral number of octets in length and do not pass the FCS check."
+    	::= { esIfHistoryCntRxErrorEntry 8 }
+		
+	esIfHistoryCntRxErrStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+          "This object indicates the start time of the specified slot."
+        ::= { esIfHistoryCntRxErrorEntry 9 } 
+		
+	esIfHistoryCntRxErrEndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the end time of the specified slot."
+        ::= { esIfHistoryCntRxErrorEntry 10 } 
+-- -----------------------------------------------------------------------------
+ esIfHistoryCntRxDropTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfHistoryCntRxDropEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of receiving historical statistics for discarded 
+            packets on interfaces."
+        ::= { esIfCounterHistoryStatistics 3 }
+
+    esIfHistoryCntRxDropEntry OBJECT-TYPE
+        SYNTAX          EsIfHistoryCntRxDropEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the receiving historical statistics for discarded packets on 
+            an interface."
+        INDEX   { ifIndex,esIfHistoryCntType,esIfHistoryCntSlot }
+        ::= { esIfHistoryCntRxDropTable 1 }
+
+    EsIfHistoryCntRxDropEntry ::= SEQUENCE     	{
+		esIfHistoryCntRxBufferFullDrops	           Counter64,
+		esIfHistoryCntRxACLDrops                    Counter64,
+		esIfHistoryCntRxMulticastDrops              Counter64,
+		esIfHistoryCntRxVLANIngressDrops            Counter64,
+		esIfHistoryCntRxIPv6Drops                   Counter64,
+		esIfHistoryCntRxSTPDrops                    Counter64,
+		esIfHistoryCntRxStormAndTableDiscard        Counter64,
+		esIfHistoryCntRxMTUDrops                    Counter64,
+		esIfHistoryCntRxInvalidDestPort             Counter64,   
+		esIfHistoryCntRxBandwidthCtrlDrops          Counter64,
+		esIfHistoryCntRxDropStartTime			   DateAndTime,
+		esIfHistoryCntRxDropEndTime		           DateAndTime 
+   	}
+	
+    esIfHistoryCntRxBufferFullDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets discarded while input buffer full
+			during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 1 }
+
+    esIfHistoryCntRxACLDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of received packets denied by ACLs
+			during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 2 }
+
+    esIfHistoryCntRxMulticastDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of received multicast packet that is discarded
+			during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 3 }
+
+    esIfHistoryCntRxVLANIngressDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets discarded by VLAN ingress checking
+			during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 4 }    	
+
+    esIfHistoryCntRxIPv6Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of IPv6 packets dropped by routing process
+			during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 5 }
+
+    esIfHistoryCntRxSTPDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets discarded when ingress 
+             port is not in forwarding state during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 6 }
+
+    esIfHistoryCntRxStormAndTableDiscard OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets discarded by receiving policy
+            (e.g. the source or destination MAC is not allowed, rate limit, etc.) 
+			during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 7 }
+
+    esIfHistoryCntRxMTUDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets discarded by frames received, which 
+            exceeds Maximum Frame in length and contains a valid or invalid FCS
+			during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 8 }
+
+    esIfHistoryCntRxInvalidDestPort OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets dropped due to no destination port can
+            be forwarded to during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 9 }
+
+    esIfHistoryCntRxBandwidthCtrlDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number of packets discarded by port ingress bandwidth 
+            control during a specified historical time range."
+    	::= { esIfHistoryCntRxDropEntry 10 }
+	
+	esIfHistoryCntRxDropStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+          "This object indicates the start time of the specified slot."
+        ::= { esIfHistoryCntRxDropEntry 11 } 
+		
+	esIfHistoryCntRxDropEndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the end time of the specified slot."
+        ::= { esIfHistoryCntRxDropEntry 12 } 
+-- -----------------------------------------------------------------------------
+ esIfHistoryStatsTxTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfHistoryStatsTxEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current 
+        DESCRIPTION           
+            "This table is used to display the transmitting historical statistics 
+            not covered in standard MIBs (IF-MIB, 
+            RMON, BRIDGE-MIB, Etherlike-MIB) or extend the standard defined 
+            objects to 64 bits."
+        ::= { esIfCounterHistoryStatistics 4}    
+
+    esIfHistoryStatsTxEntry OBJECT-TYPE
+        SYNTAX           EsIfHistoryStatsTxEntry
+        MAX-ACCESS       not-accessible
+        STATUS           current
+        DESCRIPTION
+            "An entry contains transmitting historical statistics on an interface."
+        INDEX       { ifIndex,esIfHistoryCntType,esIfHistoryCntSlot }
+        ::= { esIfHistoryStatsTxTable 1 }
+        
+    EsIfHistoryStatsTxEntry ::= SEQUENCE     	{
+		esIfHistoryTxStatsHCPkts                    Counter64,
+		esIfHistoryTxStatsHCBytes                   Counter64,
+		esIfHistoryTxStatsHCUnicastPkts             Counter64,
+		esIfHistoryTxStatsHCMulticastPkts           Counter64,
+		esIfHistoryTxStatsHCBroadcastPkts           Counter64,
+		esIfHistoryTxStatsHCPkts64Octets            Counter64,
+		esIfHistoryTxStatsHCPkts65to127Octets       Counter64,
+		esIfHistoryTxStatsHCPkts128to255Octets      Counter64,
+		esIfHistoryTxStatsHCPkts256to511Octets      Counter64,
+		esIfHistoryTxStatsHCPkts512to1023Octets     Counter64,
+		esIfHistoryTxStatsHCPkts1024to1518Octets    Counter64,
+		esIfHistoryTxStatsHCPkts1519to1522Octets    Counter64,
+		esIfHistoryTxStatsHCPkts1519to2047Octets    Counter64,
+		esIfHistoryTxStatsHCPkts2048to4095Octets    Counter64,
+		esIfHistoryTxStatsHCPkts4096to9216Octets    Counter64,
+		esIfHistoryTxStatsStartTime                 DateAndTime,
+		esIfHistoryTxStatsEndTime                   DateAndTime		 
+    }
+			
+    esIfHistoryTxStatsHCPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number  of packets transmitted on the interface 
+			 during a specified historical time range.  
+            This object is a 64-bit version of etherStatsPkts."
+        ::= { esIfHistoryStatsTxEntry 1 } 
+		
+	esIfHistoryTxStatsHCBytes OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number  of Bytes transmitted on the interface 
+			during a specified historical time range.  
+            This object is a 64-bit version of etherStatsPkts ."
+        ::= { esIfHistoryStatsTxEntry 2 } 
+		
+	esIfHistoryTxStatsHCUnicastPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number  of unicast packets transmitted on the interface 
+			during a specified historical time range.  
+            This object is a 64-bit version of etherStatsPkts ."
+        ::= { esIfHistoryStatsTxEntry 3 } 
+		
+	esIfHistoryTxStatsHCMulticastPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number  of Multicast packets transmitted on the interface
+			during a specified historical time range.  
+            This object is a 64-bit version of etherStatsPkts ."
+        ::= { esIfHistoryStatsTxEntry 4 } 		
+
+	esIfHistoryTxStatsHCBroadcastPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The historical number  of Broadcast packets transmitted on the interface
+			during a specified historical time range.  
+            This object is a 64-bit version of etherStatsPkts ."
+        ::= { esIfHistoryStatsTxEntry 5 }
+		
+    esIfHistoryTxStatsHCPkts64Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets)
+            transmitted that were 64 octets in length (excluding 
+            framing bits but including FCS octets) during a specified historical time range.
+            This object is a 64-bit version of etherStatsPkts64Octets."           
+        ::= { esIfHistoryStatsTxEntry 6 } 
+
+    esIfHistoryTxStatsHCPkts65to127Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets)
+            transmitted that were between 65 and 127 octets in length
+            inclusive (excluding framing bits but including FCS octets)
+			during a specified historical time range.
+            This object is a 64-bit version of etherStatsPkts65to127Octets."           
+        ::= { esIfHistoryStatsTxEntry 7}   	
+    	
+    esIfHistoryTxStatsHCPkts128to255Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets)
+            transmitted that were between 128 and 255 octets in length
+            inclusive (excluding framing bits but including FCS octets)
+			during a specified historical time range.
+            This object is a 64-bit version of etherStatsPkts128to255Octets."           
+        ::= { esIfHistoryStatsTxEntry 8 }     	
+    	
+    esIfHistoryTxStatsHCPkts256to511Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets)
+            transmitted that were between 256 and 511 octets in length
+            inclusive (excluding framing bits but including FCS octets)
+			during a specified historical time range.
+            This object is a 64-bit version of etherStatsPkts256to511Octets."           
+        ::= { esIfHistoryStatsTxEntry 9 } 
+    	    	
+    esIfHistoryTxStatsHCPkts512to1023Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets)
+            transmitted that were between 512 and 1023 octets in length
+            inclusive (excluding framing bits but including FCS octets
+			during a specified historical time range.
+            This object is a 64-bit version of etherStatsPkts512to1023Octets."           
+        ::= { esIfHistoryStatsTxEntry 10 } 
+    	    	
+    esIfHistoryTxStatsHCPkts1024to1518Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets)
+            transmitted that were between 1024 and 1518 octets in length
+            inclusive (excluding framing bits but including FCS octets)
+			during a specified historical time range.  
+            This object is a 64-bit version of etherStatsPkts1024to1518Octets."           
+        ::= { esIfHistoryStatsTxEntry 11 } 
+    	    	
+    esIfHistoryTxStatsHCPkts1519to1522Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of good VLAN packets transmitted that were
+            between 1519 and 1522 octets in length inclusive
+            (excluding framing bits but including FCS octets)
+			during a specified historical time range. "           
+        ::= { esIfHistoryStatsTxEntry 12 } 
+    	    	
+    esIfHistoryTxStatsHCPkts1519to2047Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets)
+            transmitted that were between 1519 and 2047 octets in length
+            inclusive (excluding framing bits but including FCS octets)
+			during a specified historical time range."           
+        ::= { esIfHistoryStatsTxEntry 13 } 
+    	    	
+    esIfHistoryTxStatsHCPkts2048to4095Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets) 
+            transmitted that were between 2048 and 4095 octets in length
+            inclusive (excluding framing bits but including FCS octets)
+			during a specified historical time range."           
+       ::= { esIfHistoryStatsTxEntry 14 } 
+    	    	
+    esIfHistoryTxStatsHCPkts4096to9216Octets OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total historical number  of packets (including bad packets) 
+            transmitted that were between 4096 and 9216 octets in length
+            inclusive (excluding framing bits but including FCS octets)
+			during a specified historical time range."          
+        ::= { esIfHistoryStatsTxEntry 15 } 
+		
+	esIfHistoryTxStatsStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+          "This object indicates the start time of the specified slot ."
+        ::= { esIfHistoryStatsTxEntry 16 } 
+		
+	esIfHistoryTxStatsEndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the end time of the specified slot ."
+        ::= { esIfHistoryStatsTxEntry 17 } 
+-- -----------------------------------------------------------------------------
+ esIfHistoryCntTxErrorTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfHistoryCntTxErrorEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of transmitting statistics for error 
+            packets on interfaces."
+        ::= { esIfCounterHistoryStatistics 5 }
+
+    esIfHistoryCntTxErrorEntry OBJECT-TYPE
+        SYNTAX          EsIfHistoryCntTxErrorEntry 
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the transmitting statistics for error packets on 
+            an interface."
+        INDEX   { ifIndex,esIfHistoryCntType,esIfHistoryCntSlot }
+        ::= { esIfHistoryCntTxErrorTable 1 }
+
+    EsIfHistoryCntTxErrorEntry ::= SEQUENCE     	{
+		esIfHistoryCntTxTotalCollision	           	Counter64,
+		esIfHistoryCntTxSingleDeferralPkts           Counter64,
+		esIfHistoryCntTxLateCollisionPkts           	Counter64,
+		esIfHistoryCntTxExcessiveCollisionPkts       Counter64,
+		esIfHistoryCntTxSingleCollisionPkts        	Counter64,
+		esIfHistoryCntTxMultipleCollisionPkts        Counter64,
+		esIfHistoryCntTxErrStartTime					DateAndTime,
+		esIfHistoryCntTxErrEndTime		            DateAndTime 
+   	}
+
+    esIfHistoryCntTxTotalCollision OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            " The best estimate total number of total collision 
+			on this Ethernet segment during a specified historical time range.
+			"
+    	::= { esIfHistoryCntTxErrorEntry 1 }
+		
+	esIfHistoryCntTxSingleDeferralPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The transmitting total number of single deferral packets."
+    	::= { esIfHistoryCntTxErrorEntry 2 }
+		
+	esIfHistoryCntTxLateCollisionPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The  total number of times that a collision is	detected on a particular 
+			interface later than one slotTime into the transmission of a packet during 
+			a specified historical time range."
+    	::= { esIfHistoryCntTxErrorEntry 3 }
+		
+	esIfHistoryCntTxExcessiveCollisionPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of excessive collision for which transmission on a particular
+			interface fails due to excessive collisions during a specified historical time range."
+    	::= { esIfHistoryCntTxErrorEntry 4 }
+		
+	esIfHistoryCntTxSingleCollisionPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of frames that are successfully transmitted  on	a particular 
+			interface for which transmission is inhibited by exactly one collision during a 
+			specified historical time range."
+    	::= { esIfHistoryCntTxErrorEntry 5 }
+		
+	esIfHistoryCntTxMultipleCollisionPkts OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The total number of frames that are successfully transmitted on a particular 
+			interface for which transmission is inhibited by more than one collision during a 
+			specified historical time range."
+    	::= { esIfHistoryCntTxErrorEntry 6 }
+		
+	esIfHistoryCntTxErrStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+          "This object indicates the start time of the specified slot."
+        ::= { esIfHistoryCntTxErrorEntry 7 } 
+		
+	esIfHistoryCntTxErrEndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the end time of the specified slot."
+        ::= { esIfHistoryCntTxErrorEntry 8 } 
+-- -----------------------------------------------------------------------------
+ esIfHistoryCntTxDropTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIfHistoryCntTxDropEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current 
+        DESCRIPTION           
+            "This table is used to display transmitting statistics for 
+            discarded packets on interfaces."
+        ::= { esIfCounterHistoryStatistics 6}    
+
+    esIfHistoryCntTxDropEntry OBJECT-TYPE
+        SYNTAX          EsIfHistoryCntTxDropEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains transmitting statistics for discarded packets
+            on an interface"
+        INDEX    { ifIndex,esIfHistoryCntType,esIfHistoryCntSlot }
+        ::= { esIfHistoryCntTxDropTable 1 }
+        
+    EsIfHistoryCntTxDropEntry ::= SEQUENCE		{	
+		esIfHistoryCntTxSTPDrops      	Counter64,
+		esIfHistoryCntTxHOLDrops      	Counter64,
+		esIfHistoryCntTxCOS0Drops     	Counter64,
+		esIfHistoryCntTxCOS1Drops     	Counter64,
+		esIfHistoryCntTxCOS2Drops     	Counter64,
+		esIfHistoryCntTxCOS3Drops     	Counter64,
+		esIfHistoryCntTxCOS4Drops     	Counter64,
+		esIfHistoryCntTxCOS5Drops     	Counter64,
+		esIfHistoryCntTxCOS6Drops    	Counter64,
+		esIfHistoryCntTxCOS7Drops     	Counter64,      
+    	esIfHistoryCntTxDropStartTime	DateAndTime,
+		esIfHistoryCntTxDropEndTime		DateAndTime 
+		}
+
+    esIfHistoryCntTxSTPDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for packets dropped when egress port is
+            not in forwarding state during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 1}
+    	
+    esIfHistoryCntTxHOLDrops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet dropped due to Head Of Line blocking
+			during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 2 }
+
+    esIfHistoryCntTxCOS0Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet dropped due to Head of Line blocking
+            on the egress CoS queue 0 during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 3 }
+
+    esIfHistoryCntTxCOS1Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking  
+            on the egress CoS queue 1 during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 4 }
+ 
+    esIfHistoryCntTxCOS2Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking 
+			on the egress CoS queue 2during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 5 }
+ 
+    esIfHistoryCntTxCOS3Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking 
+			on the egress CoS queue 3 during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 6 } 
+ 
+    esIfHistoryCntTxCOS4Drops OBJECT-TYPE
+	    SYNTAX          Counter64
+	    MAX-ACCESS      read-only
+	    STATUS          current
+	    DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking 
+			on the egress CoS queue 4 during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 7 } 
+ 
+    esIfHistoryCntTxCOS5Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking
+			on the egress CoS queue 5 during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 8 } 
+ 
+    esIfHistoryCntTxCOS6Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking 
+			on the egress CoS queue 6 during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 9 } 
+ 
+    esIfHistoryCntTxCOS7Drops OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Incremented for each packet drop due to Head of Line blocking 
+			on the egress CoS queue 7 during a specified historical time range."
+    	::= { esIfHistoryCntTxDropEntry 10 } 
+	
+	esIfHistoryCntTxDropStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+          "This object indicates the start time of the specified slot."
+        ::= { esIfHistoryCntTxDropEntry 11 } 
+		
+	esIfHistoryCntTxDropEndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the end time of the specified slot."
+        ::= { esIfHistoryCntTxDropEntry 12 } 
+-- -----------------------------------------------------------------------------
+
+    esIfCounterCompliances OBJECT IDENTIFIER ::= { esIfCounterConformance 1 }
+    esIfCounterGroups	OBJECT IDENTIFIER ::= { esIfCounterConformance 2 }
+
+--  compliance statements
+
+    esIfCounterCompliance MODULE-COMPLIANCE
+        STATUS         current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-IF-COUNTER-MIB."
+
+        MODULE  -- this module
+        MANDATORY-GROUPS 
+            { 
+            	esIfCounterUtilizationGroup,
+            	esIfCounterClearCtrlGroup,
+            	esIfCounterHCStatsGroup
+            }
+
+        GROUP esIfCounterIfLinkChangeGroup
+            DESCRIPTION
+                "This group is mandatory for those devices support counting
+                the number of link change events."
+
+        GROUP esIfCounterDropStatsGroup
+            DESCRIPTION
+                "This group is mandatory for those devices support statistics
+                information dropped by specified interface."
+ 
+         GROUP esIfCounterL2VlanGroup
+            DESCRIPTION
+                "This group is mandatory for those devices support layer 2 VLAN statistics
+                which use ACL resources." 
+		
+        GROUP  esIfCounterRateStatsGroup  
+		    DESCRIPTION
+			    "This group is mandatory for those devices support rate statistics
+                on specified interfaces."
+				
+		GROUP esIfCounterHistoryHCStatsGroup
+            DESCRIPTION
+                "This group is mandatory for those devices support historical statistics
+                information on specified interface."
+		
+		GROUP esIfCounterHistoryErrorStatsGroup
+            DESCRIPTION
+                "This group is mandatory for those devices support historical Error statistics
+                information on specified interface."
+				
+        GROUP esIfCounterHistoryDropStatsGroup
+            DESCRIPTION
+                "This group is mandatory for those devices support historical discarded statistics
+                information on specified interface."
+ 				
+        ::= { esIfCounterCompliances 1 }
+		
+		
+--  units of conformance
+    esIfCounterIfLinkChangeGroup OBJECT-GROUP
+        OBJECTS             {
+            esIfCounterIfLinkChange
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing information about 
+            interface link change."
+        ::= { esIfCounterGroups 1 }
+
+    esIfCounterUtilizationGroup OBJECT-GROUP
+        OBJECTS             {
+            esIfCounterIfUtilizationRx,
+            esIfCounterIfUtilizationTx,
+            esIfCounterIfUtilizationUtil
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing information about
+            interface utilization."
+        ::= { esIfCounterGroups 2 }
+        
+    esIfCounterClearCtrlGroup OBJECT-GROUP
+        OBJECTS             {
+            esIfCounterClearAll,
+            esIfCounterClearIf
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects for clearing counters on interfaces."
+        ::= { esIfCounterGroups 3 }
+
+    esIfCounterHCStatsGroup OBJECT-GROUP
+        OBJECTS             {
+            esIfRxStatsHCPkts,
+            esIfRxStatsHCPkts64Octets,
+            esIfRxStatsHCPkts65to127Octets,
+            esIfRxStatsHCPkts128to255Octets,
+            esIfRxStatsHCPkts256to511Octets,
+            esIfRxStatsHCPkts512to1023Octets,
+            esIfRxStatsHCPkts1024to1518Octets,
+            esIfRxStatsHCPkts1519to1522Octets,
+            esIfRxStatsHCPkts1519to2047Octets,
+            esIfRxStatsHCPkts2048to4095Octets,
+            esIfRxStatsHCPkts4096to9216Octets,
+            esIfTxStatsHCPkts,
+            esIfTxStatsHCPkts64Octets,
+            esIfTxStatsHCPkts65to127Octets,
+            esIfTxStatsHCPkts128to255Octets,
+            esIfTxStatsHCPkts256to511Octets,
+            esIfTxStatsHCPkts512to1023Octets,
+            esIfTxStatsHCPkts1024to1518Octets,
+            esIfTxStatsHCPkts1519to1522Octets,
+            esIfTxStatsHCPkts1519to2047Octets,
+            esIfTxStatsHCPkts2048to4095Octets,
+            esIfTxStatsHCPkts4096to9216Octets,
+            esIfTxStatsFCSErrors
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing additional statistics which are 
+            not covered in standard MIBs."
+        ::= { esIfCounterGroups 4 }
+        
+    esIfCounterDropStatsGroup OBJECT-GROUP
+        OBJECTS             {
+            esIfCounterRxBufferFullDrops,
+            esIfCounterRxACLDrops,
+            esIfCounterRxMulticastDrops,
+            esIfCounterRxVLANIngressDrops,
+            esIfCounterRxIPv6Drops,
+            esIfCounterRxSTPDrops,
+            esIfCounterRxStormAndTableDiscard,
+            esIfCounterRxMTUDrops,
+            esIfCounterRxInvalidDestPort,
+            esIfCounterRxBandwidthCtrlDrops,
+            esIfCounterTxSTPDrops,
+            esIfCounterTxHOLDrops,
+            esIfCounterTxCOS0Drops,
+            esIfCounterTxCOS1Drops,
+            esIfCounterTxCOS2Drops,
+            esIfCounterTxCOS3Drops,
+            esIfCounterTxCOS4Drops,
+            esIfCounterTxCOS5Drops,
+            esIfCounterTxCOS6Drops,
+            esIfCounterTxCOS7Drops
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing interface-specific statistics for  
+            dropped packets."
+        ::= { esIfCounterGroups 5 }
+
+    esIfCounterL2VlanGroup OBJECT-GROUP
+        OBJECTS             {
+            esIfCounterL2VlanDirection,
+            esIfCounterL2VlanPortIndex,
+            esIfCounterL2VlanPktType,
+            esIfCounterL2VlanPktsStatstics,
+            esIfCounterL2VlanBytesStatstics,
+            esIfCounterL2VlanRowStatus
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing information about
+            layer 2 VLAN interface statistics which use ACL resources."
+        ::= { esIfCounterGroups 6 }
+	esIfCounterRateStatsGroup	OBJECT-GROUP
+		OBJECTS             {
+           esIfCounterRateStatsRxPkts  ,    
+		   esIfCounterRateStatsRxBits  ,
+           esIfCounterRateStatsTxPkts  ,   
+		   esIfCounterRateStatsTxBits   
+        }
+		STATUS  current
+	    DESCRIPTION
+           "A collection of objects providing interface-specific rate statistics."
+        ::= { esIfCounterGroups 7 }
+		
+	esIfCounterHistoryHCStatsGroup OBJECT-GROUP
+        OBJECTS             {	 	 
+			esIfHistoryCntType,                   	 	 
+			esIfHistoryCntSlot,                     	 
+			esIfHistoryRxStatsHCPkts,                   
+			esIfHistoryRxStatsHCBytes,                 
+			esIfHistoryRxStatsHCUnicastPkts,           
+			esIfHistoryRxStatsHCMulticastPkts,          
+			esIfHistoryRxStatsHCBroadcastPkts,          
+			esIfHistoryRxStatsHCPkts64Octets,          
+			esIfHistoryRxStatsHCPkts65to127Octets,       
+			esIfHistoryRxStatsHCPkts128to255Octets,      
+			esIfHistoryRxStatsHCPkts256to511Octets,     
+			esIfHistoryRxStatsHCPkts512to1023Octets,    
+			esIfHistoryRxStatsHCPkts1024to1518Octets,   
+			esIfHistoryRxStatsHCPkts1519to1522Octets,   
+			esIfHistoryRxStatsHCPkts1519to2047Octets,   
+			esIfHistoryRxStatsHCPkts2048to4095Octets,  
+			esIfHistoryRxStatsHCPkts4096to9216Octets,   
+			esIfHistoryRxStatsStartTime,              
+			esIfHistoryRxStatsEndTime,                 		 
+			esIfHistoryTxStatsHCPkts,                  
+			esIfHistoryTxStatsHCBytes,                  
+			esIfHistoryTxStatsHCUnicastPkts,            
+			esIfHistoryTxStatsHCMulticastPkts,          
+			esIfHistoryTxStatsHCBroadcastPkts,          
+			esIfHistoryTxStatsHCPkts64Octets,          
+			esIfHistoryTxStatsHCPkts65to127Octets,      
+			esIfHistoryTxStatsHCPkts128to255Octets,      
+			esIfHistoryTxStatsHCPkts256to511Octets,    
+			esIfHistoryTxStatsHCPkts512to1023Octets,    
+			esIfHistoryTxStatsHCPkts1024to1518Octets,   
+			esIfHistoryTxStatsHCPkts1519to1522Octets,   
+			esIfHistoryTxStatsHCPkts1519to2047Octets,   
+			esIfHistoryTxStatsHCPkts2048to4095Octets,   
+			esIfHistoryTxStatsHCPkts4096to9216Octets,   
+			esIfHistoryTxStatsStartTime,                
+			esIfHistoryTxStatsEndTime                   	
+		}
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing additional historical statistics which are 
+            not covered in standard MIBs."
+        ::= { esIfCounterGroups 8 }
+		
+	esIfCounterHistoryErrorStatsGroup OBJECT-GROUP
+        OBJECTS             {
+			esIfHistoryCntRxCRCErrorPkts,         	
+			esIfHistoryCntRxUndersizePkts,                  
+			esIfHistoryCntRxOversizePkts,           		
+			esIfHistoryCntRxFragment,            			
+			esIfHistoryCntRxJabberPkts,                		
+			esIfHistoryCntRxCodeErrors,                     
+			esIfHistoryCntRxFalseCarrie,       				
+			esIfHistoryCntRxAlignmentErrorsPkts, 
+			esIfHistoryCntTxTotalCollision,	            	
+			esIfHistoryCntTxSingleDeferralPkts,             
+			esIfHistoryCntTxLateCollisionPkts,           	
+			esIfHistoryCntTxExcessiveCollisionPkts,         
+			esIfHistoryCntTxSingleCollisionPkts,        
+			esIfHistoryCntTxMultipleCollisionPkts          
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing interface-specic historical statistics for  
+            Error packets."
+        ::= { esIfCounterGroups 9 }
+		
+    esIfCounterHistoryDropStatsGroup OBJECT-GROUP
+        OBJECTS             {
+			esIfHistoryCntRxBufferFullDrops,
+			esIfHistoryCntRxACLDrops,
+			esIfHistoryCntRxMulticastDrops,
+			esIfHistoryCntRxVLANIngressDrops,
+			esIfHistoryCntRxIPv6Drops,
+			esIfHistoryCntRxSTPDrops,
+			esIfHistoryCntRxStormAndTableDiscard,
+			esIfHistoryCntRxMTUDrops,
+			esIfHistoryCntRxInvalidDestPort,
+			esIfHistoryCntRxBandwidthCtrlDrops,
+			esIfHistoryCntTxSTPDrops,
+			esIfHistoryCntTxHOLDrops,
+			esIfHistoryCntTxCOS0Drops,
+			esIfHistoryCntTxCOS1Drops,
+			esIfHistoryCntTxCOS2Drops,
+			esIfHistoryCntTxCOS3Drops,
+			esIfHistoryCntTxCOS4Drops,
+			esIfHistoryCntTxCOS5Drops,
+			esIfHistoryCntTxCOS6Drops,
+			esIfHistoryCntTxCOS7Drops
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing interface-specic historical statistics for  
+            dropped packets."
+        ::= { esIfCounterGroups 10 }
+END

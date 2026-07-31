@@ -1,0 +1,759 @@
+-- *****************************************************************
+-- DLINKES-SYSTEM-FILE-MIB: D-Link System File MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+
+DLINKES-SYSTEM-FILE-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, Unsigned32, NOTIFICATION-TYPE
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        TEXTUAL-CONVENTION, TruthValue, RowStatus, DisplayString
+		    FROM SNMPv2-TC
+        InetAddressType, InetAddress
+            FROM INET-ADDRESS-MIB
+        InterfaceIndexOrZero
+            FROM IF-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+    dlinkEsSystemFileMIB MODULE-IDENTITY
+        LAST-UPDATED    "201304240000Z"
+        ORGANIZATION    "D-Link Corp."
+        CONTACT-INFO
+            "   D-Link Corporation
+
+                Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                        Taipei City 114, Taiwan, R.O.C
+                Tel:     +886-2-66000123
+                E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for managing system critical files
+            (e.g configuration and firmware.)
+            "
+        REVISION        "201304240000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+
+        ::= { dlinkCommon 14 }
+
+--
+-- Node definitions
+--
+
+    essfMIBNotifications OBJECT IDENTIFIER ::= { dlinkEsSystemFileMIB 0 }
+    essfMIBObjects       OBJECT IDENTIFIER ::= { dlinkEsSystemFileMIB 1 }
+    essfMIBConformance	OBJECT IDENTIFIER ::= { dlinkEsSystemFileMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    essfBootInfoObjects		OBJECT IDENTIFIER ::= { essfMIBObjects 1 }
+
+    essfNextBootCfgUrl OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE (0..799))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the URL of the file to be used as the startup
+            configuration file."
+        ::= { essfBootInfoObjects 1 }
+
+    essfNextBootImageUrl OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE (0..799))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the URL of the file to be used as boot image
+            file."
+        ::= { essfBootInfoObjects 2 }
+
+    essfCheckingBootImageCheck OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether displays the information of the
+            specified next boot image to let user understand whether the
+            specified file is suitable to be a boot image or not, which some
+            information should be displayed such as purpose of the file,
+            version number, time stamp, and checksum etc.
+            The object essfBootCheckResult indicates the checking result.
+            "
+        ::= { essfBootInfoObjects 3 }
+
+    essfBootImageCheckResult OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the information of the specified next boot
+            image such as the purpose of the file, version number, time stamp,
+            and checksum etc.
+            This object is meaningful when essfNextBootImageUrl is not empty
+            and essfBootCheckImage is 'true'.
+            "
+        ::= { essfBootInfoObjects 4 }
+
+-- -----------------------------------------------------------------------------
+    essfBootImageTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EssfBootImageEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table is used to display information for boot images of units."
+        ::= { essfBootInfoObjects 5 }
+
+	essfBootImageEntry OBJECT-TYPE
+        SYNTAX          EssfBootImageEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains version information of a unit."
+        INDEX   {
+            essfBootImageUnitId,
+            essfBootImageIndex
+        }
+        ::= { essfBootImageTable 1 }
+
+    EssfBootImageEntry ::= SEQUENCE {
+		essfBootImageUnitId 		Unsigned32,
+		essfBootImageIndex   	Unsigned32,
+		essfBootImageUrl 		OCTET STRING,
+        essfBootImageInWorking   TruthValue
+    }
+
+    essfBootImageUnitId OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the unit (stacking device) or slot (chassis
+            device) ID.
+            "
+        ::= { essfBootImageEntry 1 }
+
+	essfBootImageIndex OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+             "This object indicates the index of boot image."
+        ::= { essfBootImageEntry 2 }
+
+	essfBootImageUrl OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE (0..799))
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the file name and path of the entry."
+        ::= { essfBootImageEntry 3 }
+
+    essfBootImageInWorking OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the entry is the current boot image."
+        ::= { essfBootImageEntry 4 }
+
+-- -----------------------------------------------------------------------------
+    essfBootCfgFileTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EssfBootCfgFileEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The table is used to display boot configuration file of units."
+        ::= { essfBootInfoObjects 6 }
+
+	essfBootCfgFileEntry OBJECT-TYPE
+        SYNTAX          EssfBootCfgFileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the information for boot configuration file of a unit."
+        INDEX   {
+            essfBootCfgFileUnitId
+        }
+        ::= { essfBootCfgFileTable 1 }
+
+    EssfBootCfgFileEntry ::= SEQUENCE {
+		essfBootCfgFileUnitId 	Unsigned32,
+		essfBootCfgFileUrl 		OCTET STRING
+    }
+
+    essfBootCfgFileUnitId OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the unit (stacking device) or slot (chassis
+            device) ID.
+            "
+        ::= { essfBootCfgFileEntry 1 }
+
+	essfBootCfgFileUrl OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE (0..799))
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the file name and path of the entry."
+        ::= { essfBootCfgFileEntry 2 }
+
+-- -----------------------------------------------------------------------------
+    essfCopyTable OBJECT-TYPE
+       SYNTAX           SEQUENCE OF EssfCopyEntry
+       MAX-ACCESS       not-accessible
+       STATUS           current
+       DESCRIPTION
+           "A table contains the information for file copy. There will at any
+           time be either 0 or 1 row in this table, and the only valid index
+           for this table is 1.  It is only a table so that we may take
+           advantage of the RowStatus textual convention for configuring
+           the copying parameters."
+       ::= { essfMIBObjects 2 }
+
+    essfCopyEntry OBJECT-TYPE
+       SYNTAX           EssfCopyEntry
+       MAX-ACCESS       not-accessible
+       STATUS           current
+       DESCRIPTION
+           "An entry contains parameters for copy."
+       INDEX  { essfCopyIndex }
+       ::= { essfCopyTable 1 }
+
+    EssfCopyEntry ::= SEQUENCE {
+        essfCopyIndex                Unsigned32,
+        essfCopyType                 INTEGER,
+        essfCopySrcUrl               OCTET STRING,
+        essfCopyDstUrl               OCTET STRING,
+        essfCopyRemoteAddrType       InetAddressType,
+        essfCopyRemoteAddr           InetAddress,
+        essfCopyUsrName              DisplayString,
+        essfCopyUsrPwd               DisplayString,
+        essfCopyRemoteTcpPort        Unsigned32,
+        essfCopyVrfName              DisplayString,
+        essfCopyErrorStatus          DisplayString,
+        essfCopyRowStatus            RowStatus
+        }
+
+    essfCopyIndex OBJECT-TYPE
+        SYNTAX          Unsigned32 (1)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object uniquely identifies this row.
+            The only legal value for this object is 1."
+        ::= { essfCopyEntry 1 }
+
+    essfCopyType OBJECT-TYPE
+        SYNTAX          INTEGER {
+            localToLocal(1),
+            localToTftpRemote(2),
+            localToFtpRemote(3),
+            localToRcpRemote(4),
+            tftpRemoteToLocal(5),
+            ftpRemoteToLocal(6),
+            rcpRemoteToLocal(7)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of the copy.
+            'localToLocal' - Copy file within the system.
+            'localToTftpRemote' - Upload file remote host via TFTP.
+            'localToFtpRemote'  - Upload file remote host via FTP.
+            'localToRcpRemote'  - Upload file remote host via RCP.
+            'tftpRemoteToLocal' - Download file from remote host via TFTP.
+            'ftpRemoteToLocal'  - Download file from remote host via FTP.
+            'rcpRemoteToLocal'  - Download file from remote host via RCP.
+            "
+       ::= { essfCopyEntry 2 }
+
+    essfCopySrcUrl OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..799))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the source URL for the source file to be copied.
+            The special form 'startup-config','running-config','system-log',
+            and 'attack-log' are reserved to indicate the system files.
+            "
+        ::= { essfCopyEntry 3 }
+
+    essfCopyDstUrl OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..799))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the destination URL for the copied file.
+            The special form 'startup-config' and 'running-config' are reserved
+            to indicate the system files.
+            "
+        ::= { essfCopyEntry 4 }
+
+    essfCopyRemoteAddrType OBJECT-TYPE
+        SYNTAX             InetAddressType
+        MAX-ACCESS         read-create
+        STATUS             current
+        DESCRIPTION
+           "This object indicates the type of address of the remote host.
+           This object is meaningless if essfCopyType is 'localToLocal'.
+           "
+        DEFVAL             { ipv4 }
+        ::= { essfCopyEntry 5 }
+
+    essfCopyRemoteAddr OBJECT-TYPE
+        SYNTAX             InetAddress
+        MAX-ACCESS         read-create
+        STATUS             current
+        DESCRIPTION
+           "This object indicates the address of the remote host.
+           This object is meaningless if essfCopyType is 'localToLocal'.
+           "
+        ::= { essfCopyEntry 6 }
+
+    essfCopyUsrName OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the user name on the source FTP/RCP server.
+            This object is meaningful only when the object essfCopyType is
+            'localToFtpRemote', 'localToRcpRemote', 'ftpRemoteToLocal, or
+            'rcpRemoteToLocal'.
+            "
+        ::= { essfCopyEntry 7 }
+
+    essfCopyUsrPwd OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the password for the user.
+            This object is meaningful only when the object essfCopyType is
+            'localToFtpRemote' or 'ftpRemoteToLocal'.
+            "
+        ::= { essfCopyEntry 8 }
+
+    essfCopyRemoteTcpPort OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the TCP port on the remote FTP server."
+        ::= { essfCopyEntry 9 }
+
+    essfCopyVrfName	OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the VRF instance to which the
+            TFTP/FTP/RCP server belongs."
+        ::= { essfCopyEntry 10 }
+
+    essfCopyErrorStatus  OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS       current
+        DESCRIPTION
+            "Status of file copy."
+        ::= { essfCopyEntry 11 }
+
+    essfCopyRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this conceptual row.
+            The writable columns in a row cannot be changed if the row is
+            'active'."
+        ::= { essfCopyEntry 12 }
+
+-- -----------------------------------------------------------------------------
+    essfCfgReplaceTable OBJECT-TYPE
+       SYNTAX           SEQUENCE OF EssfCfgReplaceEntry
+       MAX-ACCESS       not-accessible
+       STATUS           current
+       DESCRIPTION
+           "A table contains the information for replacing the current running
+           configuration file. There will at any time be either 0 or 1 row
+           in this table, and the only valid index for this table is 1."
+       ::= { essfMIBObjects 3 }
+
+    essfCfgReplaceEntry OBJECT-TYPE
+       SYNTAX           EssfCfgReplaceEntry
+       MAX-ACCESS       not-accessible
+       STATUS           current
+       DESCRIPTION
+           "An entry contains parameters for configure replace."
+       INDEX  { essfCfgReplaceIndex }
+       ::= { essfCfgReplaceTable 1 }
+
+    EssfCfgReplaceEntry ::= SEQUENCE {
+        essfCfgReplaceIndex               Unsigned32,
+        essfCfgReplaceSrcType             INTEGER,
+        essfCfgReplaceSrcUrl              OCTET STRING,
+        essfCfgReplaceRemoteAddrType      InetAddressType,
+        essfCfgReplaceRemoteAddr          InetAddress,
+        essfCfgReplaceUsrName             DisplayString,
+        essfCfgReplaceUsrPwd              DisplayString,
+        essfCfgReplaceRemoteTcpPort       Unsigned32,
+        essfCfgReplaceVrfName             DisplayString,
+        essfCfgReplaceErrorStatus         DisplayString,
+        essfCfgReplaceRowStatus           RowStatus
+        }
+
+    essfCfgReplaceIndex OBJECT-TYPE
+        SYNTAX          Unsigned32 (1)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object uniquely identifies this row.
+            The only legal value for this object is 1."
+        ::= { essfCfgReplaceEntry 1 }
+
+    essfCfgReplaceSrcType OBJECT-TYPE
+        SYNTAX          INTEGER {
+            local(1),
+            tftpRemote(2),
+            ftpRemote(3),
+            rcpRemote(4)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates where to get the file to replace the current
+            running configuration.
+
+            'local' - Get the replacing configuration file from the system.
+            'tftpRemote' - Get the replacing configuration file from remote host via TFTP.
+            'ftpRemote' - Get the replacing configuration file from remote host via FTP.
+            'rcpRemote' - Get the replacing configuration file from remote host via RCP.
+            "
+       ::= { essfCfgReplaceEntry 2 }
+
+    essfCfgReplaceSrcUrl OBJECT-TYPE
+        SYNTAX      OCTET STRING (SIZE (0..799))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the source URL for the source configuration file
+            to be executed."
+        ::= { essfCfgReplaceEntry 3 }
+
+    essfCfgReplaceRemoteAddrType OBJECT-TYPE
+        SYNTAX             InetAddressType
+        MAX-ACCESS         read-create
+        STATUS             current
+        DESCRIPTION
+           "This object indicates the type of address of the remote host.
+           This object is meaningless if essfCfgReplaceSrcType is 'local'.
+           "
+        DEFVAL             { ipv4 }
+        ::= { essfCfgReplaceEntry 4 }
+
+    essfCfgReplaceRemoteAddr OBJECT-TYPE
+        SYNTAX             InetAddress
+        MAX-ACCESS         read-create
+        STATUS             current
+        DESCRIPTION
+           "This object indicates the address of the remote host.
+           This object is meaningless if essfCfgReplaceSrcType is 'local'.
+           "
+        ::= { essfCfgReplaceEntry 5 }
+
+    essfCfgReplaceUsrName OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the user name on the source FTP/RCP server.
+            This object is meaningful only when the object essfCfgReplaceSrcType is
+            'ftpRemote', 'rcpRemote'.
+            "
+        ::= { essfCfgReplaceEntry 6 }
+
+    essfCfgReplaceUsrPwd OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the password for the user.
+            This object is meaningful only when the object essfCfgReplaceSrcType is
+            'ftpRemote'.
+            "
+        ::= { essfCfgReplaceEntry 7 }
+
+    essfCfgReplaceRemoteTcpPort OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the TCP port on the remote FTP server."
+        ::= { essfCfgReplaceEntry 8 }
+
+    essfCfgReplaceVrfName	OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the VRF instance to which the
+            TFTP/FTP/RCP server belongs."
+        ::= { essfCfgReplaceEntry 9 }
+
+    essfCfgReplaceErrorStatus  OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS       current
+        DESCRIPTION
+            "This object indicates the processing status about the replacement of
+            current running configuration.
+            "
+        ::= { essfCfgReplaceEntry 10 }
+
+    essfCfgReplaceRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this conceptual row.
+            The writable columns in a row cannot be changed if the row is
+            'active'."
+        ::= { essfCfgReplaceEntry 11 }
+
+-- -----------------------------------------------------------------------------
+    essfIpSrcIfObjects OBJECT IDENTIFIER ::= { essfMIBObjects 4 }
+
+    essfIpTftpSrcIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the interface whose IP address will be used as
+            the source address for initiating TFTP packets.
+            The special value of 0 indicates the interface is not specified, and
+            IP address of the closest interface will be used.
+            "
+        ::= { essfIpSrcIfObjects 1 }
+
+    essfIpFtpSrcIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the interface whose IP address will be used as
+            the source address for initiating FTP packets.
+            The special value of 0 indicates the interface is not specified, and
+            IP address of the closest interface will be used.
+            "
+        ::= { essfIpSrcIfObjects 2 }
+
+    essfIpRcpSrcIf OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the interface whose IP address will be used as
+            the source address for initiating RCP packets.
+            The special value of 0 indicates the interface is not specified, and
+            IP address of the closest interface will be used.
+            "
+        ::= { essfIpSrcIfObjects 3 }
+
+-- -----------------------------------------------------------------------------
+    essfClearRunCfg OBJECT-TYPE
+        SYNTAX      INTEGER   {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to clear running-config when set to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { essfMIBObjects 5 }
+
+-- -----------------------------------------------------------------------------
+    essfResetSystem OBJECT-TYPE
+        SYNTAX      INTEGER   {
+            reset(1),
+            noOp(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to reset system when set to 'reset'.
+            It will clear system configuration, save and reboot the system.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { essfMIBObjects 6 }
+
+-- -----------------------------------------------------------------------------
+    essfUploadImage    NOTIFICATION-TYPE
+        STATUS    current
+        DESCRIPTION
+            "The notification is sent when the user uploads
+            image file successfully."
+        ::= { essfMIBNotifications 1 }
+
+    essfDownloadImage    NOTIFICATION-TYPE
+        STATUS    current
+        DESCRIPTION
+            "The notification is sent when the user downloads
+            image file successfully."
+        ::= { essfMIBNotifications 2 }
+
+    essfUploadCfg    NOTIFICATION-TYPE
+        STATUS    current
+        DESCRIPTION
+            "The notification is sent when the user uploads
+            configuration file successfully."
+        ::= { essfMIBNotifications 3 }
+
+    essfDownloadCfg    NOTIFICATION-TYPE
+        STATUS    current
+        DESCRIPTION
+            "The notification is sent when the user downloads
+            configuration file successfully."
+        ::= { essfMIBNotifications 4 }
+
+    essfSaveCfg    NOTIFICATION-TYPE
+        STATUS    current
+        DESCRIPTION
+            "The notification is sent when the user saves
+            configuration file successfully."
+        ::= { essfMIBNotifications 5 }
+
+-- -----------------------------------------------------------------------------
+    essfCompliances   OBJECT IDENTIFIER ::= { essfMIBConformance 1 }
+
+    essfCompliance MODULE-COMPLIANCE
+        STATUS      current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-SYSTEM-FILE-MIB."
+        MODULE
+            MANDATORY-GROUPS {
+                essfBootInfoGroup,
+                essfCopyGroup,
+                essfCfgReplaceGroup,
+                essfIpSrcIfGroup,
+                essfClearCfgGroup
+            }
+        OBJECT  essfCopyType
+            DESCRIPTION
+                "It is compliant to support only a subset of
+                values: 'localToLocal', 'localToTftpRemote', and
+                'tftpRemoteToLocal'."
+
+        OBJECT  essfCfgReplaceSrcType
+            DESCRIPTION
+                "It is compliant to support only a subset of
+                values: 'local' and 'tftpRemote'."
+
+        OBJECT  essfIpTftpSrcIf
+            MIN-ACCESS read-only
+            DESCRIPTION
+                "read-write access is not required."
+
+        OBJECT  essfIpFtpSrcIf
+            MIN-ACCESS read-only
+            DESCRIPTION
+                "This object is required when FTP and configurable source
+                interface are supported."
+
+         OBJECT  essfIpRcpSrcIf
+            MIN-ACCESS read-only
+            DESCRIPTION
+                "This object is required when RCP and configurable source
+                interface are supported."
+        ::= { essfCompliances 1 }
+
+    essfGroups   OBJECT IDENTIFIER ::= { essfMIBConformance 2 }
+
+    essfBootInfoGroup OBJECT-GROUP
+        OBJECTS {
+            essfNextBootCfgUrl,
+            essfNextBootImageUrl,
+            essfCheckingBootImageCheck,
+            essfBootImageCheckResult,
+            essfBootImageUrl,
+            essfBootImageInWorking,
+            essfBootCfgFileUrl
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects providing information about the boot configuration
+            and boot image."
+        ::= { essfGroups 1 }
+
+    essfCopyGroup OBJECT-GROUP
+        OBJECTS {
+            essfCopyType,
+            essfCopySrcUrl,
+            essfCopyDstUrl,
+            essfCopyRemoteAddrType,
+            essfCopyRemoteAddr,
+            essfCopyUsrName,
+            essfCopyUsrPwd,
+            essfCopyRemoteTcpPort,
+            essfCopyVrfName,
+            essfCopyErrorStatus,
+            essfCopyRowStatus
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects providing information for the parameters
+            of the copy function."
+        ::= { essfGroups 2 }
+
+    essfCfgReplaceGroup OBJECT-GROUP
+        OBJECTS {
+            essfCfgReplaceSrcType,
+            essfCfgReplaceSrcUrl,
+            essfCfgReplaceRemoteAddrType,
+            essfCfgReplaceRemoteAddr,
+            essfCfgReplaceUsrName,
+            essfCfgReplaceUsrPwd,
+            essfCfgReplaceRemoteTcpPort,
+            essfCfgReplaceVrfName,
+            essfCfgReplaceErrorStatus,
+            essfCfgReplaceRowStatus
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects providing information for the parameters
+            of the configure replace function."
+        ::= { essfGroups 3 }
+
+    essfIpSrcIfGroup OBJECT-GROUP
+        OBJECTS {
+            essfIpTftpSrcIf,
+            essfIpFtpSrcIf,
+            essfIpRcpSrcIf
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects providing information about the interface whose
+            IP address will be used as the source address for initiating TFTP/FTP/RCP
+            packets."
+        ::= { essfGroups 4 }
+
+    essfClearCfgGroup OBJECT-GROUP
+        OBJECTS {
+            essfClearRunCfg,
+            essfResetSystem
+        }
+        STATUS      current
+        DESCRIPTION
+            "An object providing the clear function."
+        ::= { essfGroups 5 }
+
+END

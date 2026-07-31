@@ -1,0 +1,143 @@
+-- *****************************************************************
+-- DLINKES-ASP-MIB: D-Link ARP Spoofing Prevention MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-ASP-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,OBJECT-TYPE,
+        IpAddress
+            FROM SNMPv2-SMI
+        MacAddress, RowStatus
+            FROM SNMPv2-TC
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP
+            FROM SNMPv2-CONF
+        PortList
+            FROM Q-BRIDGE-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+    dlinkEsArpSpoofingPreventMIB MODULE-IDENTITY
+        LAST-UPDATED "201307180000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+                Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                        Taipei City 114, Taiwan, R.O.C
+                Tel:     +886-2-66000123
+                E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "The MIB module configures ARP spoofing prevention feature.
+            "
+        REVISION     "201307180000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file." 
+        ::= { dlinkCommon 76 }
+
+-- ----------------------------------------------------------------------------- 
+    esAspMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsArpSpoofingPreventMIB 0 }
+    esAspMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsArpSpoofingPreventMIB 1 }
+    esAspMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsArpSpoofingPreventMIB 2 }
+
+-- -----------------------------------------------------------------------------    
+    esAspGatewayTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAspGatewayEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of gateways for ARP spoofing 
+            prevention (ASP) to prevent ARP poisoning attacking."
+           ::= { esAspMIBObjects 1 }
+
+    esAspGatewayEntry OBJECT-TYPE
+        SYNTAX          EsAspGatewayEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry indicates the information for a protected gateway."
+        INDEX {
+            esAspGatewayIP,
+            esAspGatewayMAC 
+        }
+        ::= { esAspGatewayTable 1 }
+
+    EsAspGatewayEntry ::=           SEQUENCE {
+        esAspGatewayIP           IpAddress,
+        esAspGatewayMAC          MacAddress,
+        esAspActivePortList      PortList,
+        esAspGatewayRowStatus    RowStatus
+    }
+
+    esAspGatewayIP  OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The gateway IP address of the entry."
+        ::= { esAspGatewayEntry 1 }
+
+    esAspGatewayMAC OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The gateway MAC address of the entry."
+        ::= { esAspGatewayEntry 2 }
+
+    esAspActivePortList      OBJECT-TYPE
+        SYNTAX          PortList
+        MAX-ACCESS      read-create
+        STATUS         current
+        DESCRIPTION
+            "This object indicates the port-list on which the ARP Spoofing
+            Prevention is active.
+            " 
+        ::= { esAspGatewayEntry 3 }
+
+    esAspGatewayRowStatus     OBJECT-TYPE
+        SYNTAX         RowStatus
+        MAX-ACCESS     read-create
+        STATUS         current
+        DESCRIPTION
+            "The status of this table entry."
+        ::= { esAspGatewayEntry 99 }
+
+-- conformance information
+
+    esAspMIBCompliances  OBJECT IDENTIFIER ::= { esAspMIBConformance 1 }
+    
+    esAspCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+            DLINKES-ASP-MIB.
+            "
+        MODULE      -- this module
+        MANDATORY-GROUPS
+        {
+          esAspMgtGroup
+        }
+        ::= { esAspMIBCompliances  1 }
+
+
+-- units of conformance
+    esAspMIBGroups       OBJECT IDENTIFIER ::= { esAspMIBConformance 2 }
+    esAspMgtGroup OBJECT-GROUP
+        OBJECTS {
+            esAspActivePortList,
+            esAspGatewayRowStatus
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects configures protected gateways for ARP spoofing
+            prevention.
+            "
+        ::= { esAspMIBGroups 1 }
+
+END

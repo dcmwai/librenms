@@ -1,0 +1,385 @@
+--  *****************************************************************
+--  DLINKES-LBD-MIB.mib : Loopback Detection MIB
+-- 
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+
+    DLINKES-LBD-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE, 
+        OBJECT-IDENTITY                 FROM SNMPv2-SMI
+        DisplayString,TruthValue        FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP 
+        								                FROM SNMPv2-CONF
+        InterfaceIndex                  FROM IF-MIB
+        VlanId                          FROM Q-BRIDGE-MIB
+        Dlink2kVlanList                 FROM DLINKES-TC-MIB
+        dlinkCommon                     FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsLoopbackDetectMIB MODULE-IDENTITY
+        LAST-UPDATED "201410270000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for loopback detection."
+
+        REVISION "201410270000Z"
+        DESCRIPTION
+            "Add node esLbdAddressType."				
+
+        REVISION "201310230000Z"
+        DESCRIPTION
+            "Add node esLbdActMode, esLbdNotifyEnabled and esLbdNotifyInfo."
+
+        REVISION "201302050000Z"
+        DESCRIPTION 
+            "This is the first version of the MIB file for 'loopback
+            detection' functionality."    
+        ::= { dlinkCommon 46 }
+
+-- -----------------------------------------------------------------------------
+    esLbdNotifications    OBJECT IDENTIFIER ::= { dlinkEsLoopbackDetectMIB 0 }
+    esLbdObjects          OBJECT IDENTIFIER ::= { dlinkEsLoopbackDetectMIB 1 }
+    esLbdConformance      OBJECT IDENTIFIER ::= { dlinkEsLoopbackDetectMIB 2 }
+	
+    esLbdCtrlInterval    OBJECT-TYPE
+        SYNTAX          INTEGER (1..32767)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the interval in seconds at which LBD
+            packets are transmitted."
+        ::= { esLbdObjects 1 }	
+
+    esLbdCtrlGlobalEnabled    OBJECT-TYPE
+        SYNTAX             TruthValue
+        MAX-ACCESS         read-write
+        STATUS             current
+        DESCRIPTION
+            "This object indicates whether the loopback detection is enabled
+            globally.    
+            "             
+        ::= { esLbdObjects 2 }
+
+    esLbdCtrlMode    OBJECT-TYPE
+        SYNTAX      INTEGER {           
+            portBased(1),
+            vlanBased(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the loopback detection mode.                      
+            portBased(1) - The loopback detection works in port-based mode.
+            vlanBased(2) - The loopback detection works in vlan-based mode."             
+        ::= { esLbdObjects 3 }
+
+    esLbdActMode    OBJECT-TYPE
+        SYNTAX      INTEGER {           
+            shutdown(1),
+            none(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the loopback detection action mode.                      
+            shundown(1) - When loop has been detected, the port will be shut down (disabled) 
+            in port-based mode, the traffic will be block on specific VLAN in VLAN-based mode. 
+            This is the default value.
+            none(2) - When loop has been detected, the port will NOT be disabled in 
+            port-based mode, the traffic will NOT be block on specific VLAN in 
+            VLAN-based mode. Just send log and trap."             
+        ::= { esLbdObjects 6 }
+
+    esLbdNotifyEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION   
+            "Set to 'true' to enable global SNMP notification for loopback detection feature.  
+            Setting the object to 'false' will disable SNMP notifications."            
+        ::= { esLbdObjects 7}
+                                     
+    esLbdIfCfgTable    OBJECT-TYPE
+        SYNTAX        SEQUENCE OF EsLbdIfCfgEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION            
+            "A list of loopback detection information entries."            
+        ::= { esLbdObjects 4 }
+
+    esLbdAddressType    OBJECT-TYPE
+        SYNTAX      INTEGER {           
+            multicast(1),
+            broadcast(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the CTP packet's DA type.                      
+            multicast(1) - Only multicast CTP packet will be sent.The CTP packet's DA is CF-00-00-00-00-00.
+            broadcast(2) - Only broadcast CTP packet will be sent.The CTP packet's DA is FF-FF-FF-FF-FF-FF."             
+        ::= { esLbdObjects 9 }
+
+    esLbdIfCfgEntry    OBJECT-TYPE
+        SYNTAX        EsLbdIfCfgEntry
+        MAX-ACCESS    not-accessible       
+        STATUS        current
+        DESCRIPTION            
+            "An entry indicates the setting of loopback detection on an
+            interface."
+        INDEX  { esLbdIfCfgIndex }
+        ::= { esLbdIfCfgTable 1 }
+
+    EsLbdIfCfgEntry ::= SEQUENCE {
+        esLbdIfCfgIndex      InterfaceIndex,            
+        esLbdIfCfgEnabled    TruthValue,
+        esLbdIfLoopStatus    INTEGER,
+        esLbdIfLoopVlans     DisplayString
+    }
+
+    esLbdIfCfgIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the physical port or port
+            channel."
+        ::= { esLbdIfCfgEntry 1 }
+
+    esLbdIfCfgEnabled OBJECT-TYPE
+        SYNTAX      TruthValue        
+        MAX-ACCESS  read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the loopback detection is enabled on 
+            the interface.    
+            "             
+        ::= { esLbdIfCfgEntry 2 }
+
+    esLbdIfLoopStatus    OBJECT-TYPE
+        SYNTAX        INTEGER {
+            normal(1),
+            loop(2)
+        }
+        MAX-ACCESS    read-only
+        STATUS        current
+        DESCRIPTION
+            "This object indicates whether the interface loopback status."
+        ::= { esLbdIfCfgEntry 3 }
+
+    esLbdIfLoopVlans    OBJECT-TYPE
+        SYNTAX        DisplayString
+        MAX-ACCESS    read-only
+        STATUS        current
+        DESCRIPTION
+            "This object indicates the VLAN list that has detected a loopback."
+        ::= { esLbdIfCfgEntry 4 }
+
+-- ----------------------------------------------------------------------------       
+    esLbdVlanCtrlObjects OBJECT-IDENTITY
+        STATUS          current
+        DESCRIPTION
+            "This identifier defines a subtree under which a set of objects are 
+            defined to enable loopback detection on specific VLANs. That is, 
+            LBD Control packet will be sent out for the VLAN that the port has
+            the membership and within the specified VLAN list (the correspondig
+            bit is '1'). 
+            When enabled VLAN ID list is empty, that is both esLbdVlanCrlFirst2K
+            and esLbdVlanCrlSecond2K are zero lenth string, LBD Control packet 
+            is sent out for all VLANs that the port has the membership."                        
+        ::= { esLbdObjects 5 }
+
+    esLbdVlanCrlFirst2K  OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the loopback detection enabled VLAN in a 
+            string of octets containing one bit per VLAN for VLANs 1 to 2048. 
+            If the bit is set to '1', then the VLAN is enabled for loopback
+            detection."         
+        ::= { esLbdVlanCtrlObjects 1 }
+
+    esLbdVlanCrlSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+             "This object specifies the loopback detection enabled VLAN in a 
+            string of octets containing one bit per VLAN for VLANs 2049 to 4095. 
+            If the bit is set to '1', then the VLAN is enabled for loopback
+            detection."     
+        ::= { esLbdVlanCtrlObjects 2 }
+
+-- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+    esLbdNotifyInfo    OBJECT-IDENTITY 
+        STATUS        current
+        DESCRIPTION
+            "This identifier is a group for variable bindings for traps."
+        ::= { esLbdObjects 8 }
+
+    esLbdNotifyInfoIfIndex    OBJECT-TYPE
+        SYNTAX        InterfaceIndex
+        MAX-ACCESS    accessible-for-notify
+        STATUS        current
+        DESCRIPTION
+            "This object indicates the interface id that has detected a loopback."
+        ::= { esLbdNotifyInfo 1 }
+
+    esLbdNotifyInfoVlanId    OBJECT-TYPE
+        SYNTAX        VlanId
+        MAX-ACCESS    accessible-for-notify
+        STATUS        current
+        DESCRIPTION
+            "This object indicates the vlan id that has detected a loopback."
+        ::= { esLbdNotifyInfo 2 }
+
+-- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+-- MIB Notifications statements
+-- -----------------------------------------------------------------------------
+    esLbdLoopOccurred    NOTIFICATION-TYPE
+        OBJECTS    {
+            esLbdNotifyInfoIfIndex
+        }
+        STATUS        current
+        DESCRIPTION
+            "This trap is sent when an interface loop occurs."
+        ::= { esLbdNotifications 1 }
+
+    esLbdLoopRestart    NOTIFICATION-TYPE
+        OBJECTS    {
+            esLbdNotifyInfoIfIndex
+        }
+        STATUS        current
+        DESCRIPTION
+            "This trap is sent when an interface loop restarts after the interval time."
+        ::= { esLbdNotifications 2 }
+
+    esLbdVlanLoopOccurred    NOTIFICATION-TYPE
+        OBJECTS    {
+            esLbdNotifyInfoIfIndex,
+            esLbdNotifyInfoVlanId
+        }
+        STATUS        current
+        DESCRIPTION
+            "This trap is sent when an interface with a VID loop occurs."
+        ::= { esLbdNotifications 3 }
+
+    esLbdVlanLoopRestart    NOTIFICATION-TYPE
+        OBJECTS    {
+            esLbdNotifyInfoIfIndex,
+            esLbdNotifyInfoVlanId
+        }
+        STATUS        current
+        DESCRIPTION
+            "This trap is sent when an interface loop with a VID restarts after the interval time."
+        ::= { esLbdNotifications 4 }
+
+-- -----------------------------------------------------------------------------
+-- MIB Conformance statements
+-- -----------------------------------------------------------------------------
+    esLbdMIBCompliances  OBJECT IDENTIFIER
+        ::= { esLbdConformance 1 }
+
+    esLbdMIBGroups  OBJECT IDENTIFIER
+        ::= { esLbdConformance 2 } 
+
+    esLbdMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+            DLINKES-LBD-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS    {   
+            esLbdCfgGroup,
+            esLbdIfCfgGroup
+        }
+
+        GROUP esLbdCtrlModeGroup
+        DESCRIPTION
+            "This group is mandatory if vlan-based mode is supported."  
+
+        GROUP esLbdVlanCtrlGroup
+        DESCRIPTION
+            "This group is mandatory if vlan-based mode is supported."                   
+
+        ::= { esLbdMIBCompliances 1 }
+-- -----------------------------------------------------------------------------        
+    esLbdCfgGroup OBJECT-GROUP
+        OBJECTS { 
+            esLbdCtrlInterval,  
+            esLbdCtrlGlobalEnabled,
+            esLbdActMode,
+            esLbdNotifyEnabled,
+            esLbdNotifyInfoIfIndex,
+            esLbdNotifyInfoVlanId,
+            esLbdAddressType			
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing management of the loopback 
+            detection feature."
+        ::= { esLbdMIBGroups 1 }
+
+    esLbdIfCfgGroup 	OBJECT-GROUP
+        OBJECTS { 
+            esLbdIfCfgEnabled,
+            esLbdIfLoopStatus,
+            esLbdIfLoopVlans
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing the per-interface control of
+            loopback detection."
+        ::= { esLbdMIBGroups 2 }	
+
+    esLbdCtrlModeGroup 	OBJECT-GROUP
+        OBJECTS { 
+            esLbdCtrlMode
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing the mode of loopback detection."
+        ::= { esLbdMIBGroups 3 }			
+
+    esLbdVlanCtrlGroup OBJECT-GROUP
+        OBJECTS { 
+            esLbdVlanCrlFirst2K, 
+            esLbdVlanCrlSecond2K 			
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing the VLAN list of loopback
+            detection."
+        ::= { esLbdMIBGroups 4 }
+
+    esLbdNotificationGroup    NOTIFICATION-GROUP
+        NOTIFICATIONS    {
+            esLbdLoopOccurred,
+            esLbdLoopRestart,
+            esLbdVlanLoopOccurred,
+            esLbdVlanLoopRestart
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of notifications used for monitoring the hosts under the 
+            control of loopback detection."
+        ::= { esLbdMIBGroups 5 }
+
+END

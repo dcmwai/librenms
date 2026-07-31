@@ -1,0 +1,3198 @@
+--  *****************************************************************
+--  DLINKES-ACL-MIB.mib : ACL MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-ACL-MIB DEFINITIONS ::= BEGIN
+
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Integer32,
+        Unsigned32,
+        IpAddress,
+        Counter64
+            FROM SNMPv2-SMI
+        MacAddress,
+        DisplayString,
+        TruthValue,
+        RowStatus,
+        TEXTUAL-CONVENTION
+            FROM SNMPv2-TC
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP
+            FROM SNMPv2-CONF
+        InterfaceIndex,
+        InterfaceIndexOrZero
+            FROM IF-MIB
+        VlanId,VlanIdOrNone
+            FROM Q-BRIDGE-MIB
+        InetAddressIPv6,
+        InetAddressPrefixLength
+            FROM INET-ADDRESS-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsAclMIB MODULE-IDENTITY
+        LAST-UPDATED "201511260000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+             Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+                "The Structure of Access Control List Information for the
+                 proprietary enterprise."
+
+        REVISION "201511260000Z"
+        DESCRIPTION
+            "Add DEFVAL for nodes esAclIpAccessRuleSrcPort,esAclIpAccessRuleQosPrecedence etc.
+            And correct description of node esAclReSeqIncrement."
+
+        REVISION "201507100000Z"
+        DESCRIPTION
+            "Add nodes to support vlan range, traffic class, l4 port mask operator, and mask for some nodes."
+
+        REVISION "201311130000Z"
+        DESCRIPTION
+            "Add 'deny-cpu'option for DlinkAclRuleType."
+
+        REVISION "201308200000Z"
+        DESCRIPTION
+            "Add nodes for counter function, access list remark, access list id, and some rule items."
+
+        REVISION "201302080000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file for 'ACL' functionality."
+        ::= { dlinkCommon 28}
+
+    DlinkAclRuleType ::= TEXTUAL-CONVENTION
+        STATUS         current
+        DESCRIPTION
+             "The action type when the packets match the access profile.
+
+             permit(1)- Specifies that packets that match the access rule are
+                        permitted to be forwarded by the switch.
+             deny(2)  - Specifies that packets that match the access rule
+                        are not permitted to be forwarded by the switch and will be filtered.
+             denyCpu(3)- Specifies that packet that match the access rule are prevented to be
+                         copied to CPU and redirected to CPU. And the hardware forwarding behavior
+                         should not be affected.
+            "
+        SYNTAX         INTEGER {
+            permit(1),
+            deny(2),
+            denyCpu(3)
+        }
+
+    DlinkAclPortOperatorType ::= TEXTUAL-CONVENTION
+        STATUS         current
+        DESCRIPTION
+            " The type of UDP/TCP port operator indicates how a packet's
+             TCP/UDP source or destination port number is compared.
+            none(1) - No comparison.
+            eq (2)- equal
+            gt (3)- greater than.
+            lt (4)- less than.
+            neq(5)- not equal
+            range(6)- compares the port value between two numbers.
+            mask(7)- check the bit corresponding to bit value 1, ignore the bit corresponding to bit value 0.
+            "
+        SYNTAX         INTEGER {
+            none(1),
+            eq(2),
+            gt(3),
+            lt(4),
+            neq(5),
+            range(6),
+            mask(7)
+        }
+
+    TcpFlag ::= TEXTUAL-CONVENTION
+        STATUS current
+        DESCRIPTION
+            "The TCP flag fields. Each bit defined as follow:
+                urgent(0) - urgent.
+                acknowledge(1) - acknowledge.
+                push(2) - push,
+                reset(3) - reset.
+                synchronize(4) - synchronize.
+            finish (5) - finish.
+        "
+    SYNTAX             BITS {
+                urgent(0),
+                acknowledge(1),
+                push(2),
+                reset(3),
+                synchronize(4),
+              finish (5)
+      }
+
+-- -----------------------------------------------------------------------------
+    esAclMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsAclMIB 0 }
+    esAclMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsAclMIB 1 }
+    esAclMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsAclMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esAclGeneral          OBJECT IDENTIFIER ::= { esAclMIBObjects 1 }
+
+    esAclReSeqTable    OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclReSeqEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table consists of a list of information about how re-sequencing
+            the rules in access lists.
+            "
+        ::= { esAclGeneral 1 }
+
+    esAclReSeqEntry OBJECT-TYPE
+        SYNTAX          EsAclReSeqEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry appears in this table for controlling the re-sequence of
+            an access-list."
+        INDEX  { esAclReSeqAccessListName }
+        ::= { esAclReSeqTable 1 }
+
+    EsAclReSeqEntry ::= SEQUENCE {
+        esAclReSeqAccessListName             DisplayString,
+        esAclReSeqStartingNumber             Integer32,
+        esAclReSeqIncrement                  Integer32
+    }
+    esAclReSeqAccessListName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the name of an access list."
+        ::= { esAclReSeqEntry 1 }
+
+    esAclReSeqStartingNumber OBJECT-TYPE
+        SYNTAX          Integer32 ( 1..65535 )
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Indicates the initial value of sequence number of the corresponding
+            access list."
+        DEFVAL { 10 }
+        ::= { esAclReSeqEntry 2 }
+
+    esAclReSeqIncrement OBJECT-TYPE
+        SYNTAX          Integer32 ( 1..32 )
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number that the sequence numbers step.
+            If the increment value is 5 and the beginning sequence number is 20,
+            the subsequent sequence numbers are 25, 30, 35, 40, and so on."
+        DEFVAL { 10 }
+        ::= { esAclReSeqEntry 3 }
+
+-- -----------------------------------------------------------------------------
+    esAclMac              OBJECT IDENTIFIER ::= { esAclMIBObjects 2 }
+    esAclMacAccessListNumber  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in the MAC access list
+             table."
+        ::= { esAclMac 1 }
+
+    esAclMacAccessListTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclMacAccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains information about MAC access list."
+        ::= { esAclMac 2 }
+
+    esAclMacAccessListEntry OBJECT-TYPE
+        SYNTAX          EsAclMacAccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defined in esAclMacAccessListTable. An entry is
+            created/removed when an MAC access list is created/deleted."
+        INDEX { esAclMacAccessListName }
+        ::= { esAclMacAccessListTable 1 }
+
+    EsAclMacAccessListEntry ::= SEQUENCE {
+        esAclMacAccessListName           DisplayString,
+        esAclMacAccessListRowStatus      RowStatus,
+        esAclMacAccessListId                Integer32,
+        esAclMacAccessListCounterEnabled        TruthValue,
+        esAclMacAccessListClearStatAction  INTEGER,
+        esAclMacAccessListRemark        DisplayString
+    }
+
+    esAclMacAccessListName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of the MAC access list."
+        ::= { esAclMacAccessListEntry 1 }
+
+    esAclMacAccessListRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object allows the dynamic creation and deletion of a MAC
+            access list."
+        ::= { esAclMacAccessListEntry 2 }
+
+    esAclMacAccessListId OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The number of the MAC access list.
+            If user specify value zero(0) for this node, agent will assign a number
+                for it. After the table created, this node should not be changed."
+        ::= { esAclMacAccessListEntry 3 }
+
+     esAclMacAccessListCounterEnabled    OBJECT-TYPE
+        SYNTAX              TruthValue
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+             "This object indicates the counter state of the access list is
+             enabled('true') or disabled('false'). And the counter state just
+             for the all interface that applied the access list in
+             esAclMacAccessGroupTable.
+             "
+        ::= { esAclMacAccessListEntry 4 }
+
+     esAclMacAccessListClearStatAction      OBJECT-TYPE
+        SYNTAX              INTEGER{
+                            clear(1),
+                            noOp(2)
+            }
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object is used to clear statistics of the access list when set
+            to 'clear'. No action is taken if this object is set to 'noOp'.
+            The 'clear' action just for the all interface that applied the access
+            list in esAclMacAccessGroupTable.
+            When read, the value 'noOp' is returned."
+        ::= { esAclMacAccessListEntry 5 }
+
+     esAclMacAccessListRemark OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..255))
+        MAX-ACCESS       read-create
+        STATUS          current
+        DESCRIPTION
+            "The description of the MAC access list."
+        ::= { esAclMacAccessListEntry 6 }
+
+-- -----------------------------------------------------------------------------
+    esAclMacAccessRuleTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclMacAccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table consists of a list of rules for the MAC access list."
+        ::= { esAclMac 3 }
+
+    esAclMacAccessRuleEntry OBJECT-TYPE
+        SYNTAX          EsAclMacAccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined esAclMacAccessRuleTable.
+            The first instance identifier index value identifies the
+            esAclMacAccessListEntry that a MAC access rule (esAclMacAccessRuleEntry)
+            belongs to. An entry is removed from this table when its
+            corresponding esAclMacAccessListEntry is deleted."
+        INDEX {
+            esAclMacAccessListName,
+            esAclMacAccessRuleSn
+        }
+        ::= { esAclMacAccessRuleTable 1 }
+
+    EsAclMacAccessRuleEntry ::= SEQUENCE {
+        esAclMacAccessRuleSn                 Integer32,
+        esAclMacAccessRuleRowStatus          RowStatus,
+        esAclMacAccessRuleAction             DlinkAclRuleType,
+        esAclMacAccessRuleSrcMacAddr         MacAddress,
+        esAclMacAccessRuleSrcMacWildcard     MacAddress,
+        esAclMacAccessRuleDstMacAddr         MacAddress,
+        esAclMacAccessRuleDstMacWildcard     MacAddress,
+        esAclMacAccessRulePacketType         INTEGER,
+        esAclMacAccessRuleEthernetType       Integer32,
+        esAclMacAccessRuleDot1p              Integer32,
+        esAclMacAccessRuleInnerDot1p         Integer32,
+        esAclMacAccessRuleVlanID             VlanIdOrNone,
+        esAclMacAccessRuleInnerVlanID        VlanIdOrNone,
+        esAclMacAccessRuleTimeName           DisplayString,
+        esAclMacAccessRuleEthernetTypeMask   OCTET STRING,
+        esAclMacAccessRuleDot1pMask          OCTET STRING,
+        esAclMacAccessRuleInnerDot1pMask     OCTET STRING,
+        esAclMacAccessRuleVlanIDMask         OCTET STRING,
+        esAclMacAccessRuleInnerVlanIDMask    OCTET STRING
+        }
+
+    esAclMacAccessRuleSn  OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Specifies the sequence number of this rule.
+            The lower the number is, the higher the priority of the rule.
+            The special value of 0 means the sequence number will be automatically
+            determined by the agent."
+        ::= { esAclMacAccessRuleEntry 1 }
+
+    esAclMacAccessRuleRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esAclMacAccessRuleEntry 2 }
+
+    esAclMacAccessRuleAction OBJECT-TYPE
+        SYNTAX          DlinkAclRuleType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the result of the packet examination is to
+             permit or deny or prevent to CPU.
+            "
+        ::= { esAclMacAccessRuleEntry 3 }
+
+    esAclMacAccessRuleSrcMacAddr OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies a source MAC address."
+        ::= { esAclMacAccessRuleEntry 4 }
+
+    esAclMacAccessRuleSrcMacWildcard OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of source
+            MAC addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            source MAC address is specified. When the value of all '00'Hs indicates
+            host source MAC address is specified."
+        ::= { esAclMacAccessRuleEntry 5 }
+
+    esAclMacAccessRuleDstMacAddr  OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies a destination MAC address."
+        ::= { esAclMacAccessRuleEntry 6 }
+
+    esAclMacAccessRuleDstMacWildcard  OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of destination
+            MAC addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            destination MAC address is specified. When the value of all '00'Hs
+            indicates host destination MAC address is specified."
+        ::= { esAclMacAccessRuleEntry 7 }
+
+    esAclMacAccessRulePacketType  OBJECT-TYPE
+        SYNTAX          INTEGER {
+            none(1),
+            ethernet(2),
+            llc(3)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the Ethernet frame type. The value of none (1) means the
+            frame type is not specified."
+        DEFVAL { none }
+        ::= { esAclMacAccessRuleEntry 8 }
+
+    esAclMacAccessRuleEthernetType  OBJECT-TYPE
+        SYNTAX      Integer32 (-1 | 0..65535)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the Ethernet type for an Ethernet II or SNAP packet.
+             The special value of -1 means the Ethernet type value is not specified.
+             It is only meaningful when the esAclMacAccessRulePacketType is
+              'ethernet'."
+        DEFVAL { -1 }
+        ::= { esAclMacAccessRuleEntry 9}
+
+    esAclMacAccessRuleDot1p  OBJECT-TYPE
+        SYNTAX      Integer32 (-1 | 0..7)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the priority value. The value of -1 means the priority
+             is not specified."
+        DEFVAL { -1 }
+        ::= { esAclMacAccessRuleEntry 10 }
+
+     esAclMacAccessRuleInnerDot1p  OBJECT-TYPE
+        SYNTAX      Integer32 (-1 | 0..7)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the inner priority value. The value of -1 means the
+            inner priority is not specified."
+        DEFVAL { -1 }
+        ::= { esAclMacAccessRuleEntry 11 }
+
+    esAclMacAccessRuleVlanID  OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the VLAN ID.
+             A value of zero indicates the VLAN ID is not specified.
+             This node and esAclMacAccessRuleVlanRangeMin/esAclMacAccessRuleVlanRangeMax
+             cannot be specified at same time in a row."
+        DEFVAL { 0 }
+        ::= { esAclMacAccessRuleEntry 12 }
+
+    esAclMacAccessRuleInnerVlanID  OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the inner VLAN ID. A value of zero indicates
+            the inner VLAN ID is not specified."
+        DEFVAL { 0 }
+        ::= { esAclMacAccessRuleEntry 13 }
+
+    esAclMacAccessRuleTimeName  OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the name of time-period profile associated with
+            the access-list delineating its activation period.
+            The value 'NULL' means that this rule is not bound with any Time
+            mechanism."
+        ::= { esAclMacAccessRuleEntry 14 }
+
+     esAclMacAccessRuleEthernetTypeMask  OBJECT-TYPE
+        SYNTAX      OCTET STRING(SIZE(2))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the mask for ethernet type defined by esAclMacAccessRuleEthernetType.
+             Valid values are from 0x0000 to 0xFFFF.
+             Default value is 0xFFFF.
+             This node is valid only for the esAclMacAccessRuleEthernetType specified."
+         ::= { esAclMacAccessRuleEntry 15}
+
+     esAclMacAccessRuleDot1pMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the mask for priority defined by esAclMacAccessRuleDot1p.
+             Valid values are from 0x00 to 0x07.
+             Default value is 0x07.
+             This node is valid only for the esAclMacAccessRuleDot1p specified."
+         ::= { esAclMacAccessRuleEntry 16 }
+
+     esAclMacAccessRuleInnerDot1pMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the mask for inner priority defined by esAclMacAccessRuleInnerDot1p.
+             Valid values are from 0x00 to 0x07.
+             Default value is 0x07.
+             This node is valid only for the esAclMacAccessRuleInnerDot1p specified."
+        ::= { esAclMacAccessRuleEntry 17 }
+
+     esAclMacAccessRuleVlanIDMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for VLAN ID defined by esAclMacAccessRuleVlanID.
+             Valid values are from 0x0000 to 0x0FFF.
+             This node and esAclMacAccessRuleVlanRangeMin/esAclMacAccessRuleVlanRangeMax
+             cannot be specified at same time in a row.
+             Default value is 0x0FFF.
+             This node is valid only for the esAclMacAccessRuleVlanID specified."
+        ::= { esAclMacAccessRuleEntry 18 }
+
+     esAclMacAccessRuleInnerVlanIDMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for inner VLAN ID defined by esAclMacAccessRuleInnerVlanID.
+             Valid values are from 0x0000 to 0x0FFF.
+             Default value is 0x0FFF.
+             This node is valid only for the esAclMacAccessRuleInnerVlanID specified."
+        ::= { esAclMacAccessRuleEntry 19 }
+
+
+-- -----------------------------------------------------------------------------
+    esAclMacAccessGroupTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclMacAccessGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table represents a list of MAC access group configuration."
+        ::= { esAclMac 4 }
+
+    esAclMacAccessGroupEntry OBJECT-TYPE
+        SYNTAX          EsAclMacAccessGroupEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry in esAclMacAccessGroupTable contains interface specific
+            MAC access list association."
+        INDEX { esAclMacAccessGroupIfIndex, esAclMacAccessGroupApplyDirection }
+        ::= { esAclMacAccessGroupTable 1 }
+
+    EsAclMacAccessGroupEntry ::= SEQUENCE {
+        esAclMacAccessGroupIfIndex    InterfaceIndex,
+        esAclMacAccessGroupApplyDirection     INTEGER,
+        esAclMacAccessGroupRowStatus  RowStatus,
+        esAclMacAccessGroupAclName  DisplayString,
+        esAclMacAccessGroupAclId        Integer32
+    }
+
+    esAclMacAccessGroupIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the ifIndex of the interface.
+            Only physical port is valid interface."
+        ::= { esAclMacAccessGroupEntry 1 }
+
+    esAclMacAccessGroupApplyDirection OBJECT-TYPE
+        SYNTAX          INTEGER{
+            inbound(1),
+            outbound(2)
+           }
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+               "Indicates whether this access list is to be attached to ingress
+               or egress direction."
+        ::= { esAclMacAccessGroupEntry 2 }
+
+    esAclMacAccessGroupRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+            and removal conventions for conceptual rows."
+        ::= { esAclMacAccessGroupEntry 3 }
+
+    esAclMacAccessGroupAclName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The name of the MAC access list to be applied.
+            "
+        ::= { esAclMacAccessGroupEntry 4 }
+
+    esAclMacAccessGroupAclId OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The ID of the MAC access list to be applied.
+               User maybe specify access list ID(by this object) or name (by
+               esAclMacAccessGroupAclName) to be applied. If both access list
+               ID and name are specified, the access list name specified by
+               esAclMacAccessGroupAclName will be take.
+            "
+        ::= { esAclMacAccessGroupEntry 5 }
+-- -----------------------------------------------------------------------------
+    esAclIp               OBJECT IDENTIFIER ::= { esAclMIBObjects 3 }
+    esAclIpAccessListNumber  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in the IP access list
+            table."
+        ::= { esAclIp 1 }
+
+    esAclIpAccessListTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclIpAccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains IP access list configuration."
+        ::= { esAclIp 2 }
+
+    esAclIpAccessListEntry OBJECT-TYPE
+        SYNTAX          EsAclIpAccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defined in esAclIpAccessListTable. An entry is
+            created/removed when an IP access list is created/deleted."
+        INDEX { esAclIpAccessListName }
+        ::= { esAclIpAccessListTable 1 }
+
+    EsAclIpAccessListEntry ::= SEQUENCE {
+        esAclIpAccessListName        DisplayString,
+        esAclIpAccessListRowStatus   RowStatus,
+        esAclIpAccessExtended        TruthValue,
+        esAclIpAccessListId            Integer32,
+        esAclIpAccessListCounterEnabled    TruthValue,
+        esAclIpAccessListClearStatAction     INTEGER,
+        esAclIpAccessListRemark        DisplayString
+    }
+
+    esAclIpAccessListName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of the IP access list."
+        ::= { esAclIpAccessListEntry 1 }
+
+    esAclIpAccessListRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object allows the dynamic creation and
+             deletion of an IP access list."
+        ::= { esAclIpAccessListEntry 2 }
+
+    esAclIpAccessExtended OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the IP access list is extended ('true') or
+            standard ('false').
+            A standard ip access list means only IP address related i.e.
+            source or destination IP address is specified for the filter.
+            For an extended IP access list, more fields can be chosen for the
+            filter."
+        ::= { esAclIpAccessListEntry 3 }
+
+    esAclIpAccessListId OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The number of the IP access list.
+            If user specify value zero(0) for this node, agent will assign a number
+                for it. After the table created, this node should not be changed."
+        ::= { esAclIpAccessListEntry 4 }
+
+     esAclIpAccessListCounterEnabled    OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+             "This object indicates the counter state of the access list is
+              enabled('true') or disabled('false'). And the counter just for
+              the all interface that applied the access list in
+              esAclIpAccessGroupTable."
+        ::= { esAclIpAccessListEntry 5 }
+
+      esAclIpAccessListClearStatAction      OBJECT-TYPE
+        SYNTAX              INTEGER{
+                            clear(1),
+                            noOp(2)
+            }
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object is used to clear statistics of the access list when set
+            to 'clear'. No action is taken if this object is set to 'noOp'.
+            The 'clear' action just for the all interface that applied the access
+            list in esAclIpAccessGroupTable.
+            When read, the value 'noOp' is returned."
+        ::= { esAclIpAccessListEntry 6 }
+
+     esAclIpAccessListRemark OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..255))
+        MAX-ACCESS       read-create
+        STATUS          current
+        DESCRIPTION
+            "The description of the IP access list."
+        ::= { esAclIpAccessListEntry 7 }
+
+-- -----------------------------------------------------------------------------
+    esAclIpAccessRuleTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclIpAccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains a list of IP access rules for IP access lists."
+        ::= { esAclIp 3}
+
+    esAclIpAccessRuleEntry OBJECT-TYPE
+        SYNTAX          EsAclIpAccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined esAclIpAccessRuleTable.
+            The first instance identifier index value identifies the
+            esAclIpAccessListEntry that an IP access rule (esAclIpAccessRuleEntry)
+            belongs to. An entry is removed from this table when its
+            corresponding esAclIpAccessRuleEntry is deleted."
+        INDEX {
+            esAclIpAccessListName,
+            esAclIpAccessRuleSn
+        }
+        ::= { esAclIpAccessRuleTable 1 }
+
+    EsAclIpAccessRuleEntry ::= SEQUENCE {
+        esAclIpAccessRuleSn         Integer32,
+        esAclIpAccessRuleRowStatus        RowStatus,
+        esAclIpAccessRuleAction           DlinkAclRuleType,
+        esAclIpAccessRuleProtocol         INTEGER,
+        esAclIpAccessRuleUserDefProtocol  Integer32,
+        esAclIpAccessRuleSrcAddr          IpAddress,
+        esAclIpAccessRuleSrcWildcard      IpAddress,
+        esAclIpAccessRuleDstAddr          IpAddress,
+        esAclIpAccessRuleDstWildcard      IpAddress,
+        esAclIpAccessRuleSrcOperator      DlinkAclPortOperatorType,
+        esAclIpAccessRuleSrcPort          Integer32,
+        esAclIpAccessRuleSrcPortRange     Integer32,
+        esAclIpAccessRuleDstOperator      DlinkAclPortOperatorType,
+        esAclIpAccessRuleDstPort          Integer32,
+        esAclIpAccessRuleDstPortRange     Integer32,
+        esAclIpAccessRuleQosPrecedence    Integer32,
+        esAclIpAccessRuleQosTos           Integer32,
+        esAclIpAccessRuleQosDscp          Integer32,
+        esAclIpAccessRuleIcmpType         Integer32,
+        esAclIpAccessRuleIcmpCode         Integer32,
+        esAclIpAccessRuleTimeName         DisplayString,
+        esAclIpAccRuleTcpFlag             TcpFlag,
+        esAclIpAccRuleFragments             TruthValue,
+        esAclIpAccRuleUserDefProtocolMask  OCTET STRING,
+        esAclIpAccRuleSrcPortMask          OCTET STRING,
+        esAclIpAccRuleDstPortMask          OCTET STRING,
+        esAclIpAccRuleQosPrecedenceMask    OCTET STRING,
+        esAclIpAccRuleQosTosMask           OCTET STRING,
+        esAclIpAccRuleQosDscpMask          OCTET STRING
+    }
+
+    esAclIpAccessRuleSn OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "Specifies the sequence number of this rule.
+            The lower the number is, the higher the priority of the rule.
+            The special value of 0 means the sequence number will be automatically
+            determined by the agent."
+        ::= { esAclIpAccessRuleEntry 1 }
+
+    esAclIpAccessRuleRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esAclIpAccessRuleEntry 2 }
+
+    esAclIpAccessRuleAction OBJECT-TYPE
+        SYNTAX          DlinkAclRuleType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the result of the packet examination is to
+            permit or deny or prevent to CPU."
+        ::= { esAclIpAccessRuleEntry 3 }
+
+    esAclIpAccessRuleProtocol OBJECT-TYPE
+        SYNTAX      INTEGER {
+            none(0),
+            userDefine(1),
+            tcp(2),
+            udp(3),
+            icmp(4),
+            gre(5),
+            esp(6),
+            eigrp(7),
+            igmp(8),
+            ospf(9),
+            pim(10),
+            vrrp(11),
+            ipinip(12),
+            pcp(13)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the IP protocol."
+        ::= { esAclIpAccessRuleEntry 4 }
+
+    esAclIpAccessRuleUserDefProtocol OBJECT-TYPE
+        SYNTAX          Integer32 (-1 | 0..255)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the user defined protocol ID when the esAclIpAccessRuleProtocol
+             is 'userDefine (1)'. The value of -1 means the user defined protocol ID
+             is not specified."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 5 }
+
+    esAclIpAccessRuleSrcAddr OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "Specifies a source IP address."
+        ::= { esAclIpAccessRuleEntry 6 }
+
+    esAclIpAccessRuleSrcWildcard OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of source IP
+            addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            IP source address is specified. When the value of all '00'Hs indicates
+            host IP source address is specified."
+        ::= { esAclIpAccessRuleEntry 7 }
+
+     esAclIpAccessRuleDstAddr OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "Specifies a destination IP address."
+        ::= { esAclIpAccessRuleEntry 8 }
+
+    esAclIpAccessRuleDstWildcard OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of destination IP
+            addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            IP destination address is specified. When the value of all '00'Hs indicates
+            host IP destination address is specified."
+        ::= { esAclIpAccessRuleEntry 9 }
+
+    esAclIpAccessRuleSrcOperator OBJECT-TYPE
+        SYNTAX          DlinkAclPortOperatorType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates how a packet's source TCP/UDP port number is
+            compared.
+            When the value of this object is eq(2),gt(3),lt(4) or neq(5) uses
+            the esAclIpAccessRuleSrcPort as an operand which is the only one needed.
+
+            When the value of this object is range(6) needs 2 operands. One is
+            esAclIpAccessRuleSrcPort, which is the starting port number of the
+            range, and the other operand is esAclIpAccessRuleSrcPortRange,
+            which is the ending port number of the range.
+
+            When the value of this object is mask(7) needs 2 operands. One is
+            esAclIpAccessRuleSrcPort, the other operand is esAclIpAccRuleSrcPortMask.
+
+            This object is used for TCP/UDP protocol only, hence when the object
+            'esAclIpAccessRuleProtocol' is set to other than TCP/UDP, the object has
+            to be 'none(1)'."
+        ::= { esAclIpAccessRuleEntry 10 }
+
+    esAclIpAccessRuleSrcPort OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source port number of TCP/UDP protocol.
+            If the value is -1, it means the value is not specified.
+            If the esAclIpAccessRuleSrcOperator object in the same row is
+            range(6), this object will be the starting port number of the port
+            range.
+            This object only can be configured esAclIpAccessRuleSrcOperator in
+            the same row is not 'none(1)'."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 11 }
+
+    esAclIpAccessRuleSrcPortRange OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The source port number of the TCP/UDP protocol. If the
+            esAclIpAccessRuleSrcOperator object in the same row is range(6), this
+            object will be the ending port number of the port range.
+           The value of -1 means the ending port number is not specified."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 12 }
+
+    esAclIpAccessRuleDstOperator OBJECT-TYPE
+        SYNTAX          DlinkAclPortOperatorType
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates how a packet's TCP/UDP destination port number is
+            compared.
+            When the value of this object is eq(2),gt(3),lt(4) or neq(5) uses
+            the esAclIpAccessRuleSrcPort as an operand which is the only one needed.
+
+            When the value of this object is range(6) needs 2 operands. One is
+            esAclIpAccessRuleSrcPort, which is the starting port number of the
+            range, and the other operand is esAclIpAccessRuleDstPortRange,
+            which is the ending port number of the range.
+
+            When the value of this object is mask(7) needs 2 operands. One is
+            esAclIpAccessRuleDstPort, the other operand is esAclIpAccRuleDstPortMask.
+
+            This object is used for TCP/UDP protocol only, hence when the object
+            'esAclIpAccessRuleProtocol' is set to other than TCP/UDP, the object has
+            to be 'none(1)'."
+        ::= { esAclIpAccessRuleEntry 13 }
+
+     esAclIpAccessRuleDstPort OBJECT-TYPE
+        SYNTAX      Integer32 (-1..65535)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the destination port number of TCP/UDP protocol.
+            If the value is -1, it means the value is not specified.
+            If the esAclIpAccessRuleDstOperator object in the same row is
+            range(6), this object will be the starting port number of the port
+            range.
+            This object only can be configured esAclIpAccessRuleDstOperator in
+            the same row is not 'none(1)'."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 14 }
+
+    esAclIpAccessRuleDstPortRange OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The destination port number of the TCP/UDP protocol. If the
+            esAclIpAccessRuleDstOperator object in the same row is range(6), this
+            object will be the ending port number of the port range.
+            The value of -1 means the ending port number is not specified."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 15 }
+
+    esAclIpAccessRuleQosPrecedence  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..7)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of precedence.
+             The value of -1 means the value is not specified or not applicable.
+             esAclIpAccessRuleQosPrecedence and  esAclIpAccessRuleQosDscp cannot
+             be specified at same time in a row."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 16 }
+
+    esAclIpAccessRuleQosTos  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..15)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of type of service.
+             The value of -1 means the value is not specified or not applicable.
+             esAclIpAccessRuleQosTos and  esAclIpAccessRuleQosDscp cannot
+             be specified at same time in a row."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 17 }
+
+     esAclIpAccessRuleQosDscp  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..63)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of DSCP code.
+             The value of -1 means the value is not specified or not applicable.
+             Neither esAclIpAccessRuleQosPrecedence nor esAclIpAccessRuleQosTos
+             cannot be specified with esAclIpAccessRuleQosDscp at same time
+             in a row.
+            "
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 18 }
+
+     esAclIpAccessRuleIcmpType OBJECT-TYPE
+        SYNTAX      Integer32 (-1 | 0..255)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the type of ICMP protocol.
+            If the value is -1, it means the value is not specified.
+            This object is used for ICMP protocol only, hence when the object
+            'esAclIpAccessRuleProtocol' is set to other than ICMP, the object has
+            to be -1."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 19 }
+
+    esAclIpAccessRuleIcmpCode OBJECT-TYPE
+        SYNTAX      Integer32 (-1 | 0..255)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the code of ICMP protocol.
+            If the value is -1, it means the value is not specified.
+            This object is used for ICMP protocol only, hence when the object
+            'esAclIpAccessRuleProtocol' is set to other than ICMP, the object has
+            to be -1."
+        DEFVAL { -1 }
+        ::= { esAclIpAccessRuleEntry 20 }
+
+    esAclIpAccessRuleTimeName  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the name of time-period profile associated with the
+            access-list delineating its activation period.
+            The value 'NULL' means that this rule is not bound with any Time
+            mechanism."
+        ::= { esAclIpAccessRuleEntry 21 }
+
+    esAclIpAccRuleTcpFlag  OBJECT-TYPE
+        SYNTAX       TcpFlag
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the TCP flag fields.
+            This node is available only for TCP protocol.
+            The default value for this node is empty set, which means no TCP flag
+            values are set.
+            "
+        ::= { esAclIpAccessRuleEntry 22 }
+
+    esAclIpAccRuleFragments  OBJECT-TYPE
+        SYNTAX       TruthValue
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "This object indicates the Packet fragment filtering status
+            is  enabled('true') or disabled('false').
+            "
+        ::= { esAclIpAccessRuleEntry 23 }
+
+      esAclIpAccRuleUserDefProtocolMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for protocol ID defined by esAclIpAccessRuleUserDefProtocol.
+             Valid values are from 0x00 to 0xFF.
+             Default value is 0xFF.
+             This node is valid only for the esAclIpAccessRuleUserDefProtocol specified."
+        ::= { esAclIpAccessRuleEntry 24 }
+
+     esAclIpAccRuleSrcPortMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for L4 source port defined by esAclIpAccessRuleSrcPort.
+             Valid values are from 0x0 to 0xFFFF.
+             Default value is 0xFFFF.
+             This object only can be configured esAclIpAccessRuleSrcOperator in the
+             same row is 'mask(7)'.
+             This node is valid only for the esAclIpAccessRuleSrcPort specified."
+        ::= { esAclIpAccessRuleEntry 25 }
+
+     esAclIpAccRuleDstPortMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for L4 destination port defined by esAclIpAccessRuleDstPort.
+             Valid values are from 0x0 to 0xFFFF.
+             Default value is 0xFFFF.
+             This object only can be configured esAclIpAccessRuleDstOperator in the
+             same row is 'mask(7)'.
+             This node is valid only for the esAclIpAccessRuleDstPort specified."
+        ::= { esAclIpAccessRuleEntry 26 }
+
+    esAclIpAccRuleQosPrecedenceMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for ip precedence defined by esAclIpAccessRuleQosPrecedence.
+             Valid values are from 0x0 to 0x7.
+             Default value is 0x7.
+             This node is valid only for the esAclIpAccessRuleQosPrecedence specified."
+        ::= { esAclIpAccessRuleEntry 27 }
+
+     esAclIpAccRuleQosTosMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for type of service defined by esAclIpAccessRuleQosTos.
+             Valid values are from 0x0 to 0xF.
+             Default value is 0xF.
+             This node is valid only for the esAclIpAccessRuleQosTos specified."
+        ::= { esAclIpAccessRuleEntry 28 }
+
+     esAclIpAccRuleQosDscpMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for DSCP code defined by esAclIpAccessRuleQosDscp.
+             Valid values are from 0x0 to 0x3F.
+             Default value is 0x3F.
+             This node is valid only for the esAclIpAccessRuleQosDscp specified."
+        ::= { esAclIpAccessRuleEntry 29 }
+
+-- -----------------------------------------------------------------------------
+    esAclIpAccessGroupTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclIpAccessGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table represents a list of IP access group configuration."
+        ::= { esAclIp 4 }
+
+    esAclIpAccessGroupEntry OBJECT-TYPE
+        SYNTAX          EsAclIpAccessGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in esAclIpAccessGroupTable contains interface specific
+            IP access list association."
+        INDEX { esAclIpAccessGroupIfIndex,esAclIpAccessGroupApplyDirection}
+        ::= { esAclIpAccessGroupTable 1 }
+
+    EsAclIpAccessGroupEntry ::= SEQUENCE {
+        esAclIpAccessGroupIfIndex     InterfaceIndex,
+        esAclIpAccessGroupApplyDirection INTEGER,
+        esAclIpAccessGroupStatus      RowStatus,
+        esAclIpAccessGroupAclName   DisplayString,
+        esAclIpAccessGroupAclId         Integer32
+        }
+
+    esAclIpAccessGroupIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the ifIndex of the interface.
+            Only physical port is valid interface."
+        ::= { esAclIpAccessGroupEntry 1 }
+
+    esAclIpAccessGroupApplyDirection OBJECT-TYPE
+        SYNTAX      INTEGER{
+                            inbound(1),
+                            outbound(2)
+                            }
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+               "Indicates whether this access list is to be attached to ingress or egress direction."
+        ::= { esAclIpAccessGroupEntry 2 }
+    esAclIpAccessGroupStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esAclIpAccessGroupEntry 3 }
+
+    esAclIpAccessGroupAclName OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (1..32))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The name of the IP access list to be applied."
+        ::= { esAclIpAccessGroupEntry 4 }
+
+     esAclIpAccessGroupAclId OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The ID of the IP access list to be applied.
+               User maybe specify access list ID(by this object) or name (by
+               esAclIpAccessGroupAclName) to be applied. If both access list
+               ID and name are specified, the access list name specified by
+               esAclIpAccessGroupAclName will be take.
+            "
+        ::= { esAclIpAccessGroupEntry 5 }
+-- -----------------------------------------------------------------------------
+    esAclIPv6               OBJECT IDENTIFIER ::= { esAclMIBObjects 4 }
+    esAclIPv6AccessListNumber  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in the IPv6 access list
+            table."
+        ::= { esAclIPv6 1 }
+
+    esAclIPv6AccessListTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclIPv6AccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains IPv6 access list configuration."
+        ::= { esAclIPv6 2 }
+
+    esAclIPv6AccessListEntry OBJECT-TYPE
+        SYNTAX          EsAclIPv6AccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defined in esAclIPv6AccessListTable. An entry is
+            created/removed when an IPv6 access list is created/deleted."
+        INDEX { esAclIPv6AccessListName }
+        ::= { esAclIPv6AccessListTable 1 }
+
+    EsAclIPv6AccessListEntry ::= SEQUENCE {
+        esAclIPv6AccessListName          DisplayString,
+        esAclIPv6AccessListRowStatus     RowStatus,
+        esAclIPv6AccessExtended          TruthValue,
+        esAclIPv6AccessListId        Integer32,
+        esAclIPv6AccessListCounterEnabled        TruthValue,
+        esAclIPv6AccessListClearStatAction     INTEGER,
+        esAclIPv6AccessListRemark        DisplayString
+    }
+
+    esAclIPv6AccessListName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of the IPv6 access list."
+        ::= { esAclIPv6AccessListEntry 1 }
+
+    esAclIPv6AccessListRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object allows the dynamic creation and
+             deletion of an IPv6 access list."
+        ::= { esAclIPv6AccessListEntry 2 }
+
+    esAclIPv6AccessExtended OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the IPv6 access list is extended ('true') or
+            standard ('false').
+            A standard ip access list means only IPv6 address related i.e.
+            source or destination IPv6 address is specified for the filter.
+            For an extended IPv6 access list, more fields can be chosen for the
+            filter."
+        ::= { esAclIPv6AccessListEntry 3 }
+
+    esAclIPv6AccessListId OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The number of the IPv6 access list."
+        ::= { esAclIPv6AccessListEntry 4 }
+
+    esAclIPv6AccessListCounterEnabled OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+             "This object indicates the counter state of the access list is
+              enabled('true') or disabled('false'). And the counter just for
+              the all interface that applied the access list in
+              esAclIPv6AccessGroupTable."
+        ::= { esAclIPv6AccessListEntry 5 }
+
+     esAclIPv6AccessListClearStatAction      OBJECT-TYPE
+        SYNTAX              INTEGER{
+                            clear(1),
+                            noOp(2)
+            }
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object is used to clear statistics of the access list when set
+            to 'clear'. No action is taken if this object is set to 'noOp'.
+            The 'clear' action just for the all interface that applied the access
+            list in esAclIPv6AccessGroupTable.
+            When read, the value 'noOp' is returned."
+        ::= { esAclIPv6AccessListEntry 6 }
+
+    esAclIPv6AccessListRemark OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..255))
+        MAX-ACCESS       read-create
+        STATUS          current
+        DESCRIPTION
+            "The description of the IPv6 access list."
+        ::= { esAclIPv6AccessListEntry 7 }
+
+-- -----------------------------------------------------------------------------
+    esAclIPv6AccessRuleTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclIPv6AccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains a list of IPv6 access rules for IPv6 access lists."
+        ::= { esAclIPv6 3}
+
+    esAclIPv6AccessRuleEntry OBJECT-TYPE
+        SYNTAX          EsAclIPv6AccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined esAclIPv6AccessRuleTable.
+            The first instance identifier index value identifies the
+            esAclIPv6AccessListEntry that an IPv6 access rule (esAclIPv6AccessRuleEntry)
+            belongs to. An entry is removed from this table when its
+            corresponding esAclIPv6AccessRuleEntry is deleted."
+        INDEX {
+            esAclIPv6AccessListName,
+            esAclIPv6AccessRuleSn
+        }
+        ::= { esAclIPv6AccessRuleTable 1 }
+
+    EsAclIPv6AccessRuleEntry ::= SEQUENCE {
+        esAclIPv6AccessRuleSn               Integer32,
+        esAclIPv6AccessRuleRowStatus        RowStatus,
+        esAclIPv6AccessRuleAction           DlinkAclRuleType,
+        esAclIPv6AccessRuleProtocol         INTEGER,
+        esAclIPv6AccessRuleUserDefProtocol  Integer32,
+        esAclIPv6AccessRuleSrcAddr          InetAddressIPv6,
+        esAclIPv6AccessRuleSrcPrefixLen     InetAddressPrefixLength,
+        esAclIPv6AccessRuleDstAddr          InetAddressIPv6,
+        esAclIPv6AccessRuleDstPrefixLen     InetAddressPrefixLength,
+        esAclIPv6AccessRuleSrcOperator      DlinkAclPortOperatorType,
+        esAclIPv6AccessRuleSrcPort          Integer32,
+        esAclIPv6AccessRuleSrcPortRange     Integer32,
+        esAclIPv6AccessRuleDstOperator      DlinkAclPortOperatorType,
+        esAclIPv6AccessRuleDstPort          Integer32,
+        esAclIPv6AccessRuleDstPortRange     Integer32,
+        esAclIPv6AccessRuleDscp             Integer32,
+        esAclIPv6AccessRuleIcmpType         Integer32,
+        esAclIPv6AccessRuleIcmpCode         Integer32,
+        esAclIPv6AccessRuleTimeName         DisplayString,
+        esAclIPv6AccRuleTcpFlag             TcpFlag,
+        esAclIPv6AccRuleFragments           TruthValue,
+        esAclIPv6AccRuleFlowLabel           Integer32,
+        esAclIPv6AccRuleTrafficClass        Integer32,
+        esAclIPv6AccRuleUserDefProtocolMask OCTET STRING,
+        esAclIPv6AccRuleSrcPortMask         OCTET STRING,
+        esAclIPv6AccRuleDstPortMask         OCTET STRING,
+        esAclIPv6AccRuleDscpMask            OCTET STRING,
+        esAclIPv6AccRuleFlowLabelMask       OCTET STRING,
+        esAclIPv6AccRuleTrafficClassMask    OCTET STRING
+    }
+
+    esAclIPv6AccessRuleSn OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Specifies the sequence number of this rule.
+            The lower the number is, the higher the priority of the rule.
+            The special value of 0 means the sequence number will be automatically
+            determined by the agent."
+        ::= { esAclIPv6AccessRuleEntry 1 }
+
+    esAclIPv6AccessRuleRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esAclIPv6AccessRuleEntry 2 }
+
+    esAclIPv6AccessRuleAction OBJECT-TYPE
+        SYNTAX          DlinkAclRuleType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the result of the packet examination is to
+            permit or deny or prevent to CPU."
+        ::= { esAclIPv6AccessRuleEntry 3 }
+
+    esAclIPv6AccessRuleProtocol OBJECT-TYPE
+        SYNTAX      INTEGER {
+            none(0),
+            userDefine(1),
+            tcp(2),
+            udp(3),
+            icmp(4),
+            esp(5),
+            pcp(6),
+            sctp(7)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the IP protocol."
+        ::= { esAclIPv6AccessRuleEntry 4 }
+
+    esAclIPv6AccessRuleUserDefProtocol OBJECT-TYPE
+        SYNTAX          Integer32 (-1 | 0..255)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the user defined protocol ID when the
+            esAclIPv6AccessRuleProtocol is 'userDefine (1)'.
+            The value of -1 means the user defined protocol ID is not
+            specified."
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 5 }
+
+    esAclIPv6AccessRuleSrcAddr OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies a source IPv6 address."
+        ::= { esAclIPv6AccessRuleEntry 6 }
+
+    esAclIPv6AccessRuleSrcPrefixLen OBJECT-TYPE
+        SYNTAX          InetAddressPrefixLength
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the length in bits of source IPv6 address will be
+            matched. In other words, the value of 0 indicates any source
+            IPv6 address is specified. When the value of 128 indicates
+            host IPv6 source address is specified."
+        ::= { esAclIPv6AccessRuleEntry 7 }
+
+    esAclIPv6AccessRuleDstAddr OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies a destination IPv6 address."
+        ::= { esAclIPv6AccessRuleEntry 8 }
+
+    esAclIPv6AccessRuleDstPrefixLen OBJECT-TYPE
+        SYNTAX          InetAddressPrefixLength
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "Specifies the length in bits of destination IPv6 address will be
+            matched. In other words, the value of 0 indicates any destination
+            IPv6 address is specified. When the value of 128 indicates
+            host IPv6 destination address is specified."
+        ::= { esAclIPv6AccessRuleEntry 9 }
+
+     esAclIPv6AccessRuleSrcOperator OBJECT-TYPE
+        SYNTAX          DlinkAclPortOperatorType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates how a packet's TCP/UDP source port number is
+            compared.
+            When the value of this object is eq(2),gt(3),lt(4) or neq(5) uses
+            the esAclIPv6AccessRuleSrcPort as an operand which is the only one needed.
+
+            When the value of this object is range(6) needs 2 operands. One is
+            esAclIPv6AccessRuleSrcPort, which is the starting port number of the
+            range, and the other operand is esAclIPv6AccessRuleSrcPortRange,
+            which is the ending port number of the range.
+
+            When the value of this object is mask(7) needs 2 operands. One is
+            esAclIPv6AccessRuleSrcPort, the other operand is esAclIPv6AccessRuleSrcPortMask.
+
+            This object is used for TCP/UDP protocol only, hence when the object
+            'esAclIPv6AccessRuleProtocol' is set to other than TCP/UDP, the object has
+            to be 'none(1)'."
+        ::= { esAclIPv6AccessRuleEntry 10 }
+
+    esAclIPv6AccessRuleSrcPort OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source port number of TCP/UDP protocol.
+            If the value is -1, it means the value is not specified.
+            If the esAclIPv6AccessRuleSrcOperator object in the same row is
+            range(6), this object will be the starting port number of the port
+            range.
+            This object only can be configured esAclIPv6AccessRuleSrcOperator in
+            the same row is not 'none(1)'."
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 11 }
+
+    esAclIPv6AccessRuleSrcPortRange OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The source port number of the TCP/UDP protocol. If the
+            esAclIPv6AccessRuleSrcOperator object in the same row is range(6), this
+            object will be the ending port number of the port range.
+           The value of -1 means the ending port number is not specified."
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 12 }
+
+    esAclIPv6AccessRuleDstOperator OBJECT-TYPE
+        SYNTAX          DlinkAclPortOperatorType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates how a packet's TCP/UDP destination port number is
+            compared.
+            When the value of this object is eq(2),gt(3),lt(4) or neq(5) uses
+            the esAclIPv6AccessRuleDstPort as an operand which is the only one needed.
+
+            When the value of this object is range(6) needs 2 operands. One is
+            esAclIPv6AccessRuleDstPort, which is the starting port number of the
+            range, and the other operand is esAclIPv6AccessRuleDstPortRange,
+            which is the ending port number of the range.
+
+            When the value of this object is mask(7) needs 2 operands. One is
+            esAclIPv6AccessRuleDstPort, the other operand is esAclIPv6AccessRuleDstPortMask.
+
+            This object is used for TCP/UDP protocol only, hence when the object
+            'esAclIPv6AccessRuleProtocol' is set to other than TCP/UDP, the object has
+            to be 'none(1)'."
+        ::= { esAclIPv6AccessRuleEntry 13 }
+
+     esAclIPv6AccessRuleDstPort OBJECT-TYPE
+        SYNTAX      Integer32 (-1..65535)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the destination port number of TCP/UDP protocol.
+            If the value is -1, it means the value is not specified.
+            If the esAclIPv6AccessRuleDstOperator object in the same row is
+            range(6), this object will be the starting port number of the port
+            range.
+            This object only can be configured esAclIPv6AccessRuleDstOperator in
+            the same row is not 'none(1)'."
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 14 }
+
+    esAclIPv6AccessRuleDstPortRange OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The destination port number of the TCP/UDP protocol. If the
+            esAclIPv6AccessRuleDstOperator object in the same row is range(6), this
+            object will be the ending port number of the port range.
+            The value of -1 means the ending port number is not specified."
+        ::= { esAclIPv6AccessRuleEntry 15 }
+
+    esAclIPv6AccessRuleDscp OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0 .. 63)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the matching DSCP code value in IPv6 header.
+            The value of -1 means the DSCP value is not specified."
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 16 }
+
+     esAclIPv6AccessRuleIcmpType OBJECT-TYPE
+        SYNTAX      Integer32 (-1 | 0..255)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the type of ICMP protocol.
+            The value of -1 means the ICMP type is not specified.
+            This object is used for ICMP protocol only, hence when the object
+            'esAclIPv6AccessRuleProtocol' is set to other than ICMP, the object has
+            to be -1."
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 17 }
+
+    esAclIPv6AccessRuleIcmpCode OBJECT-TYPE
+        SYNTAX      Integer32 (-1 | 0..255)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the code of ICMP protocol.
+            If the value is -1, it means the value is not specified.
+            This object is used for ICMP protocol only, hence when the object
+            'esAclIPv6AccessRuleProtocol' is set to other than ICMP, the object has
+            to be -1."
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 18 }
+
+    esAclIPv6AccessRuleTimeName  OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the name of time-period profile associated with the
+            access-list delineating its activation period.
+            The value 'NULL' means that this rule is not bound with any Time
+            mechanism."
+        ::= { esAclIPv6AccessRuleEntry 19 }
+
+    esAclIPv6AccRuleTcpFlag  OBJECT-TYPE
+        SYNTAX        TcpFlag
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the TCP flag fields. And this node is available only for TCP protocol.
+                The default value for this node is empty set, which means no TCP flag values are set.
+                 "
+        ::= { esAclIPv6AccessRuleEntry 20 }
+
+    esAclIPv6AccRuleFragments  OBJECT-TYPE
+        SYNTAX       TruthValue
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "This object indicates the Packet fragment filtering status
+            is  enabled('true') or disabled('false')."
+        ::= { esAclIPv6AccessRuleEntry 21 }
+
+    esAclIPv6AccRuleFlowLabel  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..1048575)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "This object indicates the Flow label value.
+            The value of -1 means the flow-label value is not specified.
+        "
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 22 }
+
+     esAclIPv6AccRuleTrafficClass OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0 .. 255)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the matching traffic class value in IPv6 header.
+            The value of -1 means the traffic class value is not specified.
+            This node and esAclIPv6AccessRuleDscp cannot be specified at same time in a row.
+            "
+        DEFVAL { -1 }
+        ::= { esAclIPv6AccessRuleEntry 23 }
+
+     esAclIPv6AccRuleUserDefProtocolMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for protocol ID defined by esAclIPv6AccessRuleUserDefProtocol.
+             Valid values are from 0x00 to 0xFF.
+             Default value is 0xFF.
+             This node is valid only for the esAclIPv6AccessRuleUserDefProtocol specified."
+        ::= { esAclIPv6AccessRuleEntry 24 }
+
+     esAclIPv6AccRuleSrcPortMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for L4 source port defined by esAclIPv6AccessRuleSrcPort.
+             Valid values are from 0x0 to 0xFFFF.
+             Default value is 0xFFFF.
+             This object only can be configured esAclIPv6AccessRuleSrcOperator in the
+             same row is 'mask(7)'.
+             This node is valid only for the esAclIPv6AccessRuleSrcPort specified."
+        ::= { esAclIPv6AccessRuleEntry 25 }
+
+     esAclIPv6AccRuleDstPortMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for L4 destination port defined by esAclIPv6AccessRuleDstPort.
+             Valid values are from 0x0 to 0xFFFF.
+             Default value is 0xFFFF.
+             This object only can be configured esAclIPv6AccessRuleDstOperator in the
+             same row is 'mask(7)'.
+             This node is valid only for the esAclIPv6AccessRuleDstPort specified."
+        ::= { esAclIPv6AccessRuleEntry 26 }
+
+     esAclIPv6AccRuleDscpMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for DSCP code defined by esAclIPv6AccessRuleDscp.
+             Valid values are from 0x0 to 0x3F.
+             Default value is 0x3F.
+             This node is valid only for the esAclIPv6AccessRuleDscp specified."
+        ::= { esAclIPv6AccessRuleEntry 27 }
+
+     esAclIPv6AccRuleFlowLabelMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(3))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for Flow label value defined by esAclIPv6AccRuleFlowLabel.
+             Valid values are from 0x0 to 0xFFFFF.
+             Default value is 0xFFFFF.
+             This node is valid only for the esAclIPv6AccRuleFlowLabel specified."
+       ::= { esAclIPv6AccessRuleEntry 28 }
+
+     esAclIPv6AccRuleTrafficClassMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for traffic class defined by esAclIPv6AccRuleTrafficClass.
+             Valid values are from 0x0 to 0xFF.
+             Default value is 0xFF.
+             This node is valid only for the esAclIPv6AccRuleTrafficClass specified."
+        ::= { esAclIPv6AccessRuleEntry 29 }
+
+ -- -----------------------------------------------------------------------------
+    esAclIPv6AccessGroupTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclIPv6AccessGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table represents a list of IPv6 access group configuration."
+        ::= { esAclIPv6 4 }
+
+    esAclIPv6AccessGroupEntry OBJECT-TYPE
+        SYNTAX          EsAclIPv6AccessGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in esAclIPv6AccessGroupTable contains interface specific
+            IPv6 access list association."
+        INDEX { esAclIPv6AccessGroupIfIndex, esAclIpv6AccessGroupApplyDirection }
+        ::= { esAclIPv6AccessGroupTable 1 }
+
+    EsAclIPv6AccessGroupEntry ::= SEQUENCE {
+        esAclIPv6AccessGroupIfIndex     InterfaceIndex,
+        esAclIpv6AccessGroupApplyDirection    INTEGER,
+        esAclIPv6AccessGroupStatus      RowStatus,
+        esAclIPv6AccessGroupAclName   DisplayString,
+        esAclIPv6AccessGroupAclId        Integer32
+        }
+
+    esAclIPv6AccessGroupIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the ifIndex of the interface.
+            Only physical port is valid interface."
+        ::= { esAclIPv6AccessGroupEntry 1 }
+
+    esAclIpv6AccessGroupApplyDirection OBJECT-TYPE
+        SYNTAX      INTEGER{
+                            inbound(1),
+                            outbound(2)
+                            }
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+               "Indicates whether this ACL access list is to be attached to ingress or egress direction."
+        ::= { esAclIPv6AccessGroupEntry 2 }
+    esAclIPv6AccessGroupStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esAclIPv6AccessGroupEntry 3 }
+
+     esAclIPv6AccessGroupAclName OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (1..32))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The name of the IPv6 access list to be applied."
+        ::= { esAclIPv6AccessGroupEntry 4 }
+
+     esAclIPv6AccessGroupAclId OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The ID of the IPv6 access list to be applied.
+               User maybe specify access list ID(by this object) or name (by
+               esAclIPv6AccessGroupAclName) to be applied. If both access list
+               ID and name are specified, the access list name specified by
+               esAclIPv6AccessGroupAclName will be take.
+            "
+        ::= { esAclIPv6AccessGroupEntry 5 }
+-- -----------------------------------------------------------------------------
+    esAclExpert              OBJECT IDENTIFIER ::= { esAclMIBObjects 5 }
+    esAclExpertAccessListNumber  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in the extended expert
+            access list table."
+        ::= { esAclExpert 1 }
+
+    esAclExpertAccessListTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclExpertAccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains information about extended expert access list."
+        ::= { esAclExpert 2 }
+
+    esAclExpertAccessListEntry OBJECT-TYPE
+        SYNTAX          EsAclExpertAccessListEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defined in esAclExpertAccessListTable. An entry is
+            created/removed when an extended expert access list is
+            created/deleted."
+        INDEX { esAclExpertAccessListName }
+        ::= { esAclExpertAccessListTable 1 }
+
+    EsAclExpertAccessListEntry ::= SEQUENCE {
+        esAclExpertAccessListName           DisplayString,
+        esAclExpertAccessListRowStatus      RowStatus,
+        esAclExpertAccessListId           Integer32,
+        esAclExpertAccessListCounterEnabled        TruthValue,
+        esAclExpertAccessListClearStatAction     INTEGER,
+        esAclExpertAccessListRemark      DisplayString
+    }
+
+    esAclExpertAccessListName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of the extended expert access list."
+        ::= { esAclExpertAccessListEntry 1 }
+
+    esAclExpertAccessListRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object allows the dynamic creation and
+             deletion of an extended expert access list."
+        ::= { esAclExpertAccessListEntry 2 }
+
+    esAclExpertAccessListId OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The number of the extended expert access list."
+        ::= { esAclExpertAccessListEntry 3 }
+
+    esAclExpertAccessListCounterEnabled        OBJECT-TYPE
+        SYNTAX                 TruthValue
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+             "This object indicates the counter state of the access list is
+              enabled('true') or disabled('false'). And the counter just for
+              the all interface that applied the access list in
+              esAclExpertAccessGroupTable."
+        ::= { esAclExpertAccessListEntry 4 }
+
+      esAclExpertAccessListClearStatAction      OBJECT-TYPE
+        SYNTAX              INTEGER{
+                            clear(1),
+                            noOp(2)
+            }
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object is used to clear statistics of the access list when set
+            to 'clear'. No action is taken if this object is set to 'noOp'.
+            The 'clear' action just for the all interface that applied the access
+            list in esAclExpertAccessGroupTable.
+            When read, the value 'noOp' is returned."
+        ::= { esAclExpertAccessListEntry 5 }
+
+    esAclExpertAccessListRemark OBJECT-TYPE
+        SYNTAX                  DisplayString (SIZE (0..255))
+        MAX-ACCESS       read-create
+        STATUS          current
+        DESCRIPTION
+            "The description of the Expert access list."
+        ::= { esAclExpertAccessListEntry 6 }
+
+-- -----------------------------------------------------------------------------
+    esAclExpertAccessRuleTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclExpertAccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table consists of a list of rules for the extended expert access list."
+        ::= { esAclExpert 3 }
+
+    esAclExpertAccessRuleEntry OBJECT-TYPE
+        SYNTAX          EsAclExpertAccessRuleEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined desAclExpertAccessRuleTable.
+            The first instance identifier index value identifies the
+            esAclExpertAccessListEntry that a extended expert access rule
+            (esAclExpertAccessRuleEntry) belongs to.
+            An entry is removed from this table when its
+            corresponding esAclExpertAccessListEntry is deleted."
+        INDEX {
+            esAclExpertAccessListName,
+            esAclExpertAccRuleSn
+        }
+        ::= { esAclExpertAccessRuleTable 1 }
+
+    EsAclExpertAccessRuleEntry ::= SEQUENCE {
+        esAclExpertAccRuleSn                    Integer32,
+        esAclExpertAccRuleRowStatus             RowStatus,
+        esAclExpertAccRuleAction                DlinkAclRuleType,
+        esAclExpertAccRuleProtocol              INTEGER,
+        esAclExpertAccRuleUserDefProtocol       Integer32,
+        esAclExpertAccRuleSrcIpAddr             IpAddress,
+        esAclExpertAccRuleSrcIpWildcard         IpAddress,
+        esAclExpertAccRuleSrcMacAddr            MacAddress,
+        esAclExpertAccRuleSrcMacWildcard        MacAddress,
+        esAclExpertAccRuleSrcOperator           DlinkAclPortOperatorType,
+        esAclExpertAccRuleSrcPort               Integer32,
+        esAclExpertAccRuleSrcPortRange          Integer32,
+        esAclExpertAccRuleDstIpAddr             IpAddress,
+        esAclExpertAccRuleDstIpWildcard         IpAddress,
+        esAclExpertAccRuleDstMacAddr            MacAddress,
+        esAclExpertAccRuleDstMacWildcard        MacAddress,
+        esAclExpertAccRuleDstOperator           DlinkAclPortOperatorType,
+        esAclExpertAccRuleDstPort               Integer32,
+        esAclExpertAccRuleDstPortRange          Integer32,
+        esAclExpertAccRuleVlanID                VlanIdOrNone,
+        esAclExpertAccRuleInnerVlanID           VlanIdOrNone,
+        esAclExpertAccRuleQosPrecedence         Integer32,
+        esAclExpertAccRuleQosTos                Integer32,
+        esAclExpertAccRuleQosDscp               Integer32,
+        esAclExpertAccRuleIcmpType              Integer32,
+        esAclExpertAccRuleIcmpCode              Integer32,
+        esAclExpertAccRuleTimeName              DisplayString,
+        esAclExpertAccRuleTcpFlag               TcpFlag,
+        esAclExpertAccRuleFragments             TruthValue,
+        esAclExpertAccRuleOuterCos              Integer32,
+        esAclExpertAccRuleInnerCos              Integer32,
+        esAclExpertAccRuleUserDefProtocolMask   OCTET STRING,
+        esAclExpertAccRuleSrcPortMask           OCTET STRING,
+        esAclExpertAccRuleDstPortMask           OCTET STRING,
+        esAclExpertAccRuleVlanIDMask            OCTET STRING,
+        esAclExpertAccRuleInnerVlanIDMask       OCTET STRING,
+        esAclExpertAccRuleQosPrecedenceMask     OCTET STRING,
+        esAclExpertAccRuleQosTosMask            OCTET STRING,
+        esAclExpertAccRuleQosDscpMask           OCTET STRING,
+        esAclExpertAccRuleOuterCosMask          OCTET STRING,
+        esAclExpertAccRuleInnerCosMask          OCTET STRING,
+        esAclExpertAccRuleVlanRangeMin          VlanIdOrNone,
+        esAclExpertAccRuleVlanRangeMax          VlanIdOrNone
+    }
+
+    esAclExpertAccRuleSn  OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "Specifies the sequence number of this rule.
+            The lower the number is, the higher the priority of the rule.
+            The special value of 0 means the sequence number will be automatically
+            determined by the agent."
+        ::= { esAclExpertAccessRuleEntry 1 }
+
+    esAclExpertAccRuleRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esAclExpertAccessRuleEntry 2 }
+
+    esAclExpertAccRuleAction OBJECT-TYPE
+        SYNTAX          DlinkAclRuleType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the result of the packet examination is to
+            permit or deny or prevent to CPU."
+        ::= { esAclExpertAccessRuleEntry 3 }
+
+    esAclExpertAccRuleProtocol OBJECT-TYPE
+        SYNTAX      INTEGER {
+            none(0),
+            userDefine(1),
+            tcp(2),
+            udp(3),
+            icmp(4),
+            gre(5),
+            esp(6),
+            eigrp(7),
+            igmp(8),
+            ospf(9),
+            pim(10),
+            vrrp(11),
+            ipinip(12),
+            pcp(13)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the IP protocol."
+        ::= { esAclExpertAccessRuleEntry 4 }
+
+    esAclExpertAccRuleUserDefProtocol OBJECT-TYPE
+        SYNTAX          Integer32 (-1 | 0..255)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the user defined protocol ID when the
+            esAclExpertAccRuleProtocol is 'userDefine (1)'.
+            The value of -1 means the user defined protocol ID is not
+            specified."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 5 }
+
+    esAclExpertAccRuleSrcIpAddr OBJECT-TYPE
+        SYNTAX          IpAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies a source IP address."
+        ::= { esAclExpertAccessRuleEntry 6 }
+
+    esAclExpertAccRuleSrcIpWildcard OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of source IP
+            addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            IP source address is specified. When the value of all '00'Hs indicates
+            host IP source address is specified."
+        ::= { esAclExpertAccessRuleEntry 7 }
+
+    esAclExpertAccRuleSrcMacAddr OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies a source MAC address."
+        ::= { esAclExpertAccessRuleEntry 8 }
+
+    esAclExpertAccRuleSrcMacWildcard OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of source
+            MAC addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            source MAC address is specified. When the value of all '00'Hs indicates
+            host source MAC address is specified."
+        ::= { esAclExpertAccessRuleEntry 9 }
+
+    esAclExpertAccRuleSrcOperator OBJECT-TYPE
+        SYNTAX          DlinkAclPortOperatorType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates how a packet's source TCP/UDP port number is
+            compared.
+            When the value of this object is eq(2),gt(3),lt(4) or neq(5) uses
+            the esAclExpertAccsRuleSrcPort as an operand which is the only one needed.
+
+            When the value of this object is range(6) needs 2 operands. One is
+            esAclExpertAccsRuleSrcPort, which is the starting port number of the
+            range, and the other operand is esAclExpertAccsRuleSrcPortRange,
+            which is the ending port number of the range.
+
+            When the value of this object is mask(7) needs 2 operands. One is
+            esAclExpertAccsRuleSrcPort, the other operand is esAclExpertAccsRuleSrcPortMask.
+
+            This object is used for TCP/UDP protocol only, hence when the object
+            'esAclExpertAccRuleProtocol' is set to other than TCP/UDP, the object has
+            to be 'none(1)'."
+        ::= { esAclExpertAccessRuleEntry 10 }
+
+    esAclExpertAccRuleSrcPort OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source port number of TCP/UDP protocol.
+            If the value is -1, it means the value is not specified.
+            If the esAclExpertAccsRuleSrcOperator object in the same row is
+            range(6), this object will be the starting port number of the port
+            range.
+            This object only can be configured esAclExpertAccsRuleSrcOperator in
+            the same row is not 'none(1)'."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 11 }
+
+    esAclExpertAccRuleSrcPortRange OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The source port number of the TCP/UDP protocol. If the
+            esAclExpertAccsRuleSrcOperator object in the same row is range(6), this
+            object will be the ending port number of the port range.
+           The value of -1 means the ending port number is not specified."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 12 }
+
+     esAclExpertAccRuleDstIpAddr OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "Specifies a destination IP address."
+        ::= { esAclExpertAccessRuleEntry 13 }
+
+    esAclExpertAccRuleDstIpWildcard OBJECT-TYPE
+        SYNTAX     IpAddress
+        MAX-ACCESS read-create
+        STATUS     current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of destination IP
+            addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            IP destination address is specified. When the value of all '00'Hs indicates
+            host IP destination address is specified."
+        ::= { esAclExpertAccessRuleEntry 14 }
+
+    esAclExpertAccRuleDstMacAddr  OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies a destination MAC address."
+        ::= { esAclExpertAccessRuleEntry 15 }
+
+    esAclExpertAccRuleDstMacWildcard  OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object is a wildcard bitmap to specify a group of destination
+            MAC addresses. The bit value 1 indicates the corresponding bit will
+            be ignored. The bit value 0 indicates the corresponding bit will be
+            checked. In other words, when the value of all 'ff'Hs indicates any
+            destination MAC address is specified. When the value of all '00'Hs
+            indicates host destination MAC address is specified."
+        ::= { esAclExpertAccessRuleEntry 16 }
+
+    esAclExpertAccRuleDstOperator OBJECT-TYPE
+        SYNTAX          DlinkAclPortOperatorType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates how a packet's TCP/UDP destination port number is
+            compared.
+            When the value of this object is eq(2),gt(3),lt(4) or neq(5) uses
+            the esAclExpertAccsRuleDstPort as an operand which is the only one needed.
+
+            When the value of this object is range(6) needs 2 operands. One is
+            esAclExpertAccsRuleDstPort, which is the starting port number of the
+            range, and the other operand is esAclExpertAccsRuleDstPortRange,
+            which is the ending port number of the range.
+
+            When the value of this object is mask(7) needs 2 operands. One is
+            esAclExpertAccsRuleDstPort, the other operand is esAclExpertAccsRuleDstPortMask.
+
+            This object is used for TCP/UDP protocol only, hence when the object
+            'esAclExpertAccRuleProtocol' is set to other than TCP/UDP, the object has
+            to be 'none(1)'."
+        ::= { esAclExpertAccessRuleEntry 17 }
+
+     esAclExpertAccRuleDstPort OBJECT-TYPE
+        SYNTAX      Integer32 (-1..65535)
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the destination port number of TCP/UDP protocol.
+            If the value is -1, it means the value is not specified.
+            If the esAclExpertAccsRuleDstOperator object in the same row is
+            range(6), this object will be the starting port number of the port
+            range.
+            This object only can be configured esAclExpertAccsRuleDstOperator in
+            the same row is not 'none(1)'."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 18 }
+
+    esAclExpertAccRuleDstPortRange OBJECT-TYPE
+        SYNTAX          Integer32 (-1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The destination port number of the TCP/UDP protocol. If the
+            esAclExpertAccsRuleDstOperator object in the same row is range(6), this
+            object will be the ending port number of the port range.
+            The value of -1 means the ending port number is not specified."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 19 }
+
+    esAclExpertAccRuleVlanID  OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the VLAN ID.
+            A value of zero indicates the VLAN ID is not specified."
+        DEFVAL { 0 }
+        ::= { esAclExpertAccessRuleEntry 20 }
+
+    esAclExpertAccRuleInnerVlanID  OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the inner VLAN ID. A value of zero indicates
+            the inner VLAN ID is not specified."
+        DEFVAL { 0 }
+        ::= { esAclExpertAccessRuleEntry 21 }
+
+    esAclExpertAccRuleQosPrecedence  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..7)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of precedence.
+             The value of -1 means the value is not specified or not applicable.
+             esAclExpertAccRuleQosPrecedence and esAclExpertAccRuleQosDscp cannot
+             be specified at same time in a row."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 22 }
+
+    esAclExpertAccRuleQosTos  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..15)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of type of service.
+             The value of -1 means the value is not specified or not applicable.
+             esAclExpertAccRuleQosTos and esAclExpertAccRuleQosDscp cannot
+             be specified at same time in a row."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 23 }
+
+     esAclExpertAccRuleQosDscp  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..63)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of DSCP code.
+             The value of -1 means the value is not specified or not applicable.
+             Neither esAclExpertAccRuleQosPrecedence nor esAclExpertAccRuleQosTos
+             can be specified with esAclExpertAccRuleQosDscp at same time in a
+             row."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 24 }
+
+     esAclExpertAccRuleIcmpType OBJECT-TYPE
+        SYNTAX          Integer32 (-1 | 0..255)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of ICMP protocol.
+            If the value is -1, it means the value is not specified.
+            This object is used for ICMP protocol only, hence when the object
+            'esAclExpertAccRuleProtocol' is set to other than ICMP, the object has
+            to be -1."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 25 }
+
+    esAclExpertAccRuleIcmpCode OBJECT-TYPE
+        SYNTAX          Integer32 (-1 | 0..255)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the code of ICMP protocol.
+            If the value is -1, it means the value is not specified.
+            This object is used for ICMP protocol only, hence when the object
+            'esAclExpertAccRuleProtocol' is set to other than ICMP, the object has
+            to be -1."
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 26 }
+
+    esAclExpertAccRuleTimeName  OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the name of time-period profile associated with the
+            access-list delineating its activation period.
+            The value 'NULL' means that this rule is not bound with any Time
+            mechanism."
+        ::= { esAclExpertAccessRuleEntry 27 }
+
+    esAclExpertAccRuleTcpFlag  OBJECT-TYPE
+         SYNTAX       TcpFlag
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the TCP flag fields.
+            This node is available only for TCP protocol.
+            The default value for this node is empty set, which means no TCP flag
+            values are set.
+            "
+        ::= { esAclExpertAccessRuleEntry 28 }
+
+    esAclExpertAccRuleFragments  OBJECT-TYPE
+        SYNTAX       TruthValue
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "This object indicates the Packet fragment filtering status
+            is  enabled('true') or disabled('false')."
+        ::= { esAclExpertAccessRuleEntry 29 }
+
+    esAclExpertAccRuleOuterCos  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..7)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of inner priority.
+             The value of -1 means the value is not specified or not applicable.
+             "
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 30 }
+
+    esAclExpertAccRuleInnerCos  OBJECT-TYPE
+        SYNTAX       Integer32 (-1 | 0..7)
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the value of inner priority, the node is availabe just for the
+            node esAclExpertAccRuleOuterCos be specified.
+             The value of -1 means the value is not specified or not applicable.
+             "
+        DEFVAL { -1 }
+        ::= { esAclExpertAccessRuleEntry 31 }
+
+     esAclExpertAccRuleUserDefProtocolMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for protocol ID defined by esAclExpertAccRuleUserDefProtocol.
+             Valid values are from 0x00 to 0xFF.
+             Default value is 0xFF.
+             This node is valid only for the esAclExpertAccRuleUserDefProtocol specified."
+        ::= { esAclExpertAccessRuleEntry 32 }
+
+     esAclExpertAccRuleSrcPortMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for L4 source port defined by esAclExpertAccRuleSrcPort.
+             Valid values are from 0x0 to 0xFFFF.
+             Default value is 0xFFFF.
+             This object only can be configured esAclExpertAccRuleSrcOperator in the
+             same row is 'mask(7)'.
+             "
+        ::= { esAclExpertAccessRuleEntry 33 }
+
+     esAclExpertAccRuleDstPortMask OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for L4 destination port defined by esAclExpertAccRuleDstPort.
+             Valid values are from 0x0 to 0xFFFF.
+             Default value is 0xFFFF.
+             This object only can be configured esAclExpertAccRuleDstOperator in the
+             same row is 'mask(7)'."
+        ::= { esAclExpertAccessRuleEntry 34 }
+
+     esAclExpertAccRuleVlanIDMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for VLAN ID defined by esAclExpertAccRuleVlanID.
+             Valid values are from 0x0000 to 0x0FFF.
+             This node and esAclExpertAccRuleVlanRangeMin/esAclExpertAccRuleVlanRangeMax
+             cannot be specified at same time in a row.
+             Default value is 0x0FFF.
+             This node is valid only for the esAclExpertAccRuleVlanID specified."
+        ::= { esAclExpertAccessRuleEntry 35 }
+
+     esAclExpertAccRuleInnerVlanIDMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(2))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the mask for inner VLAN ID defined by esAclExpertAccRuleInnerVlanID.
+             Valid values are from 0x0000 to 0x0FFF.
+             Default value is 0x0FFF.
+             This node is valid only for the esAclExpertAccRuleInnerVlanID specified."
+        ::= { esAclExpertAccessRuleEntry 36 }
+
+    esAclExpertAccRuleQosPrecedenceMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for ip precedence defined by esAclExpertAccRuleQosPrecedence.
+             Valid values are from 0x0 to 0x7.
+             Default value is 0x7.
+             This node is valid only for the esAclExpertAccRuleQosPrecedence specified."
+        ::= { esAclExpertAccessRuleEntry 37 }
+
+     esAclExpertAccRuleQosTosMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for type of service defined by esAclExpertAccRuleQosTos.
+             Valid values are from 0x0 to 0xF.
+             Default value is 0xF.
+             This node is valid only for the esAclExpertAccRuleQosTos specified."
+        ::= { esAclExpertAccessRuleEntry 38 }
+
+     esAclExpertAccRuleQosDscpMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for DSCP code defined by esAclExpertAccRuleQosDscp.
+             Valid values are from 0x0 to 0x3F.
+             Default value is 0x3F.
+             This node is valid only for the esAclExpertAccRuleQosDscp specified."
+        ::= { esAclExpertAccessRuleEntry 39 }
+
+     esAclExpertAccRuleOuterCosMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Specifies the mask for priority defined by esAclExpertAccRuleOuterCos.
+             Valid values are from 0x00 to 0x07.
+             Default value is 0x07.
+             This node is valid only for the esAclExpertAccRuleOuterCos specified."
+         ::= { esAclExpertAccessRuleEntry 40 }
+
+     esAclExpertAccRuleInnerCosMask  OBJECT-TYPE
+        SYNTAX OCTET STRING(SIZE(1))
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the mask for inner priority defined by esAclExpertAccRuleInnerCos.
+             Valid values are from 0x00 to 0x07.
+             Default value is 0x07.
+             This node is valid only for the esAclExpertAccRuleInnerCos specified."
+        ::= { esAclExpertAccessRuleEntry 41 }
+
+      esAclExpertAccRuleVlanRangeMin  OBJECT-TYPE
+        SYNTAX       VlanIdOrNone
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the minimum outer VLAN ID of a VLAN range. A value of zero
+             indicates the VLAN range is not specified.
+             This node and esAclMacAccessRuleVlanID/esAclMacAccessRuleVlanIDMask cannot
+             be specified at same time in a row.
+             This node is valid only for the esAclExpertAccRuleVlanRangeMax specified."
+        DEFVAL { 0 }
+        ::= { esAclExpertAccessRuleEntry 42 }
+
+    esAclExpertAccRuleVlanRangeMax  OBJECT-TYPE
+        SYNTAX       VlanIdOrNone
+        MAX-ACCESS   read-create
+        STATUS       current
+        DESCRIPTION
+            "Specifies the maximum outer VLAN ID of a VLAN range. A value of zero
+             indicates the VLAN range is not specified.
+             This node and esAclMacAccessRuleVlanID/esAclMacAccessRuleVlanIDMask cannot
+             be specified at same time in a row.
+             This node is valid only for the esAclExpertAccRuleVlanRangeMin specified."
+        DEFVAL { 0 }
+        ::= { esAclExpertAccessRuleEntry 43 }
+
+-- -----------------------------------------------------------------------------
+    esAclExpertAccessGroupTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclExpertAccessGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table represents a list of extended expert access group
+            configuration."
+        ::= { esAclExpert 4 }
+
+    esAclExpertAccessGroupEntry OBJECT-TYPE
+        SYNTAX          EsAclExpertAccessGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in esAclExpertAccessGroupTable contains interface specific
+           extended expert access list association."
+        INDEX { esAclExpertAccessGroupIfIndex , esAclExpertAccessGroupApplyDirection }
+        ::= { esAclExpertAccessGroupTable 1 }
+
+    EsAclExpertAccessGroupEntry ::= SEQUENCE {
+        esAclExpertAccessGroupIfIndex    InterfaceIndex,
+        esAclExpertAccessGroupApplyDirection INTEGER,
+        esAclExpertAccessGroupRowStatus  RowStatus,
+        esAclExpertAccessGroupAclName  DisplayString,
+        esAclExpertAccessGroupAclId         Integer32
+    }
+
+    esAclExpertAccessGroupIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the ifIndex of the interface.
+            Only physical port is valid interface."
+        ::= { esAclExpertAccessGroupEntry 1 }
+
+    esAclExpertAccessGroupApplyDirection OBJECT-TYPE
+        SYNTAX      INTEGER{
+                            inbound(1),
+                            outbound(2)
+                            }
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+               "Indicates whether this ACL access list is to be attached to ingress or egress direction."
+       ::= { esAclExpertAccessGroupEntry 2 }
+    esAclExpertAccessGroupRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The row status variable, used according to installation
+            and removal conventions for conceptual rows."
+        ::= { esAclExpertAccessGroupEntry 3 }
+
+    esAclExpertAccessGroupAclName OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (1..32))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The name of the Expert access list to be applied."
+        ::= { esAclExpertAccessGroupEntry 4 }
+
+        esAclExpertAccessGroupAclId OBJECT-TYPE
+        SYNTAX      Integer32
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The ID of the Expert access list to be applied.
+               User maybe specify access list ID(by this object) or name (by
+               esAclExpertAccessGroupAclName) to be applied. If both access list
+               ID and name are specified, the access list name specified by
+               esAclExpertAccessGroupAclName will be take.
+           "
+        ::= { esAclExpertAccessGroupEntry 5 }
+-- -----------------------------------------------------------------------------
+    esAclVlan             OBJECT IDENTIFIER ::= { esAclMIBObjects 6 }
+
+    esAclVlanSubMapTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclVlanSubMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains a list of sub-map configuration. The first
+            instance identifier index value (esAclVlanAccMapName) identifies the
+            entry(esAclVlanSubMapEntry) belongs to.
+            A VLAN access map can contain multiple sub-maps, the packet that
+            matches a sub-map (that is packet permitted by the associated
+            access-list) will take the action specified for the same entry.
+            No further check against the next sub-maps is done.
+            If the packet does not match a sub-map, then the next sub-map will
+            be checked. The checking sequence is determined by the value of
+            esAclVlanAccSubMapSeq for a same VLAN acess map."
+        ::= { esAclVlan 1}
+
+    esAclVlanSubMapEntry OBJECT-TYPE
+        SYNTAX          EsAclVlanSubMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined esAclVlanSubMapTable.
+            "
+        INDEX {
+            esAclVlanAccMapName,
+            esAclVlanAccSubMapSeq
+        }
+        ::= { esAclVlanSubMapTable 1 }
+
+    EsAclVlanSubMapEntry ::= SEQUENCE {
+        esAclVlanAccMapName                  DisplayString,
+        esAclVlanAccSubMapSeq                Integer32,
+        esAclVlanAccSubMapRowStatus            RowStatus,
+        esAclVlanAccSubMapMatchAclName       DisplayString,
+        esAclVlanAccessSubMapAction          INTEGER,
+        esAclVlanAccSubMapRedirectIfIndex    InterfaceIndexOrZero,
+        esAclVlanAccSubMapMatchAclId       Integer32
+    }
+
+     esAclVlanAccMapName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object is used to specify the name of an VLAN
+            acess map."
+        ::= { esAclVlanSubMapEntry 1 }
+
+     esAclVlanAccSubMapSeq OBJECT-TYPE
+        SYNTAX          Integer32 ( 0 | 1..65535 )
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the sequence number of a VLAN access rule.
+             The value range is 1 to 65535.
+             The value of 0 indicates the number is not specified and
+             sequence number will be automatically assigned.
+             "
+        ::= { esAclVlanSubMapEntry 2 }
+
+    esAclVlanAccSubMapRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The row status variable, used according to installation
+            and removal conventions for conceptual rows."
+        ::= { esAclVlanSubMapEntry 3 }
+
+    esAclVlanAccSubMapMatchAclName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of MAC/IP/IPv6 ACL
+            which will be associated."
+        ::= { esAclVlanSubMapEntry 4 }
+
+     esAclVlanAccessSubMapAction OBJECT-TYPE
+         SYNTAX      INTEGER {
+            none(1),
+            forward(2),
+            drop(3),
+            redirect(4)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the action when the packet that matches
+            a sub-map (that is packet permitted by the associated access-list). "
+        ::= { esAclVlanSubMapEntry 5 }
+
+     esAclVlanAccSubMapRedirectIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates ifIndex of the interface the packet will be
+            redirected.
+            When the esAclVlanAccessAction in the same row
+            is set to other than 'redirect', the object has to be zero,
+            which indicates the redirected interface is not specified or not
+            applicable."
+        ::= { esAclVlanSubMapEntry 6 }
+
+    esAclVlanAccSubMapMatchAclId OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ID of MAC/IP/IPv6 ACL access list
+            which will be associated.
+            User may specify access list ID(by this object) or name (by
+            esAclVlanAccSubMapMatchAclName) to be applied. If both access list
+            ID and name are specified, the access list name specified by
+            esAclVlanAccSubMapMatchAclName will be take.
+            "
+        ::= { esAclVlanSubMapEntry 7 }
+-- -----------------------------------------------------------------------------
+    esAclVlanFilterTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclVlanFilterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table represents a list of VLAN access map configuration."
+        ::= { esAclVlan 2 }
+
+    esAclVlanFilterEntry OBJECT-TYPE
+        SYNTAX          EsAclVlanFilterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in esAclVlanFilterTable contains vlan-specific
+            VLAN access map association."
+        INDEX { esAclVlanFilterVlanId }
+        ::= { esAclVlanFilterTable 1 }
+
+    EsAclVlanFilterEntry ::= SEQUENCE {
+        esAclVlanFilterVlanId            VlanId,
+        esAclVlanFilterRowStatus         RowStatus,
+        esAclVlanFilterVlanAccMapName    DisplayString
+
+    }
+
+    esAclVlanFilterVlanId OBJECT-TYPE
+        SYNTAX      VlanId
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the VLAN ID of the entry. "
+        ::= { esAclVlanFilterEntry 1 }
+
+    esAclVlanFilterRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esAclVlanFilterEntry 2 }
+
+    esAclVlanFilterVlanAccMapName OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (1..32))
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The name of the access list to be applied for the VLAN.
+             NULL value indicates the access list is not specified."
+        ::= { esAclVlanFilterEntry 3 }
+
+-- -----------------------------------------------------------------------------
+    esAclVlanAccessMapTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclVlanAccessMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains a list of VLAN access map configuration. "
+        ::= { esAclVlan 3}
+
+    esAclVlanAccessMapEntry OBJECT-TYPE
+        SYNTAX          EsAclVlanAccessMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined esAclVlanAccessMapTable.
+            "
+        INDEX {
+            esAclVlanAccMapName
+        }
+        ::= { esAclVlanAccessMapTable 1 }
+
+    EsAclVlanAccessMapEntry ::= SEQUENCE {
+        esAclVlanAccessMapCounterEnabled       TruthValue,
+        esAclVlanAccessMapClearStatAction         INTEGER
+    }
+
+    esAclVlanAccessMapCounterEnabled OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+             "This object indicates the counter state of the VLAN access map
+             is enabled('true') or disabled('false').
+             The counter state setting just for the all VLAN interface that applied
+             the access map in esAclVlanFilterTable."
+        ::= { esAclVlanAccessMapEntry 1 }
+
+    esAclVlanAccessMapClearStatAction      OBJECT-TYPE
+        SYNTAX              INTEGER{
+                            clear(1),
+                            noOp(2)
+            }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object is used to clear statistics of the VLAN access map
+            when set to 'clear'. No action is taken if this object is set to 'noOp'.
+             The 'clear' action just for the all entry that applied the VLAN
+             access map in esAclVlanFilterTable.
+            When read, the value 'noOp' is returned."
+        ::= { esAclVlanAccessMapEntry 2 }
+
+-- -----------------------------------------------------------------------------
+    esAclCounter             OBJECT IDENTIFIER ::= { esAclMIBObjects 7 }
+
+    esAclAccessGroupCounterTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclAccessGroupCounterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+              "This table maintains counter information associated with
+              a specific access list rule in the access rule table.
+              Please refer to the esAclMacAccessRuleTable, esAclIpAccessRuleTable,
+              esAclIPv6AccessRuleTable and esAclExpertAccessRuleTable for
+              detailed ACL rule information.
+              "
+        ::= { esAclCounter 1}
+
+    esAclAccessGroupCounterEntry OBJECT-TYPE
+        SYNTAX          EsAclAccessGroupCounterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined esAclAccessGroupCounterTable.
+            "
+        INDEX {
+            esAclAccessGroupCounterAccListId,
+            esAclAccessGroupCounterAccRuleSn
+        }
+        ::= { esAclAccessGroupCounterTable 1 }
+
+    EsAclAccessGroupCounterEntry ::= SEQUENCE {
+        esAclAccessGroupCounterAccListId      Integer32,
+        esAclAccessGroupCounterAccRuleSn      Integer32,
+        esAclAccessGroupCounterIngressStat  Counter64,
+        esAclAccessGroupCounterEgressStat  Counter64
+    }
+
+     esAclAccessGroupCounterAccListId OBJECT-TYPE
+        SYNTAX      Integer32(1..65535)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The ID of an access list which access group counter enabled.
+            the access list was defined by the tables:
+            esAclMacAccessListTable, esAclIpAccessListTable,
+            esAclIPv6AccessListTable, esAclExpertAccessListTable."
+        ::= { esAclAccessGroupCounterEntry 1 }
+
+     esAclAccessGroupCounterAccRuleSn OBJECT-TYPE
+        SYNTAX      Integer32(1..65535)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Specifies the sequence number of this rule entry as related to the
+             esAclAccessGroupCounterAccListId."
+        ::= { esAclAccessGroupCounterEntry 2 }
+
+     esAclAccessGroupCounterIngressStat OBJECT-TYPE
+        SYNTAX  Counter64
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the total number of matched packets for the access rule
+            applied on inbound of all interface in esAclMacAccessGroupTable,
+            esAclIpAccessGroupTable, esAclIPv6AccessGroupTable, or
+            esAclExpertAccessGroupTable.
+            "
+        ::= { esAclAccessGroupCounterEntry 3 }
+
+     esAclAccessGroupCounterEgressStat OBJECT-TYPE
+        SYNTAX  Counter64
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the total number of matched packets for the access rule
+            applied on outbound of all interface in esAclMacAccessGroupTable,
+            esAclIpAccessGroupTable, esAclIPv6AccessGroupTable, or
+            esAclExpertAccessGroupTable.
+            "
+        ::= { esAclAccessGroupCounterEntry 4 }
+
+-- -----------------------------------------------------------------------------
+    esAclVlanFilterCounterTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAclVlanFilterCounterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+              "This table maintains counter information associated with
+              a specific access sub map in the esAclVlanSubMapTable.
+              "
+        ::= { esAclCounter 2}
+
+    esAclVlanFilterCounterEntry OBJECT-TYPE
+        SYNTAX          EsAclVlanFilterCounterEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is defined esAclVlanFilterCounterTable.
+            "
+        INDEX {
+            esAclVlanFilterCounterAccMapName,
+            esAclVlanFilterCounterSubMapSeq
+        }
+        ::= { esAclVlanFilterCounterTable 1 }
+
+    EsAclVlanFilterCounterEntry ::= SEQUENCE {
+        esAclVlanFilterCounterAccMapName    DisplayString,
+        esAclVlanFilterCounterSubMapSeq     Integer32,
+        esAclVlanFilterCounterStatistics  Counter64
+        }
+
+    esAclVlanFilterCounterAccMapName OBJECT-TYPE
+        SYNTAX       DisplayString (SIZE (1..32))
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+            "The name of a VLAN access map which counter enabled. the VLAN
+            access map was defined by the esAclVlanSubMapTable.
+            "
+        ::= { esAclVlanFilterCounterEntry 1 }
+
+    esAclVlanFilterCounterSubMapSeq OBJECT-TYPE
+        SYNTAX      Integer32(1..65535)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "Indicates the sequence number of a VLAN access sub map. the vlan
+            sub map sequence number was defined by the esAclVlanSubMapTable."
+        ::= { esAclVlanFilterCounterEntry 2 }
+
+    esAclVlanFilterCounterStatistics OBJECT-TYPE
+        SYNTAX  Counter64
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the total number of matched packets for the
+            sub map that applied on all VLAN interface in esAclVlanFilterTable."
+        ::= { esAclVlanFilterCounterEntry 3 }
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esAclCompliances OBJECT IDENTIFIER ::= { esAclMIBConformance 1 }
+
+    esAclCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKSW-ACL-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esAclGenGroup,
+            esAclMacGroup,
+            esAclIpGroup
+        }
+
+        GROUP       esAclIPv6Group
+           DESCRIPTION
+              "This group is required only if the IPv6 access list feature
+              is implemented by the agent."
+
+        GROUP       esAclExpertGroup
+           DESCRIPTION
+              "This group is required only if the extended expert access list
+              feature is implemented by the agent."
+
+        GROUP       esAclVlanFilterGroup
+           DESCRIPTION
+              "This group is required only if vlan filter feature is implemented
+              by the agent."
+
+        GROUP       esAclCounterGroup
+           DESCRIPTION
+            "This group is required only if ACL counter feature is implemented
+             by the agent."
+
+        ::= { esAclCompliances 1 }
+
+    esAclGroups OBJECT IDENTIFIER ::= { esAclMIBConformance 2 }
+
+    esAclGenGroup OBJECT-GROUP
+        OBJECTS {
+            esAclReSeqStartingNumber, esAclReSeqIncrement
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing general access list configuration."
+        ::= { esAclGroups 1 }
+
+    esAclMacGroup OBJECT-GROUP
+        OBJECTS {
+            esAclMacAccessListNumber, esAclMacAccessListRowStatus,
+            esAclMacAccessListId, esAclMacAccessListCounterEnabled,
+            esAclMacAccessListClearStatAction,esAclMacAccessListRemark,
+            esAclMacAccessRuleRowStatus, esAclMacAccessRuleAction,
+            esAclMacAccessRuleSrcMacAddr, esAclMacAccessRuleSrcMacWildcard,
+            esAclMacAccessRuleDstMacAddr, esAclMacAccessRuleDstMacWildcard,
+            esAclMacAccessRulePacketType, esAclMacAccessRuleEthernetType,
+            esAclMacAccessRuleDot1p, esAclMacAccessRuleInnerDot1p,
+            esAclMacAccessRuleVlanID, esAclMacAccessRuleInnerVlanID,
+            esAclMacAccessRuleTimeName,
+            esAclMacAccessRuleEthernetTypeMask,
+            esAclMacAccessRuleDot1pMask,
+            esAclMacAccessRuleInnerDot1pMask,
+            esAclMacAccessRuleVlanIDMask,
+            esAclMacAccessRuleInnerVlanIDMask,
+            esAclMacAccessGroupRowStatus,
+            esAclMacAccessGroupAclName,
+            esAclMacAccessGroupAclId
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing MAC access list configuration."
+        ::= { esAclGroups 2 }
+
+    esAclIpGroup OBJECT-GROUP
+        OBJECTS {
+            esAclIpAccessListNumber, esAclIpAccessListRowStatus,
+            esAclIpAccessExtended, esAclIpAccessListId,
+            esAclIpAccessListCounterEnabled, esAclIpAccessListClearStatAction,
+            esAclIpAccessListRemark,
+            esAclIpAccessRuleRowStatus, esAclIpAccessRuleAction,
+            esAclIpAccessRuleProtocol, esAclIpAccessRuleUserDefProtocol,
+            esAclIpAccessRuleSrcAddr, esAclIpAccessRuleSrcWildcard,
+            esAclIpAccessRuleDstAddr, esAclIpAccessRuleDstWildcard,
+            esAclIpAccessRuleSrcOperator, esAclIpAccessRuleSrcPort,
+            esAclIpAccessRuleSrcPortRange,
+            esAclIpAccessRuleDstOperator, esAclIpAccessRuleDstPort,
+            esAclIpAccessRuleDstPortRange,
+            esAclIpAccessRuleQosPrecedence, esAclIpAccessRuleQosTos,
+            esAclIpAccessRuleQosDscp,
+            esAclIpAccessRuleIcmpType, esAclIpAccessRuleIcmpCode,
+            esAclIpAccessRuleTimeName, esAclIpAccRuleTcpFlag,
+            esAclIpAccRuleFragments,
+            esAclIpAccRuleUserDefProtocolMask,
+            esAclIpAccRuleSrcPortMask,
+            esAclIpAccRuleDstPortMask,
+            esAclIpAccRuleQosPrecedenceMask,
+            esAclIpAccRuleQosTosMask,
+            esAclIpAccRuleQosDscpMask,
+            esAclIpAccessGroupStatus,
+            esAclIpAccessGroupAclName, esAclIpAccessGroupAclId
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing IP access list configuration."
+        ::= { esAclGroups 3 }
+
+    esAclIPv6Group OBJECT-GROUP
+        OBJECTS {
+            esAclIPv6AccessListNumber, esAclIPv6AccessListRowStatus,
+            esAclIPv6AccessExtended, esAclIPv6AccessListId,
+            esAclIPv6AccessListCounterEnabled,
+            esAclIPv6AccessListClearStatAction,
+            esAclIPv6AccessListRemark,
+            esAclIPv6AccessRuleRowStatus, esAclIPv6AccessRuleAction,
+            esAclIPv6AccessRuleProtocol, esAclIPv6AccessRuleUserDefProtocol,
+            esAclIPv6AccessRuleSrcAddr, esAclIPv6AccessRuleSrcPrefixLen,
+            esAclIPv6AccessRuleDstAddr, esAclIPv6AccessRuleDstPrefixLen,
+            esAclIPv6AccessRuleSrcOperator, esAclIPv6AccessRuleSrcPort,
+            esAclIPv6AccessRuleSrcPortRange,
+            esAclIPv6AccessRuleDstOperator, esAclIPv6AccessRuleDstPort,
+            esAclIPv6AccessRuleDstPortRange,
+            esAclIPv6AccessRuleDscp,
+            esAclIPv6AccessRuleIcmpType, esAclIPv6AccessRuleIcmpCode,
+            esAclIPv6AccessRuleTimeName,
+            esAclIPv6AccessGroupStatus,
+            esAclIPv6AccessGroupAclName,esAclIPv6AccessGroupAclId,
+            esAclIPv6AccRuleTcpFlag,
+            esAclIPv6AccRuleFragments,
+            esAclIPv6AccRuleFlowLabel,
+            esAclIPv6AccRuleTrafficClass,
+            esAclIPv6AccRuleUserDefProtocolMask,
+            esAclIPv6AccRuleSrcPortMask,
+            esAclIPv6AccRuleDstPortMask,
+            esAclIPv6AccRuleDscpMask,
+            esAclIPv6AccRuleFlowLabelMask,
+            esAclIPv6AccRuleTrafficClassMask
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing IPv6 access list configuration."
+        ::= { esAclGroups 4 }
+
+    esAclExpertGroup OBJECT-GROUP
+        OBJECTS {
+            esAclExpertAccessListNumber, esAclExpertAccessListRowStatus,
+            esAclExpertAccessListId, esAclExpertAccessListCounterEnabled,
+            esAclExpertAccessListClearStatAction, esAclExpertAccessListRemark,
+            esAclExpertAccRuleRowStatus, esAclExpertAccRuleAction,
+            esAclExpertAccRuleProtocol, esAclExpertAccRuleUserDefProtocol,
+            esAclExpertAccRuleSrcIpAddr, esAclExpertAccRuleSrcIpWildcard,
+            esAclExpertAccRuleSrcMacAddr, esAclExpertAccRuleSrcMacWildcard,
+            esAclExpertAccRuleSrcOperator, esAclExpertAccRuleSrcPort,
+            esAclExpertAccRuleSrcPortRange,
+            esAclExpertAccRuleDstIpAddr, esAclExpertAccRuleDstIpWildcard,
+            esAclExpertAccRuleDstMacAddr, esAclExpertAccRuleDstMacWildcard,
+            esAclExpertAccRuleDstOperator, esAclExpertAccRuleDstPort,
+            esAclExpertAccRuleDstPortRange,
+            esAclExpertAccRuleVlanID, esAclExpertAccRuleInnerVlanID,
+            esAclExpertAccRuleQosPrecedence, esAclExpertAccRuleQosTos,
+            esAclExpertAccRuleQosDscp,
+            esAclExpertAccRuleIcmpType, esAclExpertAccRuleIcmpCode,
+            esAclExpertAccRuleTimeName,
+            esAclExpertAccessGroupRowStatus,
+            esAclExpertAccessGroupAclName,esAclExpertAccessGroupAclId,
+            esAclExpertAccRuleTcpFlag,
+            esAclExpertAccRuleFragments,
+            esAclExpertAccRuleOuterCos,
+            esAclExpertAccRuleInnerCos,
+            esAclExpertAccRuleUserDefProtocolMask,
+            esAclExpertAccRuleSrcPortMask,
+            esAclExpertAccRuleDstPortMask,
+            esAclExpertAccRuleVlanIDMask,
+            esAclExpertAccRuleInnerVlanIDMask,
+            esAclExpertAccRuleQosPrecedenceMask,
+            esAclExpertAccRuleQosTosMask,
+            esAclExpertAccRuleQosDscpMask,
+            esAclExpertAccRuleOuterCosMask,
+            esAclExpertAccRuleInnerCosMask,
+            esAclExpertAccRuleVlanRangeMin,
+            esAclExpertAccRuleVlanRangeMax
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing extended expert access list configuration."
+        ::= { esAclGroups 5 }
+
+    esAclVlanFilterGroup OBJECT-GROUP
+        OBJECTS {
+           esAclVlanAccSubMapRowStatus, esAclVlanAccSubMapMatchAclName,
+           esAclVlanAccessSubMapAction, esAclVlanAccSubMapRedirectIfIndex,
+           esAclVlanFilterRowStatus, esAclVlanFilterVlanAccMapName,
+           esAclVlanAccSubMapMatchAclId, esAclVlanAccessMapCounterEnabled,
+           esAclVlanAccessMapClearStatAction
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing VLAN access map configuration."
+        ::= { esAclGroups 6 }
+
+    esAclCounterGroup OBJECT-GROUP
+        OBJECTS {
+           esAclAccessGroupCounterIngressStat,
+           esAclAccessGroupCounterEgressStat,
+           esAclVlanFilterCounterStatistics
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing ACL counter information."
+        ::= { esAclGroups 7 }
+END
+
+

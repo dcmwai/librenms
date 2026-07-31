@@ -1,0 +1,1986 @@
+-- *****************************************************************
+-- DLINKES-QOS-MIB.mib : D-Link QoS MIB
+--
+-- Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+-- *****************************************************************
+
+DLINKES-QOS-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,OBJECT-TYPE,Integer32,Unsigned32
+            FROM SNMPv2-SMI   
+        RowStatus, DisplayString,TruthValue,TEXTUAL-CONVENTION    
+            FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP
+		    FROM SNMPv2-CONF        
+        dot1dBasePort
+            FROM BRIDGE-MIB
+        dlinkCommon	
+            FROM DLINK-ID-REC-MIB;
+		
+   	
+    dlinkEsQosMIB MODULE-IDENTITY
+        LAST-UPDATED "201503200000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "         D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:    +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+		    "The Structure of QoS Infomation for the 
+		     proprietary enterprise."
+        REVISION "201302210000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."   
+        REVISION "201305300000Z"
+        DESCRIPTION
+            "1.Add a new parameter, percent <value 1-100 >, to set the rate by percentage.
+			-- esQosBandwidthRxRateMode,esQosBandwidthTxRateMode,
+			-- esQosQueueBandwidthMinRateMode,esQosQueueBandwidthMinRateMode
+			 2.change the value range of 
+			-- esQosBandwidthRxRate,esQosBandwidthTxRate,
+			-- esQosQueueBandwidthMinRate,esQosQueueBandwidthMaxRate
+			"     
+ 		REVISION "201307090000Z"
+        DESCRIPTION
+            "1.Add police action: replaceCos,replaceAll
+		-- DlinkQosPoliceActionType
+		-- esQosAggPolicerEntry
+		   	-- esQosAggPolicerConformReplaceCos
+			-- esQosAggPolicerExceedReplaceCos
+			-- esQosAggPolicerViolateReplaceCos
+		-- esQosPoliceEntry
+			-- esQosPoliceConformReplaceCos
+			-- esQosPoliceExceedReplaceCos
+			-- esQosPoliceViolateReplaceCos
+		" 		
+		REVISION "201503200000Z"
+        DESCRIPTION
+            "1.Add QoS scheduling mode: ETS. 
+             -- esQosSchedulingModeTable
+			"
+        ::= { dlinkCommon 61 }
+ 
+
+    DlinkQosPoliceActionType ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "A value represents a type of policing action.
+            notApplicable - The action is not specified or not applicable.
+            drop   - drop the packet.
+            permit - transmit the packet.
+            replaceDscp - Replace the DSCP value of packet with the configured value.
+                     The new DSCP value must be accompanied for use with 
+                     DlinkQosPoliceActionType.
+            replaceCos - Replace the COS value of packet with the configured value.
+                     The new COS value must be accompanied for use with
+                     DlinkQosPoliceActionType.
+            replaceAll - Replace both the DSCP and COS value of packet with the
+                     configured value.
+            "
+        SYNTAX          INTEGER {
+            notApplicable(0),
+            drop(1),
+            permit(2),
+            replaceDscp(3),
+	    replaceCos(4),
+	    replaceAll(5)		
+        }
+
+-- -----------------------------------------------------------------------------
+    esQosMIBNotifications	OBJECT IDENTIFIER ::= { dlinkEsQosMIB 0 }
+	esQosMIBObjects     		OBJECT IDENTIFIER ::= { dlinkEsQosMIB 1 }
+	esQosMIBConformance		OBJECT IDENTIFIER ::= { dlinkEsQosMIB 2 }
+
+-- -----------------------------------------------------------------------------
+	esQosClassMap        	 OBJECT IDENTIFIER ::= { esQosMIBObjects 1 }  
+	esQosPolicyMap  		     OBJECT IDENTIFIER ::= { esQosMIBObjects 2 }   
+   	esQosServicePolicy     	 OBJECT IDENTIFIER ::= { esQosMIBObjects 3 }
+	esQosScheduling   	     OBJECT IDENTIFIER ::= { esQosMIBObjects 4 }
+	esQosBandwidthCtrl        OBJECT IDENTIFIER ::= { esQosMIBObjects 5 }
+	esQosQueueBandwidthCtrl   OBJECT IDENTIFIER ::= { esQosMIBObjects 6 }
+
+	esQosQueuingCfg           OBJECT IDENTIFIER ::= { esQosMIBObjects 7 }	
+	esQosDscpMap      	     OBJECT IDENTIFIER ::= { esQosMIBObjects 8 }
+	esQosCosMap       	     OBJECT IDENTIFIER ::= { esQosMIBObjects 9 }
+		
+-- ----------------------------------------------------------------------------- 	
+   	esQosPolicyMapTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosPolicyMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+		    "This table consists of a list of QoS policy maps."
+		::= { esQosPolicyMap 1 }
+    	   
+	esQosPolicyMapEntry OBJECT-TYPE
+		SYNTAX          EsQosPolicyMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "An entry defines a QoS policy map."
+		INDEX   { esQosPolicyMapName }
+		::= { esQosPolicyMapTable 1 }
+
+	EsQosPolicyMapEntry ::= 		SEQUENCE {     
+		esQosPolicyMapName	      DisplayString,
+		esQosPolicyMapRowStatus    RowStatus
+    } 
+	
+	esQosPolicyMapName OBJECT-TYPE
+		SYNTAX          DisplayString (SIZE(1..32))
+		MAX-ACCESS      not-accessible		
+		STATUS          current  
+		DESCRIPTION
+		    "This object indicates name of the policy map." 
+		::= { esQosPolicyMapEntry 1 }	
+		
+	esQosPolicyMapRowStatus OBJECT-TYPE
+		SYNTAX          RowStatus
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		      "This object indicates the status of this entry."
+		::= { esQosPolicyMapEntry 2 }
+
+-- ----------------------------------------------------------------------------- 	
+   	esQosPolicyMapCfgTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosPolicyMapCfgEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table consists of a list of QoS policies for the class in a 
+            policy map."
+		::= { esQosPolicyMap 2 }
+    	   
+	esQosPolicyMapCfgEntry OBJECT-TYPE
+		SYNTAX  EsQosPolicyMapCfgEntry
+		MAX-ACCESS  not-accessible
+		STATUS  current
+		DESCRIPTION
+		     "An entry consists QoS policies regarding setting the new precedence
+             field, DSCP field, and CoS field of the out-going packet. 
+             The first two index elements identify the policy map class to which
+             the setting policies belong.   
+             Multiple objects in a same row can be set for a class if they are not
+             conflicting. As an example of conflicting setting: precedence and DSCP
+             cannot be set at a same row.
+             "
+		INDEX   { 
+            esQosPolicyMapName,
+            esQosClassMapName 
+        }
+		::= { esQosPolicyMapCfgTable 1 }
+
+	EsQosPolicyMapCfgEntry ::=		SEQUENCE {      		  
+	    esQosPolicyMapCfgSetCosQueue         Integer32,  
+		esQosPolicyMapCfgSetCos		        Integer32,                       
+		esQosPolicyMapCfgSetDscpOnlyIp       TruthValue,		         
+		esQosPolicyMapCfgSetDscp		        Integer32,       
+		esQosPolicyMapCfgSetPreceOnlyIp 	    TruthValue,  		  
+		esQosPolicyMapCfgSetPrecedence 	    Integer32,  
+		esQosPolicyMapCfgRowStatus    	    RowStatus
+    } 
+		
+   	esQosPolicyMapCfgSetCosQueue OBJECT-TYPE
+		SYNTAX          Integer32 (-1 | 0..7)
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "Indicates the new CoS queue.
+            The special value of -1 means the setting is un-configured."  
+		DEFVAL {-1} 
+		::= { esQosPolicyMapCfgEntry 1 }    
+	
+	esQosPolicyMapCfgSetCos OBJECT-TYPE
+		SYNTAX          Integer32 (-1 | 0..7 )
+		MAX-ACCESS      read-create
+		STATUS  current
+		DESCRIPTION
+		      "Indicates the new Cos.
+		      The special value of -1 means the setting is un-configured."     
+		DEFVAL {-1}
+		::= { esQosPolicyMapCfgEntry 2 }
+	
+    esQosPolicyMapCfgSetDscpOnlyIp OBJECT-TYPE
+		SYNTAX          TruthValue
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates whether only remark IPv4 DSCP.
+            'true' - Only IPv4 DSCP will be marked.
+		    'false'- Both IPv4 and IPv6 DSCP will be marked.
+             This object is meaningful only when esQosPolicyMapCfgSetDscp is configured.
+            "  
+		DEFVAL { false }
+		::= { esQosPolicyMapCfgEntry 3 }
+
+	esQosPolicyMapCfgSetDscp OBJECT-TYPE
+		SYNTAX          Integer32 ( -1 | 0..63 )
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		      "Indicates the new DSCP.
+		      The special value of -1 means the setting is un-configured."   
+		DEFVAL {-1} 
+		::= { esQosPolicyMapCfgEntry 4 }
+    
+    esQosPolicyMapCfgSetPreceOnlyIp OBJECT-TYPE
+		SYNTAX          TruthValue
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates whether only remark IPv4 precedence.
+		    'true' -  Ipv4 precedence will be marked.
+		    'false' - Both IPv4 and IPv6 precedence will be marked. For IPv6
+                packets, the precedence is most three significant bits of 
+                traffic class of IPv6 header.
+            This object is meaningful only when esQosPolicyMapCfgSetPrecedence is configured.
+            "  
+		DEFVAL { false }
+		::= { esQosPolicyMapCfgEntry 5 }
+
+	esQosPolicyMapCfgSetPrecedence OBJECT-TYPE
+		SYNTAX          Integer32 (-1 | 0..7 )
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "Indicates the new ip precedence.  
+		    The special value of -1 means the setting is un-configured."     
+		DEFVAL {-1} 
+		::= { esQosPolicyMapCfgEntry 6 }
+
+	esQosPolicyMapCfgRowStatus OBJECT-TYPE
+		SYNTAX          RowStatus
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the status of this entry."  
+		::= { esQosPolicyMapCfgEntry 7 }
+				    		 
+-- ----------------------------------------------------------------------------- 	
+   	esQosClassMapTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosClassMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table consists of a list of QoS type class map."
+		::= { esQosClassMap 1 }
+
+	esQosClassMapEntry OBJECT-TYPE
+		SYNTAX          EsQosClassMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "An entry defines a QoS class map."
+		INDEX   { esQosClassMapName }
+		::= { esQosClassMapTable 1 }
+
+	EsQosClassMapEntry ::=  SEQUENCE {
+		esQosClassMapName 		  	  DisplayString,	
+		esQosClassMapType		  	  INTEGER,            
+		esQosClassMapRowStaus	  	  RowStatus
+	}
+
+   	esQosClassMapName OBJECT-TYPE
+		SYNTAX          DisplayString (SIZE(1..32))
+		MAX-ACCESS      not-accessible
+		STATUS          current  
+		DESCRIPTION
+		    "This object indicates the name of the class map." 
+		::= { esQosClassMapEntry 1 }
+
+    esQosClassMapType OBJECT-TYPE
+		SYNTAX  INTEGER {
+            matchAny(1),
+            matchAll(2)
+        }
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates how to evaluate multiple match criteria.
+		    matchAny - statements in the class map will be evaluated based on
+                       the logical OR.
+		    matchAll - statements in the class map will be evaluated based on
+                       the logical AND."   
+		DEFVAL	{ matchAny }
+		::= { esQosClassMapEntry 2 }
+ 						
+	esQosClassMapRowStaus OBJECT-TYPE
+		SYNTAX          RowStatus
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the status of this entry."
+		::= { esQosClassMapEntry 3 }
+
+-- -----------------------------------------------------------------------------	
+   	esQosClassMapCfgTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosClassMapCfgEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table consists of a list of criteria for class maps."
+		::= { esQosClassMap 2 }
+
+	esQosClassMapCfgEntry OBJECT-TYPE
+		SYNTAX  EsQosClassMapCfgEntry
+		MAX-ACCESS  not-accessible
+		STATUS  current
+		DESCRIPTION
+		    "An entry defines a match criterion for a class map. The first index element 
+            identifies the class map to which the criterion belongs.           
+            "
+		INDEX   { 
+            esQosClassMapName, 
+            esQosClassMapCfgMatchId 
+        }
+		::= { esQosClassMapCfgTable 1 }
+
+	EsQosClassMapCfgEntry ::= SEQUENCE {  
+		esQosClassMapCfgMatchId		Integer32,
+		esQosClassMapCfgMatchType	INTEGER,	   
+		esQosClassMapCfgMatchValue	OCTET STRING,			
+		esQosClassMapCfgRowStaus	  	RowStatus
+	}     
+		
+    esQosClassMapCfgMatchId OBJECT-TYPE
+		SYNTAX          Integer32 (0..65535)		
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This index is automatically assigned for the match criterion in a
+            class map.
+	        "
+		::= { esQosClassMapCfgEntry 1 }
+    
+    esQosClassMapCfgMatchType OBJECT-TYPE 
+		SYNTAX  INTEGER {
+		    accessList(1),
+			cos(2),
+			innerCos(3),
+			dscp(4),
+			ipDscp(5),
+			precedence(6),
+			ipPrecedence(7),                        
+			protocol(8),
+			vlan(9),
+			innerVlan(10)
+		}		
+		MAX-ACCESS   read-create
+		STATUS       current
+		DESCRIPTION
+		    "This object indicates the matching type of the entry. 
+            A QoS class map can contain multiple match statements.
+
+            The esQosClassMapMatchType determines the valid range 
+            and value of esQosClassMapMatchValue. 
+           
+		    accessList -  Uses an access-list as matching criterion.
+		    cos - matching IEEE 802.1Q CoS value
+		    innerCos - matching innermost CoS value of QinQ packets
+		    dscp - matching DSCP value and this criterion is applied for IPv4
+                 and IPv6 packets.
+		    ipDscp - matching DSCP of IPv4 packets only.
+		    precedence - matching precedence and this criterion is applied for IPv4
+                 and IPv6 packets.
+		    ipPrecedence - matching precedence of IPv4 packets only.            
+		    protocol - matching protocol.  
+			vlan - matching VLAN ID.
+		    innerVlan - matching innermost VLAN ID.
+		    "
+		::= { esQosClassMapCfgEntry 2 }
+	
+	esQosClassMapCfgMatchValue OBJECT-TYPE
+		SYNTAX          OCTET STRING (SIZE(1..32))
+		MAX-ACCESS      read-create
+		STATUS  current
+		DESCRIPTION
+		    "A esQosClassMapMatchValue is always interpreted within the context of
+            a esQosClassMapMatchType value.
+
+            The table below explains how to determine the values and ranges of 
+            esQosClassMapMatchValue.
+		       QoS class map match configuration table
+            ====================================================
+            Match Type                 Element Value
+            esQosClassMapMatchType     esQosClassMapMatchValue
+            =======================   ============================        
+            accessList                DisplayString (SIZE(1..32)) (Note #1)
+            cos                       OCTET STRING (SIZE(1)) (Note #2)
+            innerCos                  OCTET STRING (SIZE(1)) (Note #2)  
+            dscp                      OCTET STRING (SIZE(8)) (Note #3)
+            ipDscp                    OCTET STRING (SIZE(8)) (Note #3) 
+            precedence                OCTET STRING (SIZE(1)) (Note #4)
+            ipPrecedence              OCTET STRING (SIZE(1)) (Note #4)        
+            protocol                  DisplayString (Note #5)
+            vlan                      OCTET STRING (SIZE(2)) (Note #6)
+            innerVlan                 OCTET STRING (SIZE(2)) (Note #6)       
+            ===================================================================   
+            Note#1: This object indicates the name of the access-list to be matched.
+            Note#2: The one octet specifies eight CoSs. The most significant 
+                    bit represents CoS 0 and the least significant bit represents
+                    CoS 7.  If the corresponding bit is '1' indicates that CoS is
+                    included in the criterion; '0' means the CoS is not included.
+            Note#3: The eight octets specify 64 DSCPs. Each octet within this
+                    value specifies a set of eight DSCPs. The first octet specifies
+                    first 8 DSCPs: 0 - 7, the second octet specifies the next 8 DSCPs, 
+                    etc. Within each octet, the most significant bit represents the 
+                    lowest numbered DSCP, and the least significant bit represents the
+                    highest numbered DSCP. If the corresponding bit is '1' indicates
+                    that DSCP is included in the criterion; '0' means the DSCP is not
+                    included.
+            Note#4: The one octet specifies eight precedence values. The most significant
+                    bit represents precedence 0 and the least significant bit 
+                    represents precedence 7. If the corresponding bit is '1' 
+                    indicates that precedence is included in the criterion; '0' 
+                    means the precedence is not included.
+            Note#5: The element value needs choose the exact case-sensitive string.
+                    Supported Protocols that can be matched:
+                        arp		IP Address Resolution Protocol (ARP)
+						bgp		Border Gateway Protocol 
+						dhcp	Dynamic Host Configuration 
+						dns		Domain Name Server lookup 
+						egp		Exterior Gateway Protocol 
+						ftp		File Transfer Protocol 
+						ip  	(version 4) 
+						ipv6 	(version 6) 
+						netbios	NetBIOS 
+						nfs		Network File System 
+						ntp		Network Time Protocol 
+						ospf	Open Shortest Path First 
+						pppoe	Point-to-Point Protocol over Ethernet 
+						rip		Routing Information Protocol 
+						rtsp	Real-Time Streaming Protocol 
+						ssh		Secured shell 
+						telnet	Telnet 
+						tftp	Trivial File Transfer Protocol 		   
+            Note#6: The element value is VLAN ID to be matched. The first octet indicates
+                    the high byte of VLAN ID and the second octet indicates the low byte.
+                    For example, VLAN ID 1029 is encoded in '0405'H.
+            "
+		::= { esQosClassMapCfgEntry 3 }
+				
+	esQosClassMapCfgRowStaus OBJECT-TYPE
+		SYNTAX          RowStatus
+		MAX-ACCESS      read-create
+		STATUS  current
+		DESCRIPTION
+		    "This object indicates the status of this entry.                    
+            "
+		::= { esQosClassMapCfgEntry 5 }
+		   
+-- -----------------------------------------------------------------------------   	
+   	esQosServicePolicyTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosServicePolicyEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table consists of a list of interface-specific policy-map 
+            associations."
+		::= { esQosServicePolicy 1 }
+
+	esQosServicePolicyEntry OBJECT-TYPE
+		SYNTAX          EsQosServicePolicyEntry
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+		     "An entry defines a policy-map association on an interface."
+		INDEX   { 
+            dot1dBasePort,
+            esQosServicePolicyDirection
+        }
+		::= { esQosServicePolicyTable 1 }
+
+	EsQosServicePolicyEntry ::=
+		SEQUENCE {		  		  
+		  esQosServicePolicyDirection	INTEGER,  
+          esQosServicePolicyName 	    DisplayString,
+		  esQosServicePolicyRowStaus     RowStatus   		  
+		}
+	
+    esQosServicePolicyDirection OBJECT-TYPE
+		SYNTAX  INTEGER {
+			input(1),
+			output(2)
+		}
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the direction of the policy map is applied:
+            input: for ingress flow
+            outout: for egress flow
+            "
+		::= { esQosServicePolicyEntry 1 }  
+	
+    esQosServicePolicyName OBJECT-TYPE
+		SYNTAX          DisplayString (SIZE(1..32))
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		    "Indicates the name of a service policy map to be attached."
+		::= { esQosServicePolicyEntry 2 }	
+
+	esQosServicePolicyRowStaus OBJECT-TYPE
+		SYNTAX	RowStatus
+		MAX-ACCESS  read-create
+		STATUS  current
+		DESCRIPTION
+		    "This object indicates the status of this entry."
+		::= { esQosServicePolicyEntry 3 }
+	  
+		
+-- -----------------------------------------------------------------------------		
+    esQosSchedulingModeTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosSchedulingModeEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current                                          		
+		DESCRIPTION
+		    "This table consists of a list of scheduling mechanism configurations
+            for ports."
+		::= { esQosScheduling 1 }
+
+	esQosSchedulingModeEntry OBJECT-TYPE
+		SYNTAX          EsQosSchedulingModeEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		      "An entry configures the scheduling mode on an interface."
+		INDEX   { dot1dBasePort }
+		::= { esQosSchedulingModeTable 1 }
+
+	EsQosSchedulingModeEntry ::= 		SEQUENCE {		  
+		esQosSchedulingMode      INTEGER
+	}
+	    
+    esQosSchedulingMode OBJECT-TYPE
+		SYNTAX	INTEGER {
+            sp(1),
+            rr(2),
+            wrr(3),
+            wdrr(4)
+        }
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		   "This object indicates the mechanism of QoS scheduling on the interface.
+		   "
+		::= { esQosSchedulingModeEntry 2 }
+ 
+-- -----------------------------------------------------------------------------	
+    esQosScheduleWrrWeightTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosScheduleWrrWeightEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table consists of a list of configurations for WRR queue bandwidth
+            of queues.            
+            "
+		::= { esQosScheduling 2 }
+
+	esQosScheduleWrrWeightEntry OBJECT-TYPE
+		SYNTAX          EsQosScheduleWrrWeightEntry
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+		    "An entry defines WRR weight of a queue on an interface.
+            An entry exists for each queue if the WRR bandwidth is configurable
+            on the queue.
+            "
+		INDEX   { 
+            dot1dBasePort,
+            esQosScheduleWrrWeightQueueId
+        }
+		::= { esQosScheduleWrrWeightTable 1 }
+
+	EsQosScheduleWrrWeightEntry ::= 		SEQUENCE {		
+        esQosScheduleWrrWeightQueueId        Unsigned32,    
+        esQosScheduleWrrWeightValue 	        Unsigned32
+	}
+	    
+   	esQosScheduleWrrWeightQueueId    OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..127)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the queue ID of the entry."
+		::= { esQosScheduleWrrWeightEntry 1 }
+
+    esQosScheduleWrrWeightValue  OBJECT-TYPE
+		SYNTAX          Unsigned32 ( 0 .. 127)
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "Specifies the weight in terms of frame count for the queue."
+		::= { esQosScheduleWrrWeightEntry 2 }	
+
+-- -----------------------------------------------------------------------------
+    esQosScheduleWdrrWeightTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosScheduleWdrrWeightEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table consists of a list of configurations for WDRR queue bandwidth
+            of queues.           
+            "
+		::= { esQosScheduling 3 }
+
+	esQosScheduleWdrrWeightEntry OBJECT-TYPE
+		SYNTAX          EsQosScheduleWdrrWeightEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "An entry defines WDRR weight of a queue on an interface.
+            An entry exists for each queue if the WDRR bandwidth is configurable
+            on the queue. 
+            "
+		INDEX   { 
+            dot1dBasePort,
+            esQosScheduleWdrrWeightQueueId 
+        }
+		::= { esQosScheduleWdrrWeightTable 1 }
+
+	EsQosScheduleWdrrWeightEntry ::= 		SEQUENCE {		    
+		esQosScheduleWdrrWeightQueueId	Unsigned32,
+        esQosScheduleWdrrWeightValue	    Unsigned32
+	}
+	    
+   	esQosScheduleWdrrWeightQueueId OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..127)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the queue ID of the entry."
+		::= { esQosScheduleWdrrWeightEntry 1 }
+
+    esQosScheduleWdrrWeightValue  OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..127)
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+            "Specifies the weight in terms of frame length count for the queue."		    
+		::= { esQosScheduleWdrrWeightEntry 2 }  
+		
+-- -----------------------------------------------------------------------------
+	esQosBandwidthCtrlTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosBandwidthCtrlEntry
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+		    "A table consists of a list of configurations for bandwidth control 
+            on interfaces."
+		::= { esQosBandwidthCtrl 1 }
+	
+	esQosBandwidthCtrlEntry OBJECT-TYPE
+		SYNTAX          EsQosBandwidthCtrlEntry
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+		    "An entry configures the bandwidth on an interface.
+            An entry will exist for every applicable port.
+            "
+		INDEX   { dot1dBasePort }
+		::= { esQosBandwidthCtrlTable 1 }
+	
+	EsQosBandwidthCtrlEntry ::=		SEQUENCE {		
+		  esQosBandwidthRxRate		  Integer32,   
+		  esQosBandwidthRxBurst	      Integer32,
+		  esQosBandwidthTxRate	      Integer32,
+		  esQosBandwidthTxBurst        Integer32,	
+		  esQosBandwidthRxRateMode	  INTEGER,
+		  esQosBandwidthTxRateMode	  INTEGER	     
+		}
+			
+	esQosBandwidthRxRate OBJECT-TYPE
+		SYNTAX          Integer32 (-1 | 64..10000000)
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates Rx Rate of the specified port. 
+		    The special value of -1 indicates there is no bandwidth 
+		    limit for ingress packets.    
+		    It is based on the esQosBandwidthRxRateMode field and
+			if the esQosBandwidthRxRateMode selected as:
+			rate: means ingress rate limit(units:kbps) and the effective rangs are 64 ~ 10000000.
+			percent: means the percentage and the effective rangs are 1 ~ 100.
+            "
+		::= { esQosBandwidthCtrlEntry 2 }    
+		
+	esQosBandwidthRxBurst OBJECT-TYPE
+		SYNTAX          Integer32 ( -1 | 0..128000)  
+		UNITS           "kbyte"
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the limit for ingress burst traffic
+            in kilobytes.
+            The special value of -1 indicates the limit for 
+            ingress burst traffic is unspecified and the limit will follow
+            the setting of esQosBandwidthRxRate.
+            "
+		::= { esQosBandwidthCtrlEntry 3 }
+	
+	esQosBandwidthTxRate OBJECT-TYPE
+		SYNTAX          Integer32 (-1 | 64..10000000) 
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates Tx Rate of the specified port. 
+		    The special value of -1 indicates there is no bandwidth 
+		    limit for egress packets.    
+		    It is based on the esQosBandwidthTxRateMode field and
+			if the esQosBandwidthTxRateMode selected as:
+			rate: means egress rate limit(units:kbps) and the effective rangs are 64 ~ 10000000.
+			percent: means the percentage and the effective rangs are 1 ~ 100.            
+	       	"
+		::= { esQosBandwidthCtrlEntry 4 }	      
+	
+	esQosBandwidthTxBurst OBJECT-TYPE
+		SYNTAX          Integer32 (-1 | 0..128000) 
+		UNITS           "kbyte"
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the limit for egress burst traffic
+            in kilobytes.
+            The special value of -1 indicates the limit for 
+            egress burst traffic is unspecified and the limit will follow
+            the setting of esQosBandwidthTxRate.
+            "
+		::= { esQosBandwidthCtrlEntry 5 }	
+    
+    esQosBandwidthRxRateMode OBJECT-TYPE
+		SYNTAX  INTEGER {
+						rate(1),
+						percent(2)
+						}
+		MAX-ACCESS  read-write
+		STATUS  current
+		DESCRIPTION
+		      "This object indicates Rx Rate Mode. 
+		       It will indicate the field:esQosBandwidthRxRate attribute.
+		       rate: means the rate limit.
+		       percent: means the percentage."         
+		::= { esQosBandwidthCtrlEntry 6 }    
+		
+	esQosBandwidthTxRateMode OBJECT-TYPE
+		SYNTAX  INTEGER {
+						rate(1),
+						percent(2)
+						}
+		MAX-ACCESS  read-write
+		STATUS  current
+		DESCRIPTION
+		      "Indicates Tx Rate Mode. 
+		       It will indicate the field:esQosBandwidthTxRate attribute.
+		       rate: means the rate limit.
+		       percent: means the percentage."         
+		::= { esQosBandwidthCtrlEntry 7 }
+
+-- -----------------------------------------------------------------------------
+   	esQosQueueBandwidthCtrlTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosQueueBandwidthCtrlEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "A table contains information about queue-specific bandwidth 
+            control of ports."
+		::= { esQosQueueBandwidthCtrl 1 }
+	
+	esQosQueueBandwidthCtrlEntry OBJECT-TYPE
+		SYNTAX          EsQosQueueBandwidthCtrlEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		      "An entry contains bandwidth control information of a queue on
+		      a port."
+		INDEX   { 
+            dot1dBasePort, 
+            esQosQueueBandwidthQueId 
+        }
+		::= { esQosQueueBandwidthCtrlTable 1 }
+	
+	EsQosQueueBandwidthCtrlEntry ::= 		SEQUENCE {
+		  esQosQueueBandwidthQueId 	    Unsigned32,		 
+		  esQosQueueBandwidthMinRate		Integer32,      
+		  esQosQueueBandwidthMaxRate	    Integer32, 
+		  esQosQueueBandwidthMinRateMode	INTEGER,      
+		  esQosQueueBandwidthMaxRateMode	INTEGER
+		}
+	
+	esQosQueueBandwidthQueId OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..127)
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+		     "Indicates the queue ID of the entry."
+		::= { esQosQueueBandwidthCtrlEntry 1 }
+	
+	esQosQueueBandwidthMinRate OBJECT-TYPE
+		SYNTAX  Integer32 ( -1 | 1..10240000)
+		MAX-ACCESS  read-write
+		STATUS  current
+		DESCRIPTION 
+		       "Indicates the minimum rate of the specified port and queue. 
+		       A special value of -1 means no limit.
+		       It is based on the esQosQueueBandwidthMinRateMode field and
+		       if the esQosQueueBandwidthMinRateMode selected as:
+		       rate: means egress Minimum Rate (units:kbps),range are 8 ~ 10240000.
+		       percent: means the percentage and the effective rangs are 1 ~ 100."
+		::= { esQosQueueBandwidthCtrlEntry 2 }				
+	
+	esQosQueueBandwidthMaxRate OBJECT-TYPE
+		SYNTAX          Integer32 ( -1 | 1..10240000) 
+		MAX-ACCESS      read-write
+		STATUS  current
+		DESCRIPTION
+		    "Indicates the maximum rate of the specified port and queue. 
+	       	A special value of -1 means no limit.
+	       	It is based on the esQosQueueBandwidthMaxRateMode field and
+	       	if the esQosQueueBandwidthMaxRateMode selected as:
+	       	rate: means egress Maximum Rate (units:kbps),range are 8 ~ 10240000.
+	       	percent: means the percentage and the effective rangs are 1 ~ 100."
+		::= { esQosQueueBandwidthCtrlEntry 3 }
+    
+    esQosQueueBandwidthMinRateMode OBJECT-TYPE
+		SYNTAX  INTEGER {
+						rate(1),
+						percent(2)
+						}
+		MAX-ACCESS  read-write
+		STATUS  current
+		DESCRIPTION
+		      "Indicates the Minimum Rate Mode. 
+		       It will indicate the field:esQosQueueBandwidthMinRate attribute.
+		       rate: means the Minimum Rate.
+		       percent: means the percentage."		
+		::= { esQosQueueBandwidthCtrlEntry 4 }
+
+	esQosQueueBandwidthMaxRateMode OBJECT-TYPE
+		SYNTAX  INTEGER {
+						rate(1),
+						percent(2)
+						}
+		MAX-ACCESS  read-write
+		STATUS  current
+		DESCRIPTION
+		      "Indicates the Maximum Rate Mode. 
+		       It will indicate the field:esQosQueueBandwidthMaxRate attribute.
+		       rate: means the Maximum Rate.
+		       percent: means the percentage."       		
+		::= { esQosQueueBandwidthCtrlEntry 5 }
+-- -----------------------------------------------------------------------------
+	esQosPortIfQueuingTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosPortIfQueuingEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table provides port-specific configuration for QoS queuing. 
+            "               
+		::= { esQosQueuingCfg 1 }
+	
+	esQosPortIfQueuingEntry OBJECT-TYPE
+		SYNTAX          EsQosPortIfQueuingEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		      "An entry consists of information for QoS queueing on a port."
+		INDEX   { dot1dBasePort }                
+		::= { esQosPortIfQueuingTable 1 }
+	
+	EsQosPortIfQueuingEntry ::=		SEQUENCE { 		 
+		esQosPortIf8021pOverride         TruthValue,		  	  
+        esQosPortIfTrustMode             INTEGER  
+	} 
+		  			
+	esQosPortIf8021pOverride OBJECT-TYPE
+		SYNTAX          TruthValue
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates whether override the CoS of the packets with
+            default CoS (dot1dPortDefaultUserPriority).
+            If this object is 'true', the default CoS will be applied to all
+            incoming packets, either tagged or untagged, received by the port."  
+        REFERENCE
+            "dot1dPortDefaultUserPriority is defined in P-BRIDGE-MIB."
+		::= { esQosPortIfQueuingEntry 1 }    
+	
+    esQosPortIfTrustMode OBJECT-TYPE
+		SYNTAX  INTEGER {
+			cos(1),
+			dscp(2)
+		}
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates QoS trust mode of the port." 
+		::= { esQosPortIfQueuingEntry 2 }	   	         
+
+	
+-- -----------------------------------------------------------------------------
+    esQosDscpMutationMapTable  OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosDscpMutationMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table provides a mechanism to create/delete a DSCP mutation map."
+		::= { esQosDscpMap 1 }
+
+	esQosDscpMutationMapEntry OBJECT-TYPE
+		SYNTAX          EsQosDscpMutationMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		     "An entry (conceptual row) in the esQosDscpMutationMapTable."
+		INDEX   { esQosDscpMutationMapName }
+		::= { esQosDscpMutationMapTable 1 }
+
+	EsQosDscpMutationMapEntry ::= 		SEQUENCE {
+        esQosDscpMutationMapName         DisplayString,
+        esQosDscpMutationMapRowStatus  	RowStatus
+    }           
+    
+    esQosDscpMutationMapName OBJECT-TYPE
+		SYNTAX          DisplayString(SIZE(1..32))
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the name of the DSCP mutation map."
+		::= { esQosDscpMutationMapEntry 1 }
+
+    esQosDscpMutationMapRowStatus OBJECT-TYPE
+		SYNTAX          RowStatus
+		MAX-ACCESS      read-create
+		STATUS          current
+		DESCRIPTION
+		      "This object indicates the status of this entry."
+		::= { esQosDscpMutationMapEntry 2 }
+
+-- -----------------------------------------------------------------------------
+    esQosDscpMutationMapCfgTable  OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosDscpMutationMapCfgEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "The table provides a list of the DSCP mapping of mutations maps.
+         	"
+		::= { esQosDscpMap 2 }
+
+	esQosDscpMutationMapCfgEntry OBJECT-TYPE
+		SYNTAX          EsQosDscpMutationMapCfgEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "Each row contains the mapping from old DSCP value to new
+        	DSCP value per specific mutation table.
+            The first index element identifies the mutation map 
+            (esQosDscpMutationMapEntry) that a DSCP mapping (esQosDscpMutationMapCfgEntry)
+            belongs to. 
+            When a mutation map is removed, the corresponding DSCP mapping 
+            configuration will be deleted.
+            "
+		INDEX   { 
+            esQosDscpMutationMapName, 
+            esQosDscpMutationOldDscp
+        }
+		::= { esQosDscpMutationMapCfgTable 1 }
+
+	EsQosDscpMutationMapCfgEntry ::= 		SEQUENCE {
+        esQosDscpMutationOldDscp         Unsigned32,
+        esQosDscpMutationNewDscp         Unsigned32
+    }           
+    
+    esQosDscpMutationOldDscp OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..63)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "The old DSCP value."
+		::= { esQosDscpMutationMapCfgEntry 1 }
+
+    esQosDscpMutationNewDscp OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..63)
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the new DSCP value which the old 
+            DSCP values maps to for a specific mutation map. 
+            The default mapping of old DSCP to new DSCP for mutation 
+            purpose is the identity function, i.e. esQosDscpMutationNewDscp 
+            equals to esQosDscpMutationOldDscp
+			"
+		::= { esQosDscpMutationMapCfgEntry 2 }
+
+-- ----------------------------------------------------------------------------- 
+	esQosDscpMutationMapAttachTable  OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosDscpMutationMapAttachEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table provides a mechanism to attach a DSCP mutation map to 
+            a port."
+		::= { esQosDscpMap 3 }
+
+	esQosDscpMutationMapAttachEntry OBJECT-TYPE
+		SYNTAX          EsQosDscpMutationMapAttachEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		      "An entry contains associating DSCP mutation map information."
+		INDEX   { dot1dBasePort }
+		::= { esQosDscpMutationMapAttachTable 1 }
+
+	EsQosDscpMutationMapAttachEntry ::= SEQUENCE {			
+        esQosDscpMutationMapAttachName       DisplayString          
+    }
+                                   		     
+	esQosDscpMutationMapAttachName OBJECT-TYPE
+		SYNTAX  DisplayString (SIZE(0..32))
+		MAX-ACCESS  read-write
+		STATUS  current
+		DESCRIPTION
+		    "This object indicates the name of the attached mutation map.
+            A zero length of string indicates no mutation map is attached.
+            "
+		::= { esQosDscpMutationMapAttachEntry 1 }
+      		
+-- -----------------------------------------------------------------------------
+	esQosDscpMapCtrlTable  OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosDscpMapCtrlEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This table contains information about the mapping of DSCP to priority
+            and DSCP to color for mapping a packet's initial color."
+		::= { esQosDscpMap 4 }
+
+	esQosDscpMapCtrlEntry OBJECT-TYPE
+		SYNTAX          EsQosDscpMapCtrlEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		      "An entry contains DSCP mapping information."
+		INDEX   { 
+            dot1dBasePort, 
+            esQosDscpMapCtrlDscp 
+        }
+		::= { esQosDscpMapCtrlTable 1 }
+
+	EsQosDscpMapCtrlEntry ::= 	SEQUENCE {		
+        esQosDscpMapCtrlDscp         Unsigned32,    
+        esQosDscpMapCtrlCos          Unsigned32,
+        esQosDscpMapCtrlColor        INTEGER
+    }      
+          		  		      					
+    esQosDscpMapCtrlDscp OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..63)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the DSCP of the entry."
+		::= { esQosDscpMapCtrlEntry 1 }
+				
+	esQosDscpMapCtrlCos OBJECT-TYPE
+		SYNTAX         Unsigned32 (0..7)
+		MAX-ACCESS     read-write
+		STATUS         current
+		DESCRIPTION
+		    "This object indicates the mapped CoS value.
+		      Default mapping is:
+		      DSCP 	 CoS
+		      0-7 	 0
+		      8-15	 1
+		      16-23	 2
+		      24-31	 3
+		      32-39	 4
+		      40-47	 5
+		      48-55	 6
+		      56-63	 7
+		    "
+		::= { esQosDscpMapCtrlEntry 2 }
+	
+	esQosDscpMapCtrlColor OBJECT-TYPE
+		SYNTAX          INTEGER {
+			green(1),
+			yellow(2),
+			red(3)
+		}
+		MAX-ACCESS      read-write
+		STATUS          current
+        DESCRIPTION
+		      "This object indicates the mapped color to determine a packet's
+              initial color."
+        DEFVAL { green }
+		::= { esQosDscpMapCtrlEntry 3 }
+
+-- -----------------------------------------------------------------------------	
+   	esQosCosToColorMapTable  OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosCosToColorMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "A table contains information about the mapping of CoS to color."
+		::= { esQosCosMap 1 }
+
+	esQosCosToColorMapEntry OBJECT-TYPE
+		SYNTAX          EsQosCosToColorMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		      "An entry contains a mapping between CoS to color."
+		INDEX   { 
+            dot1dBasePort, 
+            esQosCosMapCos
+        }
+		::= { esQosCosToColorMapTable 1 }
+	    
+    EsQosCosToColorMapEntry ::= 		SEQUENCE { 			
+        esQosCosMapCos                Unsigned32,
+        esQosCosMapColor              INTEGER
+    } 
+          		  
+    esQosCosMapCos OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..7)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the CoS of the entry."
+		::= { esQosCosToColorMapEntry 1 }
+	
+	esQosCosMapColor OBJECT-TYPE
+		SYNTAX          INTEGER {
+			green(1),
+			yellow(2),
+			red(3)
+		}
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the mapped color to determine a packet's
+            initial color."
+		::= { esQosCosToColorMapEntry 2 }               
+
+-- -----------------------------------------------------------------------------	
+   	esQosCosToQueueMapTable  OBJECT-TYPE
+		SYNTAX          SEQUENCE OF EsQosCosToQueueMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+		     "A table contains information about the mapping of CoS
+             to queue."
+		::= { esQosCosMap 2 }
+
+	esQosCosToQueueMapEntry OBJECT-TYPE
+		SYNTAX          EsQosCosToQueueMapEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		      "An entry contains a mapping between CoS to queue."
+		INDEX   { esQosCosToQueueCos }
+		::= { esQosCosToQueueMapTable 1 }
+	
+    
+    EsQosCosToQueueMapEntry ::= 		SEQUENCE { 
+        esQosCosToQueueCos           Unsigned32,
+        esQosCosToQueueQID           Unsigned32
+    }    
+    
+    esQosCosToQueueCos OBJECT-TYPE
+		SYNTAX          Unsigned32 (0..7)
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the CoS of the entry."
+		::= { esQosCosToQueueMapEntry 1 }          
+				
+    esQosCosToQueueQID OBJECT-TYPE
+		SYNTAX          Unsigned32
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+		    "This object indicates the queue ID that the corresponding CoS will
+            be queued."
+		::= { esQosCosToQueueMapEntry 2 }          
+
+-- -----------------------------------------------------------------------------       
+    esQosAggPolicerTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsQosAggPolicerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of aggregate policers."
+        ::= { esQosPolicyMap 3 }     
+                
+    esQosAggPolicerEntry OBJECT-TYPE
+        SYNTAX          EsQosAggPolicerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This entry consists of information and configurations for an
+            aggregate policer."
+        INDEX { esQosAggPolicerName }
+        ::= { esQosAggPolicerTable 1 }
+        
+    EsQosAggPolicerEntry ::=         	SEQUENCE {
+        esQosAggPolicerName    			    DisplayString,
+        esQosAggPolicerType             	    INTEGER,
+        esQosAggPolicerCir                   Unsigned32,
+        esQosAggPolicerCbs         	        Unsigned32,
+        esQosAggPolicerSrtcmEbs    	        Unsigned32,
+        esQosAggPolicerTrtcmPir              Unsigned32,
+        esQosAggPolicerTrtcmPbs              Unsigned32,
+        esQosAggPolicerConformAction    	    DlinkQosPoliceActionType,
+        esQosAggPolicerConformReplaceDscp    Unsigned32,
+        esQosAggPolicerExceedAction          DlinkQosPoliceActionType,
+        esQosAggPolicerExceedReplaceDscp    	Unsigned32,
+        esQosAggPolicerViolateAction        	DlinkQosPoliceActionType,
+        esQosAggPolicerViolateReplaceDscp   	Unsigned32,
+        esQosAggPolicerColorAware   	        TruthValue,               
+        esQosAggPolicerRowStatus           	RowStatus,
+        esQosAggPolicerConformReplaceCos    Unsigned32,
+        esQosAggPolicerExceedReplaceCos     Unsigned32,
+        esQosAggPolicerViolateReplaceCos    Unsigned32
+    }    
+     	
+    esQosAggPolicerName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the aggregate policer."
+        ::= { esQosAggPolicerEntry 1 }
+   	
+    esQosAggPolicerType OBJECT-TYPE
+        SYNTAX          INTEGER {  
+            trTcm(1),
+            singleRate(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates how meters a packet stream and marks its packets.
+            This object determines which other objects in the same row are meaningful.
+            trTcm - two rate three color marker;
+            singleRate - There are two kinds of single rate policers:
+                a. single rate three color (srTcm) - if the violate action is specified 
+                b. single rate two color - if the violate action is not specified.  
+            "
+        ::= { esQosAggPolicerEntry 2 }
+        
+    esQosAggPolicerCir OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..10240000)
+        UNITS           "kbps"
+        MAX-ACCESS      read-create
+        STATUS  current
+        DESCRIPTION 
+            "This object is interpreted within the context of esQosAggPolicerType.
+            The measurement unit is in kilobits per second.
+            esQosAggPolicerType  esQosAggPolicerCir
+            ==================  ===============================================
+            'trTcm'             The committed information rate for first token 
+                                bucket. 
+
+            'singleRate'        The rate-limit for two-color policier. 
+                                Or:
+                                The committed information rate for srTcm.                                
+            "                                       
+        ::= { esQosAggPolicerEntry 3 }
+            
+    esQosAggPolicerCbs OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16384)
+        UNITS	        "kbyte"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION       
+            "This object is interpreted within the context of esQosAggPolicerType.
+           
+            esQosAggPolicerType  esQosAggPolicerCbs
+            ==================  ===============================================
+            'trTcm'             The burst size for the first token bucket.
+
+            'singleRate'        The burst size for two-color policier. 
+                                Or:
+                                The committed burst size for srTcm. 
+            The measurement unit is in kilobytes.
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent.                               
+            "                  	
+        ::= { esQosAggPolicerEntry 4 }
+        
+    esQosAggPolicerSrtcmEbs OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16384)
+        UNITS	        "kbyte"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the excess burst size for srTcm and is 
+            meaningless when esQosAggPolicerType is 'trTcm'.                 
+            The measurement unit is in kilobytes.     
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent.                                                         
+            "                   
+        ::= { esQosAggPolicerEntry 5 }
+
+    esQosAggPolicerTrtcmPir OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..10240000)
+        UNITS           "kbps"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the peak information rate for the second
+            token bucket for the two-rate metering. This object is only 
+            meaningful when esQosAggPolicerType is 'trTcm'.
+            The measurement unit is in kilobits per second.
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent.
+            "
+        ::= { esQosAggPolicerEntry 6 }
+
+    esQosAggPolicerTrtcmPbs OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16384)
+        UNITS	        "kbyte"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the burst size for the second token bucket. 
+            This object is meaningful only when esQosAggPolicerType is 'trTcm'.
+            The measurement unit is in kilobytes.
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent.
+            "               
+        ::= { esQosAggPolicerEntry 7 }
+
+    esQosAggPolicerConformAction OBJECT-TYPE
+        SYNTAX          DlinkQosPoliceActionType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the action when the packet is in 'green color'.                         
+            "
+        ::= { esQosAggPolicerEntry 8 }
+    
+    esQosAggPolicerConformReplaceDscp OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..63)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new DSCP value of the packet when packet
+            is in 'green color'.
+            This object is meaningful only when esQosAggPolicerConformAction is 'replaceDscp' or 'replaceAll'.
+            "
+        ::= { esQosAggPolicerEntry 9 }
+    
+    esQosAggPolicerExceedAction OBJECT-TYPE
+        SYNTAX          DlinkQosPoliceActionType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION    
+            "This object is interpreted within the context of esQosAggPolicerType.
+            
+            esQosAggPolicerType  esQosAggPolExceedAction
+            ==================  ===============================================
+            'trTcm'             The action to take for those packets that conform
+                                to PIR but not to CIR.  
+
+            'singleRate'        The action to take on the packets exceed the rate 
+                                limit (or committed burst size).                           
+            "            
+         ::= { esQosAggPolicerEntry 10 }
+    
+    esQosAggPolicerExceedReplaceDscp OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..63)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new DSCP value when esQosAggPolExceedAction
+            is 'replaceDscp'or 'replaceAll'.
+            "
+        ::= { esQosAggPolicerEntry 11 }
+    
+    esQosAggPolicerViolateAction OBJECT-TYPE
+        SYNTAX          DlinkQosPoliceActionType
+        MAX-ACCESS      read-create
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the action state when the packet is in 'red color'.           
+            "
+        ::= { esQosAggPolicerEntry 12 }
+
+    esQosAggPolicerViolateReplaceDscp OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..63)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the DSCP value of the packet when packet is in 'red color'.
+            This object is meaningful only when esQosAggPolicerViolateAction is 'replaceDscp' or 'replaceAll'.
+            "
+        ::= { esQosAggPolicerEntry 13 }
+
+    esQosAggPolicerColorAware OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the policer is color aware or not.
+            "  
+        DEFVAL { false }
+        ::= { esQosAggPolicerEntry 14 }
+
+    esQosAggPolicerRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the status of this entry."
+        ::= { esQosAggPolicerEntry 24 }	
+
+    esQosAggPolicerConformReplaceCos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new COS value of the packet when packet
+            is in 'green color'.
+            This object is meaningful only when esQosAggPolicerConformAction is 'replaceCos' or 'replaceAll'.
+            "
+        ::= { esQosAggPolicerEntry 15 }	
+
+    esQosAggPolicerExceedReplaceCos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new COS value when esQosAggPolExceedAction
+            is 'replaceCos'or 'replaceAll'.
+            "
+        ::= { esQosAggPolicerEntry 16 }
+
+    esQosAggPolicerViolateReplaceCos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the COS value of the packet when packet is in 'red color'.
+            This object is meaningful only when esQosAggPolicerViolateAction is 'replaceCos' or 'replaceAll'.
+            "
+        ::= { esQosAggPolicerEntry 17 }
+-- -----------------------------------------------------------------------------     
+    esQosPoliceTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsQosPoliceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table is used to configure the metering function. 
+            Users may set the preferred bandwidth for this rule; once the 
+            bandwidth has been exceeded, overflow packets will be either dropped
+            or set for a drop precedence, depending on user configuration."
+        ::= { esQosPolicyMap 4 }
+
+    esQosPoliceEntry OBJECT-TYPE
+        SYNTAX          EsQosPoliceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This entry consists of configurations for the metering policing
+            for a traffic class in a policy map."
+        INDEX { 
+            esQosPolicyMapName, 
+            esQosClassMapName
+        }
+        ::= { esQosPoliceTable 1 }
+
+    EsQosPoliceEntry ::=            SEQUENCE {
+        esQosPoliceType                  INTEGER,
+        esQosPoliceNamedAggPolicer 	    DisplayString,  
+        esQosPoliceCir                   Unsigned32,
+        esQosPoliceCbs                   Unsigned32,
+        esQosPoliceSrtcmEbs              Unsigned32, 
+        esQosPoliceTrtcmPir              Unsigned32,
+        esQosPoliceTrtcmPbs              Unsigned32,                
+        esQosPoliceConformAction         DlinkQosPoliceActionType,
+        esQosPoliceConformReplaceDscp    Unsigned32,
+        esQosPoliceExceedAction          DlinkQosPoliceActionType,
+        esQosPoliceExceedReplaceDscp     Unsigned32,
+        esQosPoliceViolateAction         DlinkQosPoliceActionType,
+        esQosPoliceViolateReplaceDscp    Unsigned32,        	
+        esQosPoliceColorAware            TruthValue,                     
+        esQosPoliceRowStatus             RowStatus,
+        esQosPoliceConformReplaceCos     Unsigned32,
+        esQosPoliceExceedReplaceCos      Unsigned32,
+        esQosPoliceViolateReplaceCos     Unsigned32
+    }
+        
+    esQosPoliceType OBJECT-TYPE
+        SYNTAX  INTEGER {  
+            trTcm(1),
+            singleRate(2),
+            aggregate(3)
+        }
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the type of policer used for a traffic class
+            in a policy map.
+            This object determines which other objects in the same row are meaningful.
+            trTcm - two rate three color marker;
+            singleRate - There are two kinds of single rate policers:
+                a. single rate three color (srTcm) - if the violate action is specified 
+                b. single rate two color - if the violate action is not specified.  
+            aggregate - uses a named aggregate policer as the policy. In this case, 
+                except index elements, esQosAggPolicer, and esQosPoliceRowStatus, other 
+                elements in the same row are not applicable.               
+            "
+            ::= { esQosPoliceEntry 1 }
+             
+    esQosPoliceNamedAggPolicer OBJECT-TYPE               
+        SYNTAX          DisplayString (SIZE(1..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the aggregate policer to be applied.
+            This object is meaningful only when esQosPoliceType is 'aggregate'.  
+            "
+        ::= { esQosPoliceEntry 2 }
+        
+    esQosPoliceCir OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..10240000)
+        UNITS           "kbps"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION 
+            "This object is interpreted within the context of esQosPoliceType.
+            The measurement unit is in kilobits per second.
+            esQosPoliceType      esQosPoliceCir
+            ==================  ===============================================
+            'trTcm'             The committed information rate for first token 
+                                bucket. 
+
+            'singleRate'        The rate-limit for two-color policier. 
+                                Or:
+                                The committed information rate for srTcm. 
+
+            'aggregate'         Not applicable
+            "                                                                          
+        ::= { esQosPoliceEntry 3 }
+            
+    esQosPoliceCbs OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16384)
+        UNITS	        "kbyte"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION       
+            "This object is interpreted within the context of esQosPoliceType.            
+            esQosPoliceType      esQosPoliceCbs
+            ==================  ===============================================
+            'trTcm'             The burst size for the first token bucket.
+
+            'singleRate'        The burst size for two-color policier. 
+                                Or:
+                                The committed burst size for srTcm.     
+
+            'aggregate'         Not applicable        
+            The measurement unit is in kilobytes.
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent.                   
+            "                
+        ::= { esQosPoliceEntry 4 }
+        
+    esQosPoliceSrtcmEbs OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16384)
+        UNITS	        "kbyte"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the excess burst size for srTcm and is 
+            meaningless when esQosPoliceType is 'trTcm'.                 
+            The measurement unit is in kilobytes.     
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent.                                                         
+            "  
+        ::= { esQosPoliceEntry 5 }
+    
+    esQosPoliceTrtcmPir OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..10240000)
+        UNITS           "kbps"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the peak information rate for the second
+            token bucket for the two-rate metering. This object is only 
+            meaningful when esQosPoliceType is 'trTcm'.
+            The measurement unit is in kilobits per second.
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent. 
+            "
+        ::= { esQosPoliceEntry 6 }
+
+    esQosPoliceTrtcmPbs OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16384)
+        UNITS	        "kbyte"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the burst size for the second token bucket. 
+            This object is meaningful only when esQosPoliceType is 'trTcm'.
+            The measurement unit is in kilobytes.
+            The special value of 0 is used to indicate this object is not specified
+            and the default value will be used. What's the default value is project-dependent. 
+            "  
+        ::= { esQosPoliceEntry 7 }
+   
+    esQosPoliceConformAction OBJECT-TYPE
+        SYNTAX          DlinkQosPoliceActionType
+        MAX-ACCESS      read-create
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the action when the packet is in 'green color'.                           
+            "
+        ::= { esQosPoliceEntry 8 }
+
+    esQosPoliceConformReplaceDscp OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..63)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new DSCP value for esQosPoliceConformAction
+            is 'replaceDscp' or 'replaceAll'."
+        ::= { esQosPoliceEntry 9 }
+            
+    esQosPoliceExceedAction OBJECT-TYPE
+        SYNTAX          DlinkQosPoliceActionType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION       
+            "This object is interpreted within the context of esQosPoliceType.
+            
+            esQosPoliceType      esQosPoliceExceedAction
+            ==================  ===============================================
+            'trTcm'             The action to take for those packets that conform
+                                to PIR but not to CIR.  
+
+            'singleRate'        The action to take on the packets exceed the rate 
+                                limit (or committed burst size). 
+            'aggregate'         Not applicable
+                       
+            "        
+        ::= { esQosPoliceEntry 10 }
+
+    esQosPoliceExceedReplaceDscp OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..63)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new DSCP value when esQosPoliceExceedAction
+            is 'replaceDscp' or 'replaceAll'.
+            "
+        ::= { esQosPoliceEntry 11 }
+
+    esQosPoliceViolateAction OBJECT-TYPE
+        SYNTAX          DlinkQosPoliceActionType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the action state when the packet is in 'red color'.           
+            "
+        ::= { esQosPoliceEntry 12 }
+
+    esQosPoliceViolateReplaceDscp OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..63)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new DSCP value when esQosPoliceViolateAction
+            is 'replaceDscp' or 'replaceAll'.
+            "               
+        ::= { esQosPoliceEntry 13 }
+
+    esQosPoliceColorAware OBJECT-TYPE
+        SYNTAX          TruthValue           
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object indicates whether the policer is color aware or not.
+            This object is applied for esQosPoliceType is 'trTcm' or 'singleRate'. 
+            "
+        ::= { esQosPoliceEntry 14 }    
+    
+    esQosPoliceRowStatus OBJECT-TYPE
+        SYNTAX  RowStatus
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the status of this entry."
+        ::= { esQosPoliceEntry 15 }	               
+
+    esQosPoliceConformReplaceCos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new COS value for esQosPoliceConformAction
+            is 'replaceCos' or 'replaceAll'.
+            "
+        ::= { esQosPoliceEntry 16 }	
+
+    esQosPoliceExceedReplaceCos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new COS value when esQosPoliceExceedAction
+            is 'replaceCos' or 'replaceAll'.
+            "
+        ::= { esQosPoliceEntry 17 }
+
+    esQosPoliceViolateReplaceCos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the new COS value when esQosPoliceViolateAction
+            is 'replaceCos' or 'replaceAll'.
+            "
+        ::= { esQosPoliceEntry 18 }
+--  ***************************************************************************	
+--  Conformance
+--  ***************************************************************************			   		
+	esQosCompliances OBJECT IDENTIFIER ::= { esQosMIBConformance 1 }
+		
+	esQosCompliance MODULE-COMPLIANCE
+		STATUS current
+		DESCRIPTION 
+			"The compliance statement for entities which implement the 
+			DLINKES-QOS-MIB."
+		MODULE -- this module
+		MANDATORY-GROUPS { 
+		    esQosPolicyGroup
+		}
+		
+		GROUP       esQosSchedulingGroup 
+           DESCRIPTION 
+              "This group is required only if QoS scheduling feature
+              is implemented by the agent."
+		
+        GROUP       esQosWrrGroup 
+           DESCRIPTION 
+              "This group is required only if the configuration for WRR scheduling 
+              is supported by the agent."
+
+        GROUP       esQosWdrrGroup 
+           DESCRIPTION 
+              "This group is required only if the configuration for WDRR scheduling 
+              is supported by the agent."
+
+		GROUP       esQosPortBandwidthCtrlGroup 
+           DESCRIPTION 
+              "This group is required only if port-specific bandwidth control feature is
+              implemented by the agent."
+				
+        GROUP       esQosQueueBandwidthCtrlGroup 
+           DESCRIPTION 
+              "This group is required only if queue-specific bandwidth control feature is
+              implemented by the agent."
+
+        GROUP       esQosAggregatePolicingGroup 
+           DESCRIPTION 
+              "This group is required only if QoS aggregated policing feature is 
+              implemented by the agent."
+
+		GROUP       esQosPolicingGroup 
+           DESCRIPTION 
+              "This group is required only if QoS policing feature is implemented
+              by the agent."
+
+        OBJECT  esQosPoliceType 
+        DESCRIPTION
+            "It is compliant to support only a subset of policier types."
+
+        GROUP  esQosColorAwarePolicingGroup 
+        DESCRIPTION
+            "This group is required only if color aware configuration is implemented
+            by the agent."
+
+
+        GROUP       esQosQueuingGroup 
+           DESCRIPTION 
+              "This group is required only if the configuration for queuing packets 
+              is supported by the agent."
+        
+        GROUP       esQosDscpMutationGroup 
+           DESCRIPTION 
+              "This group is required only if the configuration for DSCP mutation 
+              is supported by the agent."
+
+		::= { esQosCompliances 1 }
+		
+	esQosGroups OBJECT IDENTIFIER ::= { esQosMIBConformance 2 }
+	
+	esQosPolicyGroup OBJECT-GROUP
+		OBJECTS { 
+			esQosClassMapType,
+            esQosClassMapRowStaus,
+            esQosClassMapCfgMatchType,
+            esQosClassMapCfgMatchValue,
+            esQosClassMapCfgRowStaus,
+            esQosPolicyMapRowStatus,
+            esQosPolicyMapCfgSetCosQueue,        
+            esQosPolicyMapCfgSetCos,
+            esQosPolicyMapCfgSetDscpOnlyIp,
+            esQosPolicyMapCfgSetDscp,
+            esQosPolicyMapCfgSetPreceOnlyIp,
+            esQosPolicyMapCfgSetPrecedence,
+            esQosPolicyMapCfgRowStatus,
+            esQosServicePolicyDirection,
+            esQosServicePolicyName,
+            esQosServicePolicyRowStaus           
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing QoS policy configuration."
+		::= { esQosGroups 1 }
+	
+	esQosSchedulingGroup OBJECT-GROUP
+		OBJECTS { 
+		   	esQosSchedulingMode
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing QoS scheduling configuration."
+		::= { esQosGroups 2 }
+
+    esQosWrrGroup OBJECT-GROUP
+		OBJECTS { 
+		   	esQosScheduleWrrWeightValue
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing QoS WRR scheduling configuration."
+		::= { esQosGroups 3 }
+ 
+    esQosWdrrGroup OBJECT-GROUP
+		OBJECTS { 
+		   	esQosScheduleWdrrWeightValue
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing QoS WDRR scheduling configuration."
+		::= { esQosGroups 4 }
+					
+	esQosPortBandwidthCtrlGroup OBJECT-GROUP
+		OBJECTS { 
+		    esQosBandwidthRxRate,
+            esQosBandwidthRxBurst,
+            esQosBandwidthTxRate,
+            esQosBandwidthTxBurst,
+            esQosBandwidthRxRateMode,
+            esQosBandwidthTxRateMode
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing bandwidth configuration for ports."
+		::= { esQosGroups 5 }
+
+    esQosQueueBandwidthCtrlGroup OBJECT-GROUP
+		OBJECTS { 
+		    esQosQueueBandwidthMinRate,	
+            esQosQueueBandwidthMaxRate,
+            esQosQueueBandwidthMinRateMode,
+            esQosQueueBandwidthMaxRateMode	
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing bandwidth configuration for queues."
+		::= { esQosGroups 6 }
+		
+	esQosAggregatePolicingGroup OBJECT-GROUP
+		OBJECTS { 		    
+		    esQosAggPolicerType,
+            esQosAggPolicerCir,
+            esQosAggPolicerCbs,
+            esQosAggPolicerSrtcmEbs,
+            esQosAggPolicerTrtcmPir,
+            esQosAggPolicerTrtcmPbs,
+            esQosAggPolicerConformAction,
+            esQosAggPolicerConformReplaceDscp,
+            esQosAggPolicerExceedAction,
+            esQosAggPolicerExceedReplaceDscp,
+            esQosAggPolicerViolateAction,
+            esQosAggPolicerViolateReplaceDscp,
+            esQosAggPolicerColorAware,
+            esQosAggPolicerRowStatus,
+            esQosPoliceNamedAggPolicer,
+            esQosAggPolicerConformReplaceCos,
+            esQosAggPolicerExceedReplaceCos,
+            esQosAggPolicerViolateReplaceCos
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing QoS named aggregated policing configuration."
+		::= { esQosGroups 7 } 
+
+    esQosPolicingGroup OBJECT-GROUP
+		OBJECTS { 		    
+		    esQosPoliceType,            
+            esQosPoliceCir,
+            esQosPoliceCbs,
+            esQosPoliceSrtcmEbs,
+            esQosPoliceTrtcmPir,
+            esQosPoliceTrtcmPbs,
+            esQosPoliceConformAction,
+            esQosPoliceConformReplaceDscp,
+            esQosPoliceExceedAction,
+            esQosPoliceExceedReplaceDscp,
+            esQosPoliceViolateAction,
+            esQosPoliceViolateReplaceDscp,
+            esQosPoliceRowStatus,
+            esQosDscpMapCtrlColor,
+            esQosPoliceConformReplaceCos,
+            esQosPoliceExceedReplaceCos,
+            esQosPoliceViolateReplaceCos
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing QoS policing configuration."
+		::= { esQosGroups 8 } 
+
+     esQosColorAwarePolicingGroup OBJECT-GROUP
+		OBJECTS { 		    
+		    esQosPoliceColorAware,
+            esQosDscpMapCtrlColor,
+            esQosCosMapColor            
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing QoS color aware configuration."
+		::= { esQosGroups 9 } 
+
+
+    esQosQueuingGroup OBJECT-GROUP
+		OBJECTS { 		    
+		   esQosPortIf8021pOverride,
+           esQosPortIfTrustMode,
+           esQosDscpMapCtrlCos,
+           esQosCosToQueueQID
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing configuration regarding how to
+            dispatch packets to queues."
+		::= { esQosGroups 10 } 
+
+    esQosDscpMutationGroup OBJECT-GROUP
+		OBJECTS { 		    
+           esQosDscpMutationMapRowStatus,
+           esQosDscpMutationNewDscp,
+           esQosDscpMutationMapAttachName
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects providing the configuration for DSCP mutation."
+		::= { esQosGroups 11 } 
+END

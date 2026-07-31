@@ -1,0 +1,545 @@
+-- *****************************************************************
+-- DLINKES-AAA-ACCOUNTING-MIB: D-Link AAA Accounting MIB
+--
+--  Copyright (c) 2014 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+
+DLINKES-AAA-ACCOUNTING-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE
+            FROM SNMPv2-SMI   
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP
+            FROM SNMPv2-CONF
+        RowStatus, TruthValue
+            FROM SNMPv2-TC
+        esAaaMIBObjects, EsAaaSessionType,
+        EsAaaPrivilegeLevel, EsAaaMethodListName,
+        EsAaaMethodPriority, EsAaaMethodName
+            FROM DLINKES-AAA-COMMON-MIB;
+
+
+    dlinkEsAaaAccountingMIB MODULE-IDENTITY
+        LAST-UPDATED    "201707100000Z"
+        ORGANIZATION    "D-Link Corp."
+        CONTACT-INFO
+            "       D-Link Corporation
+            Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                    Taipei City 114, Taiwan, R.O.C
+            Tel:    +886-2-66000123
+            E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for configuring accounting feature
+            which based on Authentication, Authorization,
+            Accounting (AAA) protocols."
+            
+        REVISION        "201707100000Z"
+        DESCRIPTION
+            "Added esAaaAcctNetworkMacAccounting for Accounting network traffic by MAC.
+            "
+            
+        REVISION        "201707100000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file.
+            "
+        ::= { esAaaMIBObjects 3 }
+
+
+-- ----------------------------------------------------------------------------- 
+    esAaaAcctMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsAaaAccountingMIB 0 }
+    esAaaAcctMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsAaaAccountingMIB 1 }
+    esAaaAcctMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsAaaAccountingMIB 2 }
+
+-- -----------------------------------------------------------------------------    
+    esAaaAcctGenericCfg    OBJECT IDENTIFIER ::= { esAaaAcctMIBObjects 1 }
+        
+    esAaaAcctGeneicAcctMethodTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsAaaAcctGeneicAcctMethodEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table contains entries for AAA accounting
+            methods configured for accounting exec/network/system.
+
+            The following table describes the accounting method.
+          
+            Method Lst
+            type        EsAaaMethodListName  Priority Method
+            ----------- -----------------  -------- ------------
+            exec        console             1        radius
+            exec        default             1        radius
+            exec        default             2        acct_rad
+            exec        default             3        tacacs+
+            exec        default             4        none
+            exec        ssh                 1        radius
+            exec        ssh                 2        none
+            exec        telnet              1        tacacs+
+            network     default             1        radius
+            network     default             2        acct_rad
+            network     default             3        tacacs+
+            network     default             4        none
+            system      default             1        radius
+            system      default             2        acct_rad
+            system      default             3        tacacs+
+            system      default             4        none
+            "         
+        ::= { esAaaAcctGenericCfg 1 }
+
+    esAaaAcctGeneicAcctMethodEntry OBJECT-TYPE
+        SYNTAX      EsAaaAcctGeneicAcctMethodEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry containing the priority number of an accounting
+             method list used for Exec/network/system.
+            "
+        INDEX       {
+            esAaaAcctGenMethodLstType,
+            esAaaAcctGenMethodLstName,
+            esAaaAcctGenMethodPriority
+        }
+        ::= { esAaaAcctGeneicAcctMethodTable 1 }
+    
+    EsAaaAcctGeneicAcctMethodEntry ::=
+        SEQUENCE {
+            esAaaAcctGenMethodLstType       INTEGER,
+            esAaaAcctGenMethodLstName       EsAaaMethodListName,
+            esAaaAcctGenMethodPriority      EsAaaMethodPriority,
+            esAaaAcctGenMethodName          EsAaaMethodName,
+            esAaaAcctGenMethodRowStatus     RowStatus
+        }
+
+    esAaaAcctGenMethodLstType OBJECT-TYPE
+        SYNTAX          INTEGER {
+            exec(1),
+            network(2),
+            system(3)
+        }
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type for which the method list will be
+            used.
+             
+            exec(1)  - for accounting user activities.
+            network(2) - for accounting user activity in accessing the network.
+            system(3) -  for accounting system events.  
+            
+            Note: Not all method list types defined need to be supported.      
+            "
+        ::= { esAaaAcctGeneicAcctMethodEntry 1 }
+
+    esAaaAcctGenMethodLstName OBJECT-TYPE
+        SYNTAX          EsAaaMethodListName
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the accounting method list.
+            If esAaaAcctGenMethodLstType is 'network' or 'system' then only 'default' 
+            can be specified for esAaaAcctGenMethodLstName, and 
+            accounting commands/exec and the configured method list will take 
+            effect without being explicitly applied. 
+            If the type is 'exec', the method list will take effect after it is
+            applied in esAaaAcctExecAcctApplyTable.           
+            "
+        ::= { esAaaAcctGeneicAcctMethodEntry 2 }
+
+    esAaaAcctGenMethodPriority OBJECT-TYPE
+        SYNTAX          EsAaaMethodPriority
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This is the method priority of a method within a method list.
+            "
+        ::= { esAaaAcctGeneicAcctMethodEntry 3 }
+
+    esAaaAcctGenMethodName OBJECT-TYPE
+        SYNTAX          EsAaaMethodName
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the accounting method name.
+            "
+        ::= { esAaaAcctGeneicAcctMethodEntry 4 }
+
+    esAaaAcctGenMethodRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this table entry.
+
+            Before modify the higher method, must destroy the lower method in method list.
+            "
+        ::= { esAaaAcctGeneicAcctMethodEntry 5 }
+
+    esAaaAcctNetworkMacAccounting OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the state of Accounting network traffic by MAC Address.
+            Note: MAC-Accounting is project dependent feature, only a few projects support it."
+        ::= { esAaaAcctGenericCfg 2 }
+    
+-- -----------------------------------------------------------------------------
+    esAaaAcctCommandsAcct    OBJECT IDENTIFIER ::= { esAaaAcctMIBObjects 2 }
+
+    esAaaAcctCommandsAcctMethodTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAaaAcctCommandsAcctMethodEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains entries for AAA accounting
+            methods configured for commands.
+
+            The following table describes examples of the accounting commands method.
+
+            PrivLevel AcctMethodListName  Priority Method 
+            --------- ------------------  -------- ------------
+            1         default             0        radius
+            12        Acct12_telnet       0        tacacs+
+            12        Acct12_ssh          0        radius
+            12        Acct12_ssh          1        none
+            15        default             0        radius
+            15        default             1        acct_rad
+            15        default             2        tacacs+
+            15        default             3        none
+            "
+        ::= { esAaaAcctCommandsAcct 1 }
+
+    esAaaAcctCommandsAcctMethodEntry OBJECT-TYPE
+        SYNTAX          EsAaaAcctCommandsAcctMethodEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry containing information of an accounting
+             method within a method list which is used for accounting commands.
+            "
+        INDEX       {
+            esAaaAcctCommandsAcctPrivLevel,
+            esAaaAcctCommandsAcctListName,
+            esAaaAcctCommandsAcctPriority
+        }
+        ::= { esAaaAcctCommandsAcctMethodTable 1 }
+
+    EsAaaAcctCommandsAcctMethodEntry ::=        SEQUENCE {
+        esAaaAcctCommandsAcctPrivLevel      EsAaaPrivilegeLevel, 
+        esAaaAcctCommandsAcctListName       EsAaaMethodListName,
+        esAaaAcctCommandsAcctPriority       EsAaaMethodPriority,
+        esAaaAcctCommandsAcctMethodName     EsAaaMethodName,
+        esAaaAcctCommandsAcctRowStatus      RowStatus
+    }
+
+    esAaaAcctCommandsAcctPrivLevel OBJECT-TYPE
+        SYNTAX          EsAaaPrivilegeLevel
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the privilege level of the method list.
+            "
+        ::= { esAaaAcctCommandsAcctMethodEntry 1 }
+
+    esAaaAcctCommandsAcctListName OBJECT-TYPE
+        SYNTAX          EsAaaMethodListName
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the method list to which the 
+            method is associated.
+            "
+        ::= { esAaaAcctCommandsAcctMethodEntry 2 }
+
+    esAaaAcctCommandsAcctPriority OBJECT-TYPE
+        SYNTAX          EsAaaMethodPriority
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the priority of the method in a method list for
+            accounting commands.
+            "
+        ::= { esAaaAcctCommandsAcctMethodEntry 3 }
+
+    esAaaAcctCommandsAcctMethodName OBJECT-TYPE
+        SYNTAX          EsAaaMethodName
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the method in a method list for
+            accounting commands.                        
+            "
+        ::= { esAaaAcctCommandsAcctMethodEntry 4 }
+
+    esAaaAcctCommandsAcctRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this table entry.
+            Once the entry status is set to active, 
+            all writable objects of the same entry cannot be modified 
+            except destroyed by setting this object to destroy(6).
+            A method which has lower value of esAaaAcctCommandsAcctPriority
+            (which has higher precedence) needs be created than higher
+            value of esAaaAcctCommandsAcctPriority.
+            "
+        ::= { esAaaAcctCommandsAcctMethodEntry 5 }
+
+-- ----------------------------------------------------------------------------- 
+    esAaaAcctCommandsAcctApplyTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAaaAcctCommandsAcctApplyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of session-specific specification to apply
+            accounting method list for command accounting in a session (line).
+
+            The following table describes examples of the entries.
+
+            Session PrivLevel  Applied Method List
+            ------- ---------  ------------------
+            telnet  1          default
+            telnet  12         Acct12_telnet
+            console 12         default
+            console 15         default
+            ssh     12         Acct12_ssh
+            ssh     15         Acct15_ssh          
+            "
+        ::= { esAaaAcctCommandsAcct 2 }
+
+    esAaaAcctCommandsAcctApplyEntry OBJECT-TYPE
+        SYNTAX          EsAaaAcctCommandsAcctApplyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry specifies a method list used for command accounting at
+            the specified session and privilege level.
+            The command accounting takes effect after a method list is properly 
+            applied.
+            "
+        INDEX  {
+            esAaaAcctCommandsAcctApplySession,
+            esAaaAcctCommandsAcctApplyPrivLevel              
+        }
+        ::= { esAaaAcctCommandsAcctApplyTable 1 }
+
+
+    EsAaaAcctCommandsAcctApplyEntry ::=        SEQUENCE {
+        esAaaAcctCommandsAcctApplySession       EsAaaSessionType,
+        esAaaAcctCommandsAcctApplyPrivLevel     EsAaaPrivilegeLevel,
+        esAaaAcctCommandsAcctApplyListName      EsAaaMethodListName,
+        esAaaAcctCommandsAcctApplyRowStatus     RowStatus
+    }
+
+    esAaaAcctCommandsAcctApplySession OBJECT-TYPE
+        SYNTAX          EsAaaSessionType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the session type of the entry. 
+            "
+        ::= { esAaaAcctCommandsAcctApplyEntry 1 }
+
+    esAaaAcctCommandsAcctApplyPrivLevel OBJECT-TYPE
+        SYNTAX          EsAaaPrivilegeLevel
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the privilege level of the entry.           
+            "
+        ::= { esAaaAcctCommandsAcctApplyEntry 2 }
+    
+    esAaaAcctCommandsAcctApplyListName OBJECT-TYPE
+        SYNTAX          EsAaaMethodListName
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the method list name of the entry.           
+            "
+        ::= { esAaaAcctCommandsAcctApplyEntry 3 }
+           
+    esAaaAcctCommandsAcctApplyRowStatus OBJECT-TYPE
+       SYNTAX           RowStatus
+       MAX-ACCESS       read-create
+       STATUS           current
+       DESCRIPTION
+           "The status of this table entry.
+           "
+       ::= { esAaaAcctCommandsAcctApplyEntry 4 }
+
+-- -----------------------------------------------------------------------------   
+    esAaaAcctExecAcct    OBJECT IDENTIFIER ::= { esAaaAcctMIBObjects 3 }     
+    
+    esAaaAcctExecAcctApplyTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsAaaAcctExecAcctApplyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains entries to apply method lists for accounting Exec
+            (user activities).
+
+            The following table describes examples.
+
+            Session  AAA Method List 
+            ------- ------------------
+            telnet  default
+            console rad_cons
+            ssh     acct_ssh
+            "
+        ::= { esAaaAcctExecAcct 1 }
+
+    esAaaAcctExecAcctApplyEntry OBJECT-TYPE
+        SYNTAX          EsAaaAcctExecAcctApplyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry containing the session of an accounting
+             application used for Exec(user activities).
+            "
+        INDEX       {
+            esAaaAcctExecAcctApplySession              
+        }
+        ::= { esAaaAcctExecAcctApplyTable 1 }
+
+    EsAaaAcctExecAcctApplyEntry ::=        SEQUENCE {
+        esAaaAcctExecAcctApplySession           EsAaaSessionType,
+        esAaaAcctExecAcctApplyListName          EsAaaMethodListName,
+        esAaaAcctExecAcctApplyRowStatus         RowStatus
+    }
+
+    esAaaAcctExecAcctApplySession OBJECT-TYPE
+        SYNTAX          EsAaaSessionType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the session type of the entry.           
+            "
+        ::= { esAaaAcctExecAcctApplyEntry 1 }
+
+    esAaaAcctExecAcctApplyListName OBJECT-TYPE
+        SYNTAX          EsAaaMethodListName
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the method list name of the entry.           
+            "
+        ::= { esAaaAcctExecAcctApplyEntry 2 }
+        
+    esAaaAcctExecAcctApplyRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this table entry.
+            "
+        ::= { esAaaAcctExecAcctApplyEntry 3 }
+
+
+--****************************************************************************
+-- Conformance
+--****************************************************************************
+
+    esAaaAcctMIBCompliances OBJECT IDENTIFIER ::= { esAaaAcctMIBConformance 1 }
+
+
+    esAaaAcctMIBCompliance MODULE-COMPLIANCE
+        STATUS      deprecated
+        DESCRIPTION
+            "The compliance statement for entities which
+            implement the DLINKES-AAA-ACCOUNTING-MIB."
+        MODULE      -- this module
+        MANDATORY-GROUPS     {
+            esAaaAcctGenericMethodLstGroup,
+            esAaaAcctExecApplyGroup              
+        }
+
+        GROUP  esAaaAcctAccountingCommandsGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            commands accounting configuration.
+            "
+                                                                      
+        ::= { esAaaAcctMIBCompliances 1 }
+
+    esAaaAcctMIBCompliance2 MODULE-COMPLIANCE
+        STATUS      current
+        DESCRIPTION
+            "The compliance statement for entities which
+            implement the DLINKES-AAA-ACCOUNTING-MIB."
+        MODULE      -- this module
+        MANDATORY-GROUPS     {
+            esAaaAcctGenericMethodLstGroup,
+            esAaaAcctExecApplyGroup              
+        }
+
+        GROUP  esAaaAcctAccountingCommandsGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            commands accounting configuration.
+            "
+                                                                      
+        GROUP  esAaaAcctAccountingNetworkGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            network accounting configuration.
+            "
+                                                                      
+        ::= { esAaaAcctMIBCompliances 2 }
+-- -----------------------------------------------------------------------------
+     esAaaAcctMIBGroups     OBJECT IDENTIFIER ::= { esAaaAcctMIBConformance 2 }
+
+     esAaaAcctAccountingCommandsGroup OBJECT-GROUP
+        OBJECTS {
+            esAaaAcctCommandsAcctMethodName,
+            esAaaAcctCommandsAcctRowStatus,
+            esAaaAcctCommandsAcctApplyListName,
+            esAaaAcctCommandsAcctApplyRowStatus           
+        }
+        STATUS      current
+        DESCRIPTION
+             "A collection of objects provides the
+             configuration for AAA accounting commands feature.
+             "
+        ::= { esAaaAcctMIBGroups 1 }
+        
+     esAaaAcctGenericMethodLstGroup OBJECT-GROUP
+        OBJECTS {           
+            esAaaAcctGenMethodName,
+            esAaaAcctGenMethodRowStatus 
+        }
+        STATUS      current
+        DESCRIPTION
+             "A collection of objects provides the
+             configuration of generic AAA accounting method list.
+             "
+        ::= { esAaaAcctMIBGroups 2 }
+    
+    esAaaAcctExecApplyGroup OBJECT-GROUP
+        OBJECTS {
+            esAaaAcctExecAcctApplyListName,
+             esAaaAcctExecAcctApplyRowStatus
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing the
+             AAA accounting Exec application.
+            "
+        ::= { esAaaAcctMIBGroups 3 }
+
+     esAaaAcctAccountingNetworkGroup OBJECT-GROUP
+        OBJECTS {
+            esAaaAcctNetworkMacAccounting        
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects provides the
+            configuration for AAA accounting network feature.
+            "
+        ::= { esAaaAcctMIBGroups 4 }
+
+END

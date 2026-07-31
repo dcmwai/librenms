@@ -1,0 +1,361 @@
+--  *****************************************************************
+--  DLINKES-WEB-AUTH-MIB.mib : Web-Authentication MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+
+    DLINKES-WEB-AUTH-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-IDENTITY,
+        NOTIFICATION-TYPE,
+        OBJECT-TYPE              FROM SNMPv2-SMI
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP,
+        NOTIFICATION-GROUP       FROM SNMPv2-CONF
+        TruthValue               FROM SNMPv2-TC
+        ifIndex                  FROM IF-MIB        
+        InetAddressIPv4,
+        InetAddressIPv6          FROM INET-ADDRESS-MIB
+        SnmpAdminString          FROM SNMP-FRAMEWORK-MIB
+        esnaSessionAuthVlan,
+        esnaSessionClientMacAddress,
+        esnaSessionClientAddrType,
+        esnaSessionClientAddress,
+        esnaSessionAuthUserName   FROM DLINKES-NETWORK-ACCESS-MIB
+        dlinkCommon    FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsWebAuthMIB MODULE-IDENTITY
+        LAST-UPDATED "201302210000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+             "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for Web-Authentication."            
+            
+        REVISION "201302210000Z"
+        DESCRIPTION 
+            "This is the first version of the MIB file."    
+        ::= { dlinkCommon 154 }
+
+-- -----------------------------------------------------------------------------
+    esWebAuthNotifications    OBJECT IDENTIFIER ::= { dlinkEsWebAuthMIB 0 }
+    esWebAuthObjects          OBJECT IDENTIFIER ::= { dlinkEsWebAuthMIB 1 }
+    esWebAuthConformance      OBJECT IDENTIFIER ::= { dlinkEsWebAuthMIB 2 }
+
+    esWebAuthSysEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue         
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the global state of Web-Authentication on
+            the device."
+        ::= { esWebAuthObjects 1 }
+
+    esWebAuthRedirectPath    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the URL that the client will be redirected to
+            after successful authentication.
+            Initially, the redirected path is an empty string.
+            If no default redirect URL is specified, the Web-Authentication 
+            logout page will be displayed. 
+            "
+        ::= { esWebAuthObjects 2 }
+
+    esWebAuthVirtualIp    OBJECT-TYPE
+        SYNTAX           InetAddressIPv4
+        MAX-ACCESS       read-write
+        STATUS           current
+        DESCRIPTION
+            "This object indicates the virtual IP address which is used to accept 
+            authentication requests from an unauthenticated host.
+    
+            This virtual IP address is used to accept authentication
+            requests from an unauthenticated host. Only requests sent to this IP will 
+            get a correct response.
+ 
+            NOTE: This IP does not respond to ARP requests or ICMP packets."
+        ::= { esWebAuthObjects 3 }
+
+    esWebAuthVirtualIpv6    OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the virtual IPv6 address which is used to accept 
+            authentication requests from an unauthenticated host.
+    
+            This virtual IPv6 address is used to accept authentication requests 
+            from an unauthenticated host. Only requests sent to this IP will 
+            get a correct response.
+
+            NOTE: This IPv6 does not respond to ICMPv6 packets."
+        ::= { esWebAuthObjects 4 }
+
+    esWebAuthVirtualUrl    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the FQDN URL for the virtual IP address.
+    
+            The defined URL only takes effect when the virtual IP address is 
+            configured. The user gets the FQDN URL stored on the DNS server 
+            to get the virtual IP address. The obtained IP address must match 
+            the virtual IP address."
+        ::= { esWebAuthObjects 5 }
+
+    esWebAuthNotifyEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION   
+            "Set to 'true' to enable global SNMP notification for MAC 
+            authentication feature.  
+            Setting the object to 'false' will disable SNMP notifications."            
+        ::= { esWebAuthObjects 6}
+
+-- -----------------------------------------------------------------------------
+    esWebAuthPageElement OBJECT-IDENTITY
+        STATUS          current
+        DESCRIPTION
+            "This object identifier represents the objects customizing the 
+            Web-Authentication page elements."
+        ::= { esWebAuthObjects 7 }
+
+    esWebAuthPageTitle    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the title of the WEB authentication page."
+        ::= { esWebAuthPageElement 1 }
+
+    esWebAuthPageLoginWindowTitle    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the title of the WEB authentication login
+            window."
+        ::= { esWebAuthPageElement 2 }
+
+    esWebAuthPageUserName    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the user name title of WEB authentication
+            login window."
+        ::= { esWebAuthPageElement 3 }
+
+    esWebAuthPagePassWord    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the password title of WEB authentication
+            login window."
+        ::= { esWebAuthPageElement 4 }
+
+    esWebAuthPageLogoutWindowTitle    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the title of the WEB authentication logout
+            window."
+        ::= { esWebAuthPageElement 5 }
+
+    esWebAuthPageCopyrightLine1    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the first line of the copyright information  
+            in WEB authentication pages."
+        ::= { esWebAuthPageElement 6 }
+
+    esWebAuthPageCopyrightLine2    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the second line of the copyright information  
+            in WEB authentication pages."
+        ::= { esWebAuthPageElement 7 }
+
+    esWebAuthPageCopyrightLine3    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the third line of the copyright information  
+            in WEB authentication pages."
+        ::= { esWebAuthPageElement 8 }
+
+    esWebAuthPageCopyrightLine4    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the fourth line of copyright information  
+            in WEB authentication pages."
+        ::= { esWebAuthPageElement 9 }
+
+    esWebAuthPageCopyrightLine5    OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the fifth line of copyright information  
+            in WEB authentication pages."
+        ::= { esWebAuthPageElement 10 }
+
+-- -----------------------------------------------------------------------------
+    esWebAuthIfCfgTable    OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DWebAuthIfCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION            
+            "This table consists of a list of interface-specific 
+            Web-Authentication information entries."
+        ::= { esWebAuthObjects 8 }
+
+    esWebAuthIfCfgEntry    OBJECT-TYPE
+        SYNTAX          DWebAuthIfCfgEntry
+        MAX-ACCESS      not-accessible       
+        STATUS          current
+        DESCRIPTION            
+            "An entry indicates the setting of Web-Authentication on an
+            interface."
+        INDEX  { ifIndex }
+        ::= { esWebAuthIfCfgTable 1 }
+
+    DWebAuthIfCfgEntry ::= SEQUENCE     {
+        esWebAuthIfEnabled    TruthValue
+    }
+
+    esWebAuthIfEnabled    OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the Web-Authentication state on the interface.               
+            'truth'  - The Web-Authentication is enabled.                   
+            'false'  - The Web-Authentication is disabled."             
+        ::= { esWebAuthIfCfgEntry 1 }
+
+-- -----------------------------------------------------------------------------
+-- MIB Notifications statements
+-- -----------------------------------------------------------------------------
+    esWebAuthLoggedSuccess    NOTIFICATION-TYPE
+        OBJECTS   {
+            ifIndex,
+            esnaSessionAuthVlan,
+            esnaSessionClientMacAddress,
+            esnaSessionClientAddrType,
+            esnaSessionClientAddress,
+            esnaSessionAuthUserName
+        }
+        STATUS    current
+        DESCRIPTION
+            "The trap is sent when a host has successfully logged in(passed
+            Web-Authentication)."
+        ::= { esWebAuthNotifications 1 }
+
+    esWebAuthLoggedFail    NOTIFICATION-TYPE
+        OBJECTS   {
+            ifIndex,
+            esnaSessionAuthVlan,
+            esnaSessionClientMacAddress,
+            esnaSessionClientAddrType,
+            esnaSessionClientAddress,
+            esnaSessionAuthUserName
+        }
+        STATUS    current
+        DESCRIPTION
+            "The trap is sent when a host has  failed to pass Web-Authentication
+            (login failed)."
+        ::= { esWebAuthNotifications 2 }
+
+-- -----------------------------------------------------------------------------
+-- MIB Conformance statements
+-- -----------------------------------------------------------------------------
+    esWebAuthMIBCompliances  OBJECT IDENTIFIER
+        ::= { esWebAuthConformance 1 }
+
+    esWebAuthMIBGroups  OBJECT IDENTIFIER
+        ::= { esWebAuthConformance 2 } 
+    
+    esWebAuthMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+            DLINKES-WEB-AUTH-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS    {   
+            esWebAuthCfgGroup,
+            esWebAuthIfCfgGroup
+        }                              
+        ::= { esWebAuthMIBCompliances 1 }
+-- -----------------------------------------------------------------------------        
+    esWebAuthCfgGroup OBJECT-GROUP
+        OBJECTS         { 
+            esWebAuthSysEnabled,
+            esWebAuthRedirectPath,
+            esWebAuthVirtualIp,
+            esWebAuthVirtualIpv6,
+            esWebAuthVirtualUrl,
+            esWebAuthNotifyEnabled,
+            esWebAuthPageTitle,
+            esWebAuthPageLoginWindowTitle,
+            esWebAuthPageUserName,
+            esWebAuthPagePassWord,
+            esWebAuthPageLogoutWindowTitle,
+            esWebAuthPageCopyrightLine1,
+            esWebAuthPageCopyrightLine2,
+            esWebAuthPageCopyrightLine3,
+            esWebAuthPageCopyrightLine4,
+            esWebAuthPageCopyrightLine5
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing management of the
+            Web-Authentication feature."
+        ::= { esWebAuthMIBGroups 1 }
+
+    esWebAuthIfCfgGroup OBJECT-GROUP
+        OBJECTS 
+        { 
+            esWebAuthIfEnabled
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing the management of Web-Authentication
+            on a per-interface basis."
+        ::= { esWebAuthMIBGroups 2 }
+
+    esWebAuthNotificationGroup    NOTIFICATION-GROUP
+        NOTIFICATIONS   { 
+            esWebAuthLoggedSuccess,
+            esWebAuthLoggedFail
+        }
+        STATUS    current
+        DESCRIPTION
+           "The collection of notifications used for monitoring the hosts under the 
+           control of Web-Authentication."
+        ::= { esWebAuthMIBGroups 3}
+END

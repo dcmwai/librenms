@@ -1,0 +1,358 @@
+-- *****************************************************************
+-- DLINKES-RIPNG-MIB.mib : D-Link RIPng MIB
+--
+-- Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-RIPNG-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, Integer32, Unsigned32
+                                            FROM SNMPv2-SMI
+        DisplayString,
+        TruthValue, RowStatus               FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP     FROM SNMPv2-CONF
+        InterfaceIndex                      FROM IF-MIB
+        dlinkCommon                         FROM DLINK-ID-REC-MIB;
+
+    dlinkEsRipngMIB MODULE-IDENTITY
+        LAST-UPDATED "201709200000Z"
+        ORGANIZATION    "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+                "The Structure of RIP Information for the
+                 proprietary enterprise."
+
+        REVISION         "201709200000Z"
+        DESCRIPTION
+            "Remove unsupported 'esRipngIfBfdState', 'esRipngIfDefInfoOrigin',
+             'esRipngIfDefInfoOriginMetric' and related groups."
+
+        REVISION         "201701040000Z"
+        DESCRIPTION
+            "Change OID from dlinkIndustrialCommon to dlinkCommon.
+             Change Object Name from dlinkSwXXXX to dlinkEsXXXXX"
+
+        REVISION        "201512070000Z"
+        DESCRIPTION
+            "Add new object 'esRipngIfBfdState' in table 'ESRipngIfEntry'."
+
+        REVISION        "201507020000Z"
+        DESCRIPTION
+            "Add passvive interface function."
+
+        REVISION        "201503160000Z"
+        DESCRIPTION
+            "Add a new 'isis' value for object esRipngRedistProtocol."
+
+        REVISION        "201408050000Z"
+        DESCRIPTION
+            "Modify RowStatus objects to 99. Modify the syntax of esRipngIfDefInfoOrigin.
+            Modify the description of esRipngPoisonReverseEnabled.
+            Remove objects not supported."
+
+        REVISION        "201304240000Z"
+        DESCRIPTION
+            "Initial revision of this MIB module."
+
+        ::= { dlinkCommon 121 }
+
+-- -----------------------------------------------------------------------------
+    esRipngMIBNotifications         OBJECT IDENTIFIER ::= { dlinkEsRipngMIB 0 }
+    esRipngMIBObjects               OBJECT IDENTIFIER ::= { dlinkEsRipngMIB 1 }
+    esRipngMIBConformance           OBJECT IDENTIFIER ::= { dlinkEsRipngMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esRipngGlobalCtrl              OBJECT IDENTIFIER ::= { esRipngMIBObjects 1 }
+
+    esRipngGlobalEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates whether the global RIPng is enabled."
+        ::= { esRipngGlobalCtrl 1 }
+
+    esRipngDefMetric OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "Set the value used as the default metric for routes redistributed to RIPng."
+        ::= { esRipngGlobalCtrl 2 }
+
+    esRipngPoisonReverseEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates whether the poison reverse mechanism is enabled."
+        ::= { esRipngGlobalCtrl 3 }
+
+    esRipngSplitHorizonEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates whether the split horizon mechanism is enabled."
+        ::= { esRipngGlobalCtrl 4 }
+
+    esRipngUpdateTimer OBJECT-TYPE
+        SYNTAX          Integer32 (5..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the update interval in seconds at which the
+            update message is sent."
+        DEFVAL { 30 }
+        ::= { esRipngGlobalCtrl 5 }
+
+    esRipngInvalidTimer OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the interval of time in seconds after which a
+            route is declared invalid."
+        DEFVAL { 180 }
+        ::= { esRipngGlobalCtrl 6 }
+
+    esRipngFlushTimer OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the amount of time in seconds that must pass
+            before the route is removed from the garbage list."
+        DEFVAL { 240 }
+        ::= { esRipngGlobalCtrl 7 }
+
+    esRipngPassiveIfDefault OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the default passive state for the interfaces
+           on which the passive state is not explicitly configured.
+           When this object is true(1), the default passive state is enabled.
+           When false(2), the default passive state is disabled."
+        ::= { esRipngGlobalCtrl 8 }
+
+-- -----------------------------------------------------------------------------
+    esRipngIfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF ESRipngIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of subnets which require separate
+            configuration in RIPng."
+        ::= { esRipngMIBObjects 2 }
+
+    esRipngIfEntry OBJECT-TYPE
+        SYNTAX       ESRipngIfEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+            "An entry in the esRipngIfTable containing the operational
+             characteristics of RIPng interface."
+        INDEX    { esRipngIfIndex }
+        ::= { esRipngIfTable 1 }
+
+    ESRipngIfEntry ::= SEQUENCE {
+        esRipngIfIndex                     InterfaceIndex,
+        esRipngIfEnabled                   TruthValue,
+        esRipngIfMetricOffset              Unsigned32,
+        esRipngIfPassiveMode               INTEGER
+    }
+
+    esRipngIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The ifIndex value of the RIPng interface."
+        ::= { esRipngIfEntry 1 }
+
+    esRipngIfEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the RIPng state on the interface is
+            enabled."
+        DEFVAL { false }
+        ::= { esRipngIfEntry 2 }
+
+    esRipngIfMetricOffset OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..16)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the value to be added to the metric of an
+            IPv6 RIP route received."
+        DEFVAL { 1 }
+        ::= { esRipngIfEntry 3 }
+
+    esRipngIfPassiveMode OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            followGlobal(0),
+            disabled(1),
+            enabled(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the RIPng passive state on the interface.
+            The value of 'followGlobal' indicates the passive state is not explicitly
+            specified on the interface, and global default passive state is followed.
+            "
+        ::= { esRipngIfEntry 4 }
+
+-- -----------------------------------------------------------------------------
+    esRipngRedistributeTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF ESRipngRedistributeEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table provides mechanism to configure redistribute routes from
+            other routing domain into RIPng."
+        ::= { esRipngMIBObjects 4 }
+
+    esRipngRedistributeEntry OBJECT-TYPE
+        SYNTAX          ESRipngRedistributeEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry in the dngRipRedistributeTable containing the operational
+             characteristics of RIPng redistribution."
+        INDEX    {
+            esRipngRedistProtocol
+        }
+        ::= { esRipngRedistributeTable 1 }
+
+    ESRipngRedistributeEntry ::= SEQUENCE {
+        esRipngRedistProtocol           INTEGER,
+        esRipngRedistMetric             Unsigned32,
+        esRipngRedistRouteMap           DisplayString,
+        esRipngRedistRowStatus          RowStatus
+    }
+
+    esRipngRedistProtocol OBJECT-TYPE
+        SYNTAX          INTEGER {
+            connected(1),
+            static(2),
+            ospfv3(3)
+        }
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the source routing protocol to be imported
+            into RIPng."
+        ::= { esRipngRedistributeEntry 1 }
+
+    esRipngRedistMetric OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..16)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the value to be used as the metric for the redistributed
+            routes."
+        ::= { esRipngRedistributeEntry 2 }
+
+    esRipngRedistRouteMap OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the route map that is used
+            to filter the routes to be redistributed to the RIPng.
+            A zero length string indiates that the route map is not specified and
+            all routes are redistributed."
+        ::= { esRipngRedistributeEntry 3 }
+
+    esRipngRedistRowStatus OBJECT-TYPE
+         SYNTAX       RowStatus
+         MAX-ACCESS   read-create
+         STATUS       current
+         DESCRIPTION
+            "This object indicates the status of this entry.
+            Only createAndGo(4) and destroy(6) can be set."
+         ::= { esRipngRedistributeEntry 99 }
+
+
+    -- Conformance Information
+
+    esRipngMIBGroups      OBJECT IDENTIFIER ::= { esRipngMIBConformance 1 }
+    esRipngMIBCompliances OBJECT IDENTIFIER ::= { esRipngMIBConformance 2 }
+
+    -- Compliance Statements
+
+    esRipngMIBFullCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION     "The compliance statement for entities which implement the
+                        DLINKES-RIPNG-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS {
+            esRipngGlobalGroup,
+            esRipngIfGroup,
+            esRipngRedistributeGroup
+        }
+
+        ::= { esRipngMIBCompliances 1 }
+
+    -- units of conformance
+
+    esRipngGlobalGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipngGlobalEnabled,
+            esRipngDefMetric,
+            esRipngPoisonReverseEnabled,
+            esRipngSplitHorizonEnabled,
+            esRipngUpdateTimer,
+            esRipngInvalidTimer,
+            esRipngFlushTimer,
+            esRipngPassiveIfDefault
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects are used to control RIPng global configurations."
+        ::= { esRipngMIBGroups 1 }
+
+    esRipngIfGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipngIfEnabled,
+            esRipngIfMetricOffset,
+            esRipngIfPassiveMode
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects are used for managing/monitoring
+            the RIPng interface."
+        ::= { esRipngMIBGroups 2 }
+
+
+
+    esRipngRedistributeGroup OBJECT-GROUP
+        OBJECTS         {
+            esRipngRedistMetric,
+            esRipngRedistRowStatus
+        }
+        STATUS          current
+        DESCRIPTION
+            "These objects are used for managing/monitoring
+            the RIPng route redistribution."
+        ::= { esRipngMIBGroups 3 }
+
+
+END

@@ -1,0 +1,547 @@
+--  *****************************************************************
+--  DLINKES-PORT-SECURITY-MIB.mib : Port Security MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+DLINKES-PORT-SECURITY-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        NOTIFICATION-TYPE,
+        Unsigned32,
+        Integer32,
+        Counter64
+            							FROM SNMPv2-SMI    
+        TruthValue,        
+        MacAddress,
+        RowStatus
+            							FROM SNMPv2-TC
+        MODULE-COMPLIANCE, 
+        OBJECT-GROUP, NOTIFICATION-GROUP
+            							FROM SNMPv2-CONF
+        ifIndex, InterfaceIndex
+            							FROM IF-MIB
+        VlanId,
+        VlanIdOrNone
+            							FROM Q-BRIDGE-MIB
+        dlinkCommon
+            							FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsPortSecurityMIB MODULE-IDENTITY
+        LAST-UPDATED "201307300000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for port security."
+               
+        REVISION "201307300000Z"
+        DESCRIPTION 
+            " This is the first version of the MIB file for 'port
+            security' functionality.
+            "
+        ::= { dlinkCommon 8 }
+
+-- -----------------------------------------------------------------------------
+    esPortSecNotifications    OBJECT IDENTIFIER ::= { dlinkEsPortSecurityMIB 0 }
+    esPortSecObjects          OBJECT IDENTIFIER ::= { dlinkEsPortSecurityMIB 1 }
+    esPortSecConformance      OBJECT IDENTIFIER ::= { dlinkEsPortSecurityMIB 2 }
+
+-- -----------------------------------------------------------------------------
+-- esPortSecObjects
+-- -----------------------------------------------------------------------------   
+    esPortSecGlobalNotifControl  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION   
+            "Set to 'true' to enable global SNMP Notification
+            for port security feature.  Setting the object to
+            'false' will disable SNMP notifications."
+        DEFVAL      { false }              
+        ::= { esPortSecObjects 1}
+        
+    esPortSecGlobalNotifRate OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..1000)
+        UNITS           "notifications per second"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION   
+            "Expressed in the number of notifications can be generated 
+            per second.
+            The global control configures the rate-limit of
+            SNMP Notification for port security feature. This object 
+            specifies the rate at which SNMP Notification is generated 
+            when esPortSecIfViolationCount increases. When the rate is over
+            the configured rate, the SNMP Notification is suppressed but it 
+            does not affect esPortSecIfViolationCount.
+            A value of 0 indicates that an SNMP Notification is generated
+            for every security violation."        
+        DEFVAL      { 0 }              
+        ::= { esPortSecObjects 2 }
+    
+    esPortSecNotifyInfo  OBJECT IDENTIFIER ::= { esPortSecObjects 3 }
+
+    esPortSecIfViolationMacAddress OBJECT-TYPE
+        SYNTAX        MacAddress
+        MAX-ACCESS    accessible-for-notify
+        STATUS        current
+        DESCRIPTION   
+            "This object is also used as a variable in the esPortSecMacAddrViolation 
+             notification to contain the value of the MAC address which caused the violation."
+        ::= { esPortSecNotifyInfo 1 } 
+
+    esPortSecGlobalMaximumNum OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION 
+            "Indicates the system maximum addresses number (users) allowed. 
+             A value of -1 means no-limit. The max entry range is (1..N). 
+            The value N means the max number and  is determined by the project itself."   
+        DEFVAL      { -1 }
+        ::= { esPortSecObjects 4}
+
+    esPortSecVlanTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsPortSecVlanEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION 
+            "The table is used to configure and display port security settings 
+            and status for a particular VLAN."
+        ::= { esPortSecObjects 5}
+
+    esPortSecVlanEntry OBJECT-TYPE
+        SYNTAX          EsPortSecVlanEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION 
+            "An entry contains port security information for a particular 
+            VLAN."
+         INDEX   { esPortSecVlanID }
+        ::= { esPortSecVlanTable 1}
+
+    EsPortSecVlanEntry ::= SEQUENCE { 
+        esPortSecVlanID             VlanId,
+        esPortSecVlanMaximumNum         Integer32,
+        esPortSecVlanCurrentNum     Unsigned32                
+    }
+
+    esPortSecVlanID OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION 
+            "This object specifies the VLAN ID for address learning."
+        ::= { esPortSecVlanEntry 1}
+
+    esPortSecVlanMaximumNum OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION 
+            "Indicates the VLAN maximum addresses number (users) allowed. 
+            A value of -1 means no-limit. The range is (1..N). 
+            The value N means the upper limit and is determined by the project
+            itself."   
+        DEFVAL      { -1 }
+        ::= { esPortSecVlanEntry 2}
+
+    esPortSecVlanCurrentNum OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION 
+            "Indicates the current number of secure MAC addresses on this VLAN."
+        ::= { esPortSecVlanEntry 3}
+         
+    esPortSecIfTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsPortSecIfEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The table is used to configure and display port security settings 
+            and status for a particular interface."
+        ::= { esPortSecObjects 6 }
+
+    esPortSecIfEntry OBJECT-TYPE
+        SYNTAX      EsPortSecIfEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION            
+            "Entry containing port security information for a particular 
+            interface."
+        INDEX   { ifIndex }
+        ::= { esPortSecIfTable 1 }
+
+    EsPortSecIfEntry ::= SEQUENCE {       
+        esPortSecIfEnable            TruthValue,
+        esPortSecIfCurrentStatus     INTEGER,
+        esPortSecIfMaximumNum         Unsigned32,
+        esPortSecIfViolationAction   INTEGER,
+        esPortSecIfSecureMode        INTEGER,
+        esPortSecIfAgingTime         INTEGER,
+        esPortSecIfAgingType         INTEGER,
+        esPortSecIfClearDynamicAddr  INTEGER,
+        esPortSecIfCurrentNum         Unsigned32,
+        esPortSecIfViolationCount    Counter64           
+    }
+   
+    esPortSecIfEnable OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Uses the object to enable or disable port security."
+        DEFVAL      { false }
+        ::= { esPortSecIfEntry 1 }
+
+    esPortSecIfCurrentStatus OBJECT-TYPE
+        SYNTAX          INTEGER { notEnabled(1), forwarding(2), errDisabled(3) }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION     
+            "This object represents the operational status
+            of the port security feature on an interface.
+
+            notEnabled(1) - This indicates port security
+                            is not enabled.
+            forwarding(2) - This indicates port security is
+                            operational. 
+            errDisabled(3) - This indicates that the port is
+                             shutdown due to port security
+                             violation when the object
+                             esPortSecIfViolationAction is of type
+                             'shutdown'."                                      
+        ::= { esPortSecIfEntry 2 }
+        
+    esPortSecIfMaximumNum OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION 
+            "This object sets the maximum number of secure MAC addresses
+            (users) allowed."
+        DEFVAL      { 32 }
+        ::= { esPortSecIfEntry 3 }
+    
+    esPortSecIfViolationAction OBJECT-TYPE
+        SYNTAX      INTEGER { protect(1), restrict(2), shutdown(3) }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object sets the action to be taken when a security violation is detected.
+
+            protect(1) -  Drops all the packets from the insecure hosts at the 
+                          port-security process level but does not increment 
+                          the security-violation count.
+            restrict(2) - Drops all packets from the insecure hosts at the 
+                          port-security process level and increments the 
+                          security-violation count.
+            shutdown(3) - Shuts down the port if there is a security violation."
+        DEFVAL      { shutdown }
+        ::= { esPortSecIfEntry 4 }
+
+    esPortSecIfSecureMode OBJECT-TYPE
+        SYNTAX      INTEGER { 
+            permanent(1), 
+            deleteOnTimeout(2) 
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Use the object to set the port security mode.             
+
+             permanent(1) - Under this mode all learned MAC addresses won't be
+                            purged unless a user deletes these entries manually.
+             deleteOnTimeout(2) - Under this mode all learned MAC addresses 
+                            will be purged when an entry ages out or a user deletes
+                            these entries manually."
+        DEFVAL      { deleteOnTimeout }
+        ::= { esPortSecIfEntry 5 }
+
+    esPortSecIfAgingTime OBJECT-TYPE
+        SYNTAX      INTEGER(0..1440)
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Use the object to set aging time for auto-learned dynamic secured address.             
+             When 0 is set on the specified interface, it means the port security aging 
+             has been disabled."
+        DEFVAL      { 0 }
+        ::= { esPortSecIfEntry 6 }
+        
+    esPortSecIfAgingType OBJECT-TYPE
+        SYNTAX      INTEGER { 
+            absolute(1), 
+            inactivity(2) 
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "Use the object to set aging type for auto-learned dynamic secured address.             
+
+             absolute(1) - Under this aging type, all the secured address on this interface will
+                            age out exactly after the time specified.
+             inactivity(2) - Under this aging type, all learned MAC addresses on this interface 
+                             will age out only if there is no data traffic from the secure source 
+                             address for the specified time period."
+        DEFVAL      { absolute }
+        ::= { esPortSecIfEntry 7 }
+        
+    esPortSecIfClearDynamicAddr OBJECT-TYPE
+        SYNTAX      INTEGER {   
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS current
+        DESCRIPTION
+           "Setting this object to 'clear' to clear the addresses which will be 
+            purged out when an entry is aged out on the corresponding 
+            interface.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        DEFVAL      { noOp }
+        ::= { esPortSecIfEntry 8 }
+
+    esPortSecIfCurrentNum OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Indicates the current number of secure MAC addresses
+            on this interface."
+        ::= { esPortSecIfEntry 9 }
+
+    esPortSecIfViolationCount OBJECT-TYPE
+        SYNTAX      Counter64
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Indicates the number of address violations
+            occurred on a secure interface. The counter will
+            be initialized to zero when the port security
+            feature is enabled on an interface." 
+        ::= { esPortSecIfEntry 10 }  
+-- -----------------------------------------------------------------------------
+    esPortSecAddrTableCurrentNum  OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the number of entries present in the esPortSecAddrTable."
+        ::= { esPortSecObjects 7 }
+
+    esPortSecAddrTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsPortSecAddrEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A list of port security entries containing the secure MAC address 
+            information."            
+        ::= { esPortSecObjects 8 }
+
+    esPortSecAddrEntry OBJECT-TYPE
+        SYNTAX      EsPortSecAddrEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION             
+              "An entry contains secure MAC address information for a particular 
+              interface. A secure MAC address can be added by the user
+              and can be added when the device learns a new secure MAC address."
+        INDEX   { esPortSecAddrIfIndex, esPortSecAddrVlanID, esPortSecAddrMacAddress }
+        ::= { esPortSecAddrTable 1 }
+
+    EsPortSecAddrEntry ::= SEQUENCE {
+        esPortSecAddrIfIndex      InterfaceIndex,
+        esPortSecAddrVlanID       VlanIdOrNone,
+        esPortSecAddrMacAddress   MacAddress,
+        esPortSecAddrSecureMode   INTEGER,
+        esPortSecAddrRemainTime   INTEGER,
+        esPortSecAddrRowStatus    RowStatus
+    }
+
+    esPortSecAddrIfIndex OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The ifIndex value of the interface."
+        ::= { esPortSecAddrEntry 1 }
+
+    esPortSecAddrVlanID OBJECT-TYPE
+        SYNTAX      VlanIdOrNone
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object specifies the VLAN ID where the user-defined secure
+            MAC address is located. If this object is set to 0 at row creation
+            time, the PVID (default port VLAN ID) will be used for the MAC
+            address."           
+        ::= { esPortSecAddrEntry 2 }
+
+    esPortSecAddrMacAddress OBJECT-TYPE
+        SYNTAX      MacAddress
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the secure MAC address to gain port access
+            rights."
+        ::= { esPortSecAddrEntry 3 }
+
+    esPortSecAddrSecureMode OBJECT-TYPE
+        SYNTAX      INTEGER { 
+            permanent(1), 
+            deleteOnTimeout(2)
+        }
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Specifies the secure mode.
+            For manually configured secure MAC addresses, the esPortSecAddrSecureMode is
+            permanent."
+        ::= { esPortSecAddrEntry 4 }
+    
+    esPortSecAddrRemainTime OBJECT-TYPE
+        SYNTAX      INTEGER
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "Specifies the remaining aging time for the auto-learned dynamic secured address."
+        ::= { esPortSecAddrEntry 5 }
+
+    esPortSecAddrRowStatus OBJECT-TYPE
+        SYNTAX  RowStatus
+        MAX-ACCESS  read-create
+        STATUS  current
+        DESCRIPTION
+            "The status of this conceptual row.
+            This object is used to create and delete instances 
+            of this table. In other words, besides 'permanent' secure MAC
+            address, a 'deleteOnTimeout' address can be cleared by 
+            this object."
+        ::= { esPortSecAddrEntry 99 }
+
+--  ***************************************************************************
+--  Notifications
+--  ***************************************************************************
+    
+    esPortSecMacAddrViolation NOTIFICATION-TYPE
+        OBJECTS  { 
+            ifIndex, 
+            esPortSecIfCurrentStatus, 
+            esPortSecIfViolationMacAddress 
+        }
+        STATUS  current
+        DESCRIPTION
+            "The address violation notification is generated when port security
+            address violation is detected (esPortSecIfViolationCount increases)."
+        ::= { esPortSecNotifications 1 }
+                 
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esPortSecMIBCompliances 
+        OBJECT IDENTIFIER ::= { esPortSecConformance 1 }
+    esPortSecMIBGroups
+        OBJECT IDENTIFIER ::= { esPortSecConformance 2 }
+
+    esPortSecMIBCompliance MODULE-COMPLIANCE
+        STATUS  current   
+        DESCRIPTION
+                "The compliance statement for the Port Security MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS { 
+            esPortSecIfCfgGroup,
+            esPortSecIfStatusGroup,   
+            esPortSecAddrGroup         
+        }
+        ::= { esPortSecMIBCompliances 1 }
+        
+    esPortSecIfCfgGroup OBJECT-GROUP
+        OBJECTS {   
+            esPortSecIfEnable, 
+            esPortSecIfMaximumNum, 
+            esPortSecIfViolationAction, 
+            esPortSecIfSecureMode, 
+            esPortSecIfAgingTime,
+            esPortSecIfAgingType,
+            esPortSecIfClearDynamicAddr
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects for configuring port
+            security feature."
+        ::= { esPortSecMIBGroups 1 }
+
+    esPortSecIfStatusGroup OBJECT-GROUP
+        OBJECTS { 
+            esPortSecIfCurrentNum, 
+            esPortSecIfCurrentStatus,
+            esPortSecIfViolationCount
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing the counter
+            information for the port security feature."
+        ::= { esPortSecMIBGroups 2 }
+
+    esPortSecAddrGroup OBJECT-GROUP
+        OBJECTS {   
+            esPortSecAddrRowStatus, 
+            esPortSecAddrSecureMode, 
+            esPortSecAddrRemainTime,
+            esPortSecAddrTableCurrentNum            
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects providing the address
+            information for the port security feature."
+        ::= { esPortSecMIBGroups 3 }
+    
+    esPortSecAddrNumCtrlGroup OBJECT-GROUP
+		OBJECTS {   
+		    esPortSecGlobalMaximumNum, 
+		    esPortSecVlanMaximumNum, 
+		    esPortSecVlanCurrentNum 
+		}
+		STATUS current
+		DESCRIPTION 
+			"A collection of objects provides the configuration of
+            the maximum secure MAC address number on system or VLAN specific."
+			::= { esPortSecMIBGroups 4 }
+
+    esPortSecNotifEnableGroup OBJECT-GROUP        
+        OBJECTS {   
+            esPortSecGlobalNotifControl,
+            esPortSecGlobalNotifRate
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of object(s) that provides control over
+            port security related notification(s)."
+        ::= { esPortSecMIBGroups 5}
+    
+    esPortSecNotifGroup NOTIFICATION-GROUP
+        NOTIFICATIONS   { 
+            esPortSecMacAddrViolation
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of notifications providing information 
+            about address violation."
+        ::= { esPortSecMIBGroups 6}
+       
+
+ 
+END

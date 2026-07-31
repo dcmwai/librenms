@@ -1,0 +1,178 @@
+-- ***************************************************************************
+-- MIB NAME : PPPoE Common mib
+-- FILE NAME: PPPoEmgmt.mib
+-- DATE     : 2009/04/02
+-- VERSION  : 1.00
+-- PURPOSE  : To construct the MIB structure for PPPoE feature
+--            for proprietary enterprise
+-- ***************************************************************************
+-- MODIFICATION HISTORY:
+-- ***************************************************************************
+-- Version, Date, Author
+-- Description:
+--  [New Object]
+--  [Modification]
+-- Notes: (Requested by who and which project)
+--
+-- Version 1.00, 2009/04/02, Ronald
+-- This is the first formal version for universal MIB definition.
+-- ***************************************************************************
+
+DLINKES-PPPOE-MGMT-MIB DEFINITIONS ::= BEGIN
+  IMPORTS
+    MODULE-IDENTITY,OBJECT-TYPE,Integer32
+                                    FROM SNMPv2-SMI
+    MODULE-COMPLIANCE,OBJECT-GROUP
+		                            FROM SNMPv2-CONF
+    DisplayString                   FROM SNMPv2-TC
+    dlinkCommon                     FROM DLINK-ID-REC-MIB;
+
+    dlinkEsPPPoEMIB MODULE-IDENTITY
+      LAST-UPDATED "201708080000Z"
+          ORGANIZATION "D-Link Corp"
+          CONTACT-INFO
+               "http://support.dlink.com"
+          DESCRIPTION
+                "The structure of PPPoE management for the proprietary enterprise."
+
+          REVISION "201708080000Z"
+      DESCRIPTION
+          "change prefix word"
+          ::= {dlinkCommon 224}
+
+    esPPPoEMgmtNotifications    OBJECT IDENTIFIER ::= { dlinkEsPPPoEMIB 0 }
+    esPPPoEMgmtCtrl             OBJECT IDENTIFIER ::= { dlinkEsPPPoEMIB 1 }
+    esPPPoEMgmtConformance      OBJECT IDENTIFIER ::= { dlinkEsPPPoEMIB 2 }
+
+-- ********************************************************************
+--  esPPPoEMgmtCtrl               OBJECT IDENTIFIER ::= { esPPPoEMgmt 1 }
+-- ********************************************************************
+    esPPPoECirIDInsertState OBJECT-TYPE
+        SYNTAX  INTEGER {
+               enabled(1),
+               disabled(2)
+               }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the status of the PPPoE circuit ID
+            insertion state of the switch."
+        ::= { esPPPoEMgmtCtrl 1 }
+
+-- ***************************************************************************
+    esPPPoECirIDInsertPortMgmt       OBJECT IDENTIFIER ::= { esPPPoEMgmtCtrl 2 }
+
+    esPPPoECirIDInsertPortTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsPPPoECirIDInsertPortEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "The table specifies the PPPoE circuit ID insertion function
+             specified by the port."
+        ::= { esPPPoECirIDInsertPortMgmt 1 }
+
+    esPPPoECirIDInsertPortEntry OBJECT-TYPE
+        SYNTAX      EsPPPoECirIDInsertPortEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A list of information contained in esPPPoECirIDInsertPortTable."
+        INDEX  { esPPPoECirIDInsertPortIndex }
+        ::= { esPPPoECirIDInsertPortTable 1 }
+
+    EsPPPoECirIDInsertPortEntry ::=
+        SEQUENCE {
+            esPPPoECirIDInsertPortIndex         Integer32,
+            esPPPoECirIDInsertPortState         INTEGER,
+            esPPPoECirIDInsertPortCirID         INTEGER,
+            esPPPoECirIDInsertPortUDFString     DisplayString
+        }
+
+    esPPPoECirIDInsertPortIndex OBJECT-TYPE
+        SYNTAX      Integer32 (1..65535)
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the module's port number. The range is from 1 to
+             the maximum port number specified in the module"
+        ::= { esPPPoECirIDInsertPortEntry 1 }
+
+    esPPPoECirIDInsertPortState OBJECT-TYPE
+        SYNTAX      INTEGER {
+                       enabled(1),
+                       disabled(2)
+                    }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the PPPoE circuit ID insertion function state
+             on the port."
+        ::= { esPPPoECirIDInsertPortEntry 2 }
+
+    esPPPoECirIDInsertPortCirID OBJECT-TYPE
+        SYNTAX      INTEGER {
+                       switchIp(1),
+                       switchMac(2),
+                       udfString(3)
+                    }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the port circuit ID."
+        ::= { esPPPoECirIDInsertPortEntry 3 }
+
+    esPPPoECirIDInsertPortUDFString OBJECT-TYPE
+        SYNTAX      DisplayString
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the user define string when the circuit ID is
+             UDF string."
+        ::= { esPPPoECirIDInsertPortEntry 4 }
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+	esPPPoEMgmtCompliances      OBJECT IDENTIFIER ::= { esPPPoEMgmtConformance 1 }
+	esPPPoEMgmtGroups           OBJECT IDENTIFIER ::= { esPPPoEMgmtConformance 2 }
+
+	esPPPoEMgmtCompliance MODULE-COMPLIANCE
+		STATUS current
+		DESCRIPTION
+			"The compliance statement for entities which implement the
+			 DLINKES-PPPOE-MGMT-MIB."
+		MODULE -- this module
+		MANDATORY-GROUPS {
+		    esPPPoEMgmtCtrlGroup
+		}
+
+		GROUP       esPPPoECirIDInsertPortMgmtGroup
+           DESCRIPTION
+              "This group is required only if the port cirID Insert feature
+              is implemented by the agent."
+
+		::= { esPPPoEMgmtCompliances 1 }
+
+	esPPPoEMgmtCtrlGroup OBJECT-GROUP
+		OBJECTS {
+			esPPPoECirIDInsertState
+		}
+		STATUS current
+		DESCRIPTION
+			"A collection of objects providing global configuration about
+			 PPPoE."
+		::= { esPPPoEMgmtGroups 1 }
+
+	esPPPoECirIDInsertPortMgmtGroup OBJECT-GROUP
+		OBJECTS {
+            esPPPoECirIDInsertPortState,
+            esPPPoECirIDInsertPortCirID,
+            esPPPoECirIDInsertPortUDFString
+		}
+		STATUS current
+		DESCRIPTION
+			"A collection of objects providing port cirID Insert configuration."
+		::= { esPPPoEMgmtGroups 2 }
+
+END
+

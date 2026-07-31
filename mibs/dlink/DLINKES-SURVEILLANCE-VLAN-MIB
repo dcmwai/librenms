@@ -1,0 +1,391 @@
+--  *****************************************************************
+--  DLINKES-SURVEILLANCE-VLAN-MIB.mib : Surveillance VLAN MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-SURVEILLANCE-VLAN-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,OBJECT-TYPE,Unsigned32
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        MacAddress, TruthValue, RowStatus, DateAndTime, TEXTUAL-CONVENTION
+            FROM SNMPv2-TC
+        PortList, VlanIdOrNone
+            FROM Q-BRIDGE-MIB
+        InterfaceIndex
+            FROM IF-MIB
+        SnmpAdminString
+            FROM SNMP-FRAMEWORK-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsSurveillanceVlanMIB MODULE-IDENTITY
+        LAST-UPDATED "201304080000Z"
+        ORGANIZATION "D-Link Corp."
+            CONTACT-INFO
+                "       D-Link Corporation
+
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:    +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+                "
+        DESCRIPTION
+            "The MIB module for managing surveillance VLAN feature."
+        REVISION    "201304080000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."
+        ::= { dlinkCommon 34 }
+
+    OuiComponentType ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "Represents an OUI component type.
+            Note: The component type 'dlink' indicates default OUI and is not
+            used for setting.
+            " 
+        SYNTAX       INTEGER {
+            other(1),
+            dlink(2),
+            vms(3),
+            vmsClient(4),
+            videoEncoder(5),
+            networkStorage(6)      
+        }
+
+-- -----------------------------------------------------------------------------
+-- Node definitions
+-- -----------------------------------------------------------------------------
+
+    essvMIBNotifications   OBJECT IDENTIFIER ::= { dlinkEsSurveillanceVlanMIB 0 }
+    essvMIBObjects         OBJECT IDENTIFIER ::= { dlinkEsSurveillanceVlanMIB 1 }
+    essvMIBConformance     OBJECT IDENTIFIER ::= { dlinkEsSurveillanceVlanMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    essvGlobal OBJECT IDENTIFIER ::= { essvMIBObjects 1 }
+
+    essvVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The object specifies the surveillance VLAN on a switch.
+            A value of zero indicates that no surveillance VLAN has been
+            configured.
+            It is required to configure the global essvVlanId and enable
+            essvIfEnabled to start the surveillance VLAN function
+            on a port."
+        DEFVAL  { 0 }
+        ::= { essvGlobal 1 }
+
+    essvQos OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The priority for the surveillance VLAN, which is used to distinguish
+            the QoS of the surveillance traffic from data traffic."
+        DEFVAL  { 5 }
+        ::= { essvGlobal 2 }
+
+    essvAgingTime OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        UNITS           "minutes"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "The aging time for the surveillance VLAN, for aging out the surveillance
+            device and the surveillance VLAN automatically learned member ports.
+            "
+        DEFVAL  { 720 }
+        ::= { essvGlobal 3 }
+
+-- -----------------------------------------------------------------------------
+    essvOuiTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EssvOuiEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of the surveillance VLAN OUI configuration."
+        ::= { essvGlobal 4 }
+
+    essvOuiEntry OBJECT-TYPE
+        SYNTAX          EssvOuiEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry indicates an OUI information, which is used to classify
+            surveillance traffic into the surveillance VLAN. If the source MAC addresses of
+            the received packet matches any of the OUI pattern, the received
+            packet is determined as surveillance packet. "
+        INDEX { 
+            essvOuiAddr, 
+            essvOuiMask
+        }
+        ::= { essvOuiTable 1 }
+
+    EssvOuiEntry ::=
+        SEQUENCE {
+            essvOuiAddr            MacAddress,
+            essvOuiMask            MacAddress,
+            essvOuiComponentType   OuiComponentType,
+            essvOuiDescription     SnmpAdminString,
+            essvOuiRowStatus       RowStatus
+        }
+
+    essvOuiAddr OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The MAC address of the OUI referring to this entry."
+        ::= { essvOuiEntry 1 }
+
+    essvOuiMask OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the OUI MAC address matching bitmask."
+        ::= { essvOuiEntry 2 }
+
+    essvOuiComponentType OBJECT-TYPE
+        SYNTAX          OuiComponentType
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The Component type of the OUI.
+             Note: The component type 'dlink' is not allowed to set."
+        ::= { essvOuiEntry 3 }
+
+    essvOuiDescription OBJECT-TYPE
+        SYNTAX          SnmpAdminString (SIZE (0..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The description of the OUI. A zero length string of this object indicates
+            there is no description for this OUI."
+        ::= { essvOuiEntry 4 }
+
+    essvOuiRowStatus   OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the status of this entry."
+        ::= { essvOuiEntry 5 }
+
+-- -----------------------------------------------------------------------------
+    essvInterface OBJECT IDENTIFIER ::= { essvMIBObjects 2 }
+
+    essvInterfaceTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EssvInterfaceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains the interface-specific surveillance VLAN parameters."
+        ::= { essvInterface 1 }
+
+    essvInterfaceEntry OBJECT-TYPE
+        SYNTAX          EssvInterfaceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry indicates the surveillance VLAN parameters for a port/port-channel."
+        INDEX { essvIfIndex }
+        ::= { essvInterfaceTable 1 }
+
+    EssvInterfaceEntry ::=
+    	SEQUENCE {
+            essvIfIndex		InterfaceIndex,
+            essvIfEnabled    TruthValue
+        }
+
+    essvIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the ifIndex of the physical port/port-channel interface."
+        ::= { essvInterfaceEntry 1 }
+
+    essvIfEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Indicates whether the surveillance VLAN is enabled at the port."
+        ::= { essvInterfaceEntry 2 }  
+        
+-- -----------------------------------------------------------------------------
+    essvInfo OBJECT IDENTIFIER ::= { essvMIBObjects 3 }
+
+    essvMemberPorts OBJECT-TYPE
+        SYNTAX          PortList
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The surveillance VLAN's member ports, includes the dynamically
+            learned ports."
+        ::= { essvInfo 1 }
+
+    essvDynamicPorts OBJECT-TYPE
+        SYNTAX          PortList
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The dynamically learned member ports of the surveillance VLAN."
+        ::= { essvInfo 2 }
+
+    essvDeviceTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EssvDeviceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains the information about the learned surveillance devices."
+        ::= { essvInfo 3 }
+
+    essvDeviceEntry OBJECT-TYPE
+        SYNTAX          EssvDeviceEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the information of the connected surveillance device."
+        INDEX {
+            essvDevicePortIfIdx,
+            essvDeviceAddr 
+        }
+        ::= { essvDeviceTable 1 }
+
+    EssvDeviceEntry ::=
+        SEQUENCE {
+            essvDevicePortIfIdx      InterfaceIndex,
+            essvDeviceAddr           MacAddress,
+            essvDeviceCompType       OuiComponentType,
+            essvDeviceDescr          SnmpAdminString,
+            essvDeviceStartTime      DateAndTime,
+            essvDeviceStatus         INTEGER
+        }
+
+    essvDevicePortIfIdx OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the ifIndex of the port to which the surveillance device connects."
+        ::= { essvDeviceEntry 1 }
+
+    essvDeviceAddr OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the MAC address of the surveillance device."
+        ::= { essvDeviceEntry 2 }            
+        
+    essvDeviceCompType OBJECT-TYPE
+        SYNTAX          OuiComponentType
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The component type of the surveillance device."
+        ::= { essvDeviceEntry 3 }
+
+    essvDeviceDescr OBJECT-TYPE
+        SYNTAX          SnmpAdminString (SIZE (0..32))
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The description of the surveillance device. A zero length string
+            of this object indicates there is no description for this OUI."
+        ::= { essvDeviceEntry 4 }
+
+     essvDeviceStartTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the start time of the connected surveillance device."
+        ::= { essvDeviceEntry 5 }
+
+    essvDeviceStatus OBJECT-TYPE
+        SYNTAX          INTEGER {
+            active(1),
+            aging(2)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the status of the connected surveillance device."
+        ::= { essvDeviceEntry 6 }
+
+-- -----------------------------------------------------------------------------
+-- MIB Conformance statements
+-- -----------------------------------------------------------------------------
+    essvMIBCompliances OBJECT IDENTIFIER
+        ::= { essvMIBConformance 1 }
+
+    essvMIBGroups  OBJECT IDENTIFIER
+        ::= { essvMIBConformance 2 }
+
+    essvMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-SURVEILLANCE-VLAN-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS    { essvBasicGroup }
+
+        GROUP essvOUICfgGroup
+        DESCRIPTION
+            "This group is required for entities that implement classifying
+            surveillance traffic based on OUI patterns." 
+            
+        GROUP essvDeviceInfoGroup
+        DESCRIPTION
+            "This group is required for entities that display surveillance
+             vlan device infomation."
+        ::= { essvMIBCompliances 1 }
+
+    essvBasicGroup OBJECT-GROUP
+        OBJECTS {
+            essvVlanId,
+            essvQos,
+            essvAgingTime,
+            essvIfEnabled,
+            essvMemberPorts,
+            essvDynamicPorts 
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects to configure or display the status
+            of surveillance VLAN feature."
+        ::= { essvMIBGroups 1 }
+
+    essvOUICfgGroup OBJECT-GROUP
+        OBJECTS {
+            essvOuiComponentType,
+            essvOuiDescription,
+            essvOuiRowStatus 
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects to configure surveillance device OUI(s)."
+        ::= { essvMIBGroups 2 }   
+        
+	essvDeviceInfoGroup OBJECT-GROUP
+        OBJECTS {
+            essvDeviceCompType,
+            essvDeviceDescr,
+            essvDeviceStartTime,
+            essvDeviceStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects to display surveillance device(s)."
+        ::= { essvMIBGroups 3 }
+END

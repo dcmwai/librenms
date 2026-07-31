@@ -1,0 +1,378 @@
+--  *****************************************************************
+--  DLINKES-FS-MIB.mib : File System MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- -----------------------------------------------------------------------------
+-- MODIFICTION HISTORY:
+-- -----------------------------------------------------------------------------
+-- Version 2.01, 2013/06/14, Eric Liu
+-- Description:
+--  [Modification]
+--  1. Change the DisplayString SIZE of esFsDriveInfoLabel
+--     from 32 to 11.
+--  *****************************************************************
+DLINKES-FS-MIB DEFINITIONS ::= BEGIN
+
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,        
+        Unsigned32
+                FROM SNMPv2-SMI
+        RowStatus, TruthValue, DisplayString, DateAndTime
+                FROM SNMPv2-TC
+        OBJECT-GROUP, MODULE-COMPLIANCE
+            FROM SNMPv2-CONF              
+        dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+       
+
+    dlinkEsFsMIB MODULE-IDENTITY
+        LAST-UPDATED "201304170000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for File System (FS)."
+        REVISION "201304170000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file."
+    ::= { dlinkCommon 18 }
+
+-- -----------------------------------------------------------------------------
+    esFsNotifications    OBJECT IDENTIFIER ::= { dlinkEsFsMIB 0 }
+    esFsObjects          OBJECT IDENTIFIER ::= { dlinkEsFsMIB 1 }
+    esFsConformance      OBJECT IDENTIFIER ::= { dlinkEsFsMIB 2 }
+    
+-- -----------------------------------------------------------------------------
+    esFsBasicInfoCtrlStatus OBJECT-TYPE
+		SYNTAX	        DisplayString
+		MAX-ACCESS      read-only
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the result for file operation, e.g. deleting
+            files, making directories, deleting directories and renaming files. 
+            "
+        ::= { esFsObjects 1 }
+
+-- -----------------------------------------------------------------------------
+    esFsBasicOperation          OBJECT IDENTIFIER ::= { esFsObjects 2 }
+
+    esFsCurrentDirUrl        OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE (0..799))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the URL of current directory.           
+            "
+        ::= { esFsBasicOperation 1 }    
+
+    esFsCurrentDirectoryTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsFsCurrentDirectoryEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of directories or files in 
+            the current directory. 
+            This table takes the advantage of RowStatus textual convention to
+            delete a file or add/delete a directory (mkdir/rmdir)."
+        ::= { esFsBasicOperation 2 }
+
+    esFsCurrentDirectoryEntry OBJECT-TYPE
+        SYNTAX          EsFsCurrentDirectoryEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry indicates the information for a file or directory
+            at current directory."
+        INDEX    { 
+            esFsCurrentDirItemName
+            }
+        ::= { esFsCurrentDirectoryTable 1 }
+
+    EsFsCurrentDirectoryEntry ::=         SEQUENCE {                    
+       esFsCurrentDirItemName             DisplayString,           
+       esFsCurrentDirItemMode             BITS,
+       esFsCurrentDirItemSize             Unsigned32,
+       esFsCurrentDirItemTime             DateAndTime,
+       esFsCurrentDirItemRawStatus        RowStatus
+    }
+        
+    esFsCurrentDirItemName        OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of file or directory."
+        ::= { esFsCurrentDirectoryEntry 1 }
+    
+    esFsCurrentDirItemMode  OBJECT-TYPE
+        SYNTAX          BITS { 
+            directory(0),
+            readable(1),
+            writeable(2)
+        } 
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+        "This object indicates the mode of the entry.       
+        " 
+    ::= { esFsCurrentDirectoryEntry 2 }
+                
+    esFsCurrentDirItemSize        OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "bytes"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the file size (in bytes).
+            If the entry is a directory, the value is 0.
+            "
+        ::= { esFsCurrentDirectoryEntry 3 }
+        
+    esFsCurrentDirItemTime        OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the time of creation or modification of
+            this file or directory."
+        ::= { esFsCurrentDirectoryEntry 4 }
+        
+    esFsCurrentDirItemRawStatus        OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this conceptual row."
+        ::= { esFsCurrentDirectoryEntry 5 }
+        
+-- -----------------------------------------------------------------------------
+    esFsFileRenameCtrl	OBJECT IDENTIFIER ::= { esFsBasicOperation 3 }
+
+	esFsFileRenameSourceUrl	OBJECT-TYPE
+		SYNTAX          OCTET STRING (SIZE (0..799))
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION	
+          "This object indicates the URL for the file to be renamed."
+		::= { esFsFileRenameCtrl 1 }
+
+	esFsFileRenameTargetUrl	OBJECT-TYPE
+		SYNTAX          OCTET STRING (SIZE (0..799))
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION	
+            "This object indicates the URL after file renaming."
+		::= { esFsFileRenameCtrl 2 }
+
+	esFsFileRenameActivity	OBJECT-TYPE
+		SYNTAX INTEGER  {
+			rename(1),
+			noOp(2)
+        }
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION			
+            "This object renames the file indicated by esFsFileRenameSourceUrl, 
+            when set to 'rename'. 
+            The object esFsBasicInfoCtrlStatus indicates the processing result.            
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+		::= { esFsFileRenameCtrl 3 }
+
+-- -----------------------------------------------------------------------------        
+    esFsDriveCtrl          OBJECT IDENTIFIER ::= { esFsObjects 3 }
+    
+    esFsDriveInfoTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsFsDriveInfoEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list the information of the storage media
+            available on the system."
+        ::= { esFsDriveCtrl 1 }
+
+    esFsDriveInfoEntry OBJECT-TYPE
+        SYNTAX          EsFsDriveInfoEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The entry indicates the information for a drive."
+        INDEX    { 
+            esFsDriveInfoUnitID, 
+            esFsDriveInfoDriveID
+        }
+        ::= { esFsDriveInfoTable 1 }
+
+    EsFsDriveInfoEntry ::=         SEQUENCE {
+        esFsDriveInfoUnitID           Unsigned32,
+        esFsDriveInfoDriveID          INTEGER,
+        esFsDriveInfoMediaType        DisplayString,
+        esFsDriveInfoSize             Unsigned32,
+        esFsDriveInfoFsType           INTEGER,
+        esFsDriveInfoLabel            DisplayString,
+        esFsDriveInfoFormatDrive      INTEGER
+    }          
+     
+    esFsDriveInfoUnitID      OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the unit (stacking device) or slot (chassis
+            device) ID.
+            "
+        ::= { esFsDriveInfoEntry 1 }
+        
+    esFsDriveInfoDriveID      OBJECT-TYPE
+        SYNTAX  INTEGER {
+            a(1),
+            b(2),
+            c(3),
+            d(4),
+            e(5),
+            f(6),
+            g(7),
+            h(8),
+            i(9),
+            j(10),
+            k(11),
+            l(12),
+            m(13),
+            n(14),
+            o(15),
+            p(16),
+            q(17),
+            r(18),
+            s(19),
+            t(20),
+            u(21),
+            v(22),
+            w(23),
+            x(24),
+            y(25),
+            z(26)
+        }
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the drive ID of the entry."
+        ::= { esFsDriveInfoEntry 2 }
+        
+    esFsDriveInfoMediaType        OBJECT-TYPE
+        SYNTAX          DisplayString 
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the media type of drive."
+        ::= { esFsDriveInfoEntry 3 }
+        
+    esFsDriveInfoSize        OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "Mbytes"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the total size (in MBytes) of the drive."
+        ::= { esFsDriveInfoEntry 4 }
+
+    esFsDriveInfoFsType        OBJECT-TYPE
+        SYNTAX      INTEGER {
+            other(0),
+            ffs(1),
+            fat16(2),
+            fat32(3)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the FS type on the drive.
+            The special value of 'other' indicates this drive has not be formated.
+            "
+        ::= { esFsDriveInfoEntry 5 }
+        
+    esFsDriveInfoLabel        OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..11))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Indicates the label of drive.
+            This object cannot be modified after a drive is formated.
+            "
+        ::= { esFsDriveInfoEntry 6 }
+        
+    esFsDriveInfoFormatDrive        OBJECT-TYPE
+        SYNTAX      INTEGER {
+            format(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object formats the drive of the entry. 
+           The object esFsBasicInfoCtrlStatus indicates the processing result.                     
+           No action is taken if this object is set to 'noOp'.
+           When read, the value 'noOp' is returned.                         
+           "
+        ::= { esFsDriveInfoEntry 7 }
+        
+    
+-- -----------------------------------------------------------------------------
+-- Conformance
+-- -----------------------------------------------------------------------------   
+    esFsCompliances      OBJECT IDENTIFIER ::= { esFsConformance 1 }
+
+    esFsGroups       OBJECT IDENTIFIER ::= { esFsConformance 2 }        
+       
+       
+   esFsMIBCompliance MODULE-COMPLIANCE
+        STATUS   current
+        DESCRIPTION
+                "The compliance statement for entities which
+                 implement the DLINKES-FS-MIB."
+        MODULE MANDATORY-GROUPS { 
+                 esFsBasicGroup,
+                 esFsDriveGroup
+        }
+        
+        ::= { esFsCompliances 1 }
+
+    esFsBasicGroup OBJECT-GROUP
+        OBJECTS 
+        {   esFsBasicInfoCtrlStatus,
+            esFsCurrentDirUrl,
+            esFsCurrentDirItemMode,      
+            esFsCurrentDirItemSize,      
+            esFsCurrentDirItemTime,      
+            esFsCurrentDirItemRawStatus,
+            esFsFileRenameSourceUrl,
+            esFsFileRenameTargetUrl,
+            esFsFileRenameActivity
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects executes basic operation of FS."
+        ::= { esFsGroups 1 }
+    
+    esFsDriveGroup OBJECT-GROUP
+        OBJECTS         {   
+            esFsDriveInfoMediaType,  
+            esFsDriveInfoSize,
+            esFsDriveInfoFsType,
+            esFsDriveInfoLabel,
+            esFsDriveInfoFormatDrive
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects executes drive operation of FS."
+        ::= { esFsGroups 2 }
+                 
+END

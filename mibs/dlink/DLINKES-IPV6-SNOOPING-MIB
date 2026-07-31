@@ -1,0 +1,375 @@
+-- *****************************************************************
+-- DLINKES-IPV6-SNOOPING-MIB: IPv6 Snooping MIB
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-IPV6-SNOOPING-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    Unsigned32,
+    Integer32,
+    OBJECT-TYPE
+                FROM SNMPv2-SMI
+    MODULE-COMPLIANCE,
+    OBJECT-GROUP
+                FROM SNMPv2-CONF
+    TruthValue,
+    RowStatus,
+    DisplayString
+                FROM SNMPv2-TC
+    VlanId
+                FROM Q-BRIDGE-MIB
+    ifIndex
+                FROM IF-MIB
+    dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+    dlinkEsIpv6SnoopMIB MODULE-IDENTITY
+        LAST-UPDATED "201905080000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:     +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+            "
+    DESCRIPTION
+        "Support ndp max-entry limit for IPv6 Snooping.
+         Added esIpv6SnoopIfBindingsNdpLimit node"
+        REVISION    "201905090000Z"
+
+    DESCRIPTION
+        "Support IPv6 Data Address Glean function.
+         Added esIpv6SnoopPolicyDataGlean node"
+        REVISION    "201812200000Z"
+
+    DESCRIPTION
+            "This MIB module defines objects for IPv6 Snooping."
+        REVISION    "201708070000Z"
+
+    DESCRIPTION
+             "This is the first version of the MIB file.
+             "
+        ::= { dlinkCommon 143 }
+
+--
+-- Textual Conventions
+--
+
+
+-- -----------------------------------------------------------------------------
+    esIpv6SnoopNotifications     OBJECT IDENTIFIER ::= { dlinkEsIpv6SnoopMIB 0 }
+    esIpv6SnoopObjects           OBJECT IDENTIFIER ::= { dlinkEsIpv6SnoopMIB 1 }
+    esIpv6SnoopConformance       OBJECT IDENTIFIER ::= { dlinkEsIpv6SnoopMIB 2 }
+
+    esIpv6SnoopGlobal            OBJECT IDENTIFIER ::= { esIpv6SnoopObjects 1 }
+    esIpv6SnoopPolicy            OBJECT IDENTIFIER ::= { esIpv6SnoopObjects 2 }
+    esIpv6SnoopInterface         OBJECT IDENTIFIER ::= { esIpv6SnoopObjects 3 }
+
+-- -----------------------------------------------------------------------------
+    esIpv6SnoopStationMoveEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether station move function for IPv6
+            snooping entries is enabled.
+            When station-move is enabled, the dynamic snooping binding entry
+            with same VLAN ID and MAC address on specific port can move to another
+            port if the Switch detects it.
+            "
+        ::= { esIpv6SnoopGlobal 1 }
+
+-- -----------------------------------------------------------------------------
+    esIpv6SnoopPolicyNumber  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in IPv6 snooping policy
+             table."
+        ::= { esIpv6SnoopPolicy 1 }
+
+    esIpv6SnoopPolicyTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpv6SnoopPolicyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains information about IPv6 snooping policies."
+        ::= { esIpv6SnoopPolicy 2 }
+
+    esIpv6SnoopPolicyEntry OBJECT-TYPE
+        SYNTAX          EsIpv6SnoopPolicyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defined in esIpv6SnoopPolicyTable. An entry is
+            created/removed when an IPv6 snooping policy is created/deleted."
+        INDEX { esIpv6SnoopPolicyName }
+        ::= { esIpv6SnoopPolicyTable 1 }
+
+    EsIpv6SnoopPolicyEntry ::= SEQUENCE {
+        esIpv6SnoopPolicyName              DisplayString,
+        esIpv6SnoopPolicyProtocol          BITS,
+        esIpv6SnoopPolicyLimitAddrCount    Unsigned32,
+        esIpv6SnoopPolicyDataGlean         TruthValue,
+        esIpv6SnoopPolicyRowStatus         RowStatus
+    }
+
+    esIpv6SnoopPolicyName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the IPv6 snooping policy."
+        ::= { esIpv6SnoopPolicyEntry 1 }
+
+    esIpv6SnoopPolicyProtocol  OBJECT-TYPE
+        SYNTAX          BITS {
+            ndp(0),
+            dhcp(1),
+            dhcppd(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the protocol is snooped in the policy.
+            "
+        ::= { esIpv6SnoopPolicyEntry 2 }
+
+    esIpv6SnoopPolicyLimitAddrCount OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Indicates the maximum number of IPv6 snooping binding entries.
+            "
+        ::= { esIpv6SnoopPolicyEntry 3 }
+
+    esIpv6SnoopPolicyDataGlean OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Indicates the state of data address gleaning.
+            "
+        ::= { esIpv6SnoopPolicyEntry 4 }
+
+    esIpv6SnoopPolicyRowStatus  OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object allows the dynamic creation and deletion of a policy."
+        ::= { esIpv6SnoopPolicyEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esIpv6SnoopPolicyAttachTable OBJECT-TYPE
+        SYNTAX       SEQUENCE OF EsIpv6SnoopPolicyAttachEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+            "A table provides the mechanism to attach an IPv6 snooping policy
+            at each interface capable of this feature.
+            "
+        ::= { esIpv6SnoopInterface 1 }
+
+    esIpv6SnoopPolicyAttachEntry OBJECT-TYPE
+        SYNTAX       EsIpv6SnoopPolicyAttachEntry
+        MAX-ACCESS   not-accessible
+        STATUS       current
+        DESCRIPTION
+            "A row instance contains the configuration to policy attaching
+            state for IPv6 Snooping at each interface capable of this feature.
+            "
+        INDEX { esIpv6SnoopPolicyAttachVlanId }
+        ::= { esIpv6SnoopPolicyAttachTable 1 }
+
+    EsIpv6SnoopPolicyAttachEntry ::= SEQUENCE {
+        esIpv6SnoopPolicyAttachVlanId       VlanId,
+        esIpv6SnoopPolicyAttachPolicy       DisplayString,
+        esIpv6SnoopPolicyAttachRowStatus    RowStatus
+    }
+
+    esIpv6SnoopPolicyAttachVlanId OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The VLAN-ID of the VLAN with which the IPv6 snooping policy
+            is attached."
+        ::= { esIpv6SnoopPolicyAttachEntry 1 }
+
+    esIpv6SnoopPolicyAttachPolicy OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+         "This object indicates the name of the snooping policy.
+        "
+    ::= { esIpv6SnoopPolicyAttachEntry 2 }
+
+    esIpv6SnoopPolicyAttachRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+            and removal conventions for conceptual rows."
+        ::= { esIpv6SnoopPolicyAttachEntry 99 }
+
+    esIpv6SnoopIfBindingsLimitTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsIpv6SnoopIfBindingsLimitEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to control the DHCP snooping
+             bindings limit for per interface."
+        ::= { esIpv6SnoopInterface 2 }
+
+    esIpv6SnoopIfBindingsLimitEntry OBJECT-TYPE
+        SYNTAX          EsIpv6SnoopIfBindingsLimitEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration of bindings limit value
+            on an interface."
+        INDEX           { ifIndex }
+        ::= { esIpv6SnoopIfBindingsLimitTable 1 }
+
+    EsIpv6SnoopIfBindingsLimitEntry ::= SEQUENCE {
+        esIpv6SnoopIfBindingsDhcpLimit              Integer32,
+        esIpv6SnoopIfBindingsDhcppdLimit            Integer32,
+        esIpv6SnoopIfBindingsNdpLimit               Integer32
+    }
+
+    esIpv6SnoopIfBindingsDhcpLimit OBJECT-TYPE
+        SYNTAX          Integer32 ( -1 | 0 .. 1024)
+        UNITS           "bindings per port"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates bindings limit in this interface.
+            The special value of 0 indicates dynamically learned binding entry
+            is not allowed on the interface.
+            The special value of -1 indicates no binding entry number limitation
+            on the interface.
+            "
+    ::= { esIpv6SnoopIfBindingsLimitEntry 1 }
+
+    esIpv6SnoopIfBindingsDhcppdLimit OBJECT-TYPE
+        SYNTAX          Integer32 ( -1 | 0 .. 1024)
+        UNITS           "bindings per port"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates bindings limit in this interface.
+            The special value of 0 indicates dynamically learned binding entry
+            is not allowed on the interface.
+            The special value of -1 indicates no binding entry number limitation
+            on the interface.
+            "
+    ::= { esIpv6SnoopIfBindingsLimitEntry 2 }
+
+    esIpv6SnoopIfBindingsNdpLimit OBJECT-TYPE
+        SYNTAX          Integer32 ( -1 | 0 .. 1024)
+        UNITS           "bindings per port"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates bindings limit in this interface.
+            The special value of 0 indicates dynamically learned binding entry
+            is not allowed on the interface.
+            The special value of -1 indicates no binding entry number limitation
+            on the interface.
+            "
+    ::= { esIpv6SnoopIfBindingsLimitEntry 3 }
+
+-- -----------------------------------------------------------------------------
+
+
+-- Conformance
+
+    esIpv6SnoopMIBCompliances    OBJECT IDENTIFIER ::= { esIpv6SnoopConformance 1 }
+    esIpv6SnoopMIBGroups         OBJECT IDENTIFIER ::= { esIpv6SnoopConformance 2 }
+
+    esIpv6SnoopMIBCompliance MODULE-COMPLIANCE
+        STATUS  current
+        DESCRIPTION
+            "The compliance statement for DLINKES-IPV6-SNOOPING-MIB"
+        MODULE
+        MANDATORY-GROUPS {
+            esIpv6SnoopPolicyGroup,
+            esIpv6SnoopPolicyAttachGroup
+        }
+
+        GROUP           esIpv6SnoopStationMoveCfgGroup
+        DESCRIPTION
+            "This group is optional."
+
+        GROUP          esIpv6SnoopIfBindingsLimitGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+             DHCP snooping bindings limit per interface."
+
+        ::= { esIpv6SnoopMIBCompliances 1 }
+
+-- Units of Conformance
+
+    esIpv6SnoopPolicyGroup OBJECT-GROUP
+    OBJECTS {
+        esIpv6SnoopPolicyNumber,
+        esIpv6SnoopPolicyProtocol,
+        esIpv6SnoopPolicyLimitAddrCount,
+        esIpv6SnoopPolicyDataGlean,
+        esIpv6SnoopPolicyRowStatus
+    }
+    STATUS current
+    DESCRIPTION
+        "A collection of object which are used to configure as
+         well as show information regarding the IPv6 snooping policy."
+        ::= { esIpv6SnoopMIBGroups 1 }
+
+    esIpv6SnoopPolicyAttachGroup OBJECT-GROUP
+        OBJECTS {
+            esIpv6SnoopPolicyAttachPolicy,
+            esIpv6SnoopPolicyAttachRowStatus
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of object which are used to configure as
+            well as show information regarding the attaching policy
+            of interface."
+        ::= { esIpv6SnoopMIBGroups 2 }
+
+    esIpv6SnoopStationMoveCfgGroup OBJECT-GROUP
+        OBJECTS {
+            esIpv6SnoopStationMoveEnabled
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects configuring the station move function.
+            "
+        ::= { esIpv6SnoopMIBGroups 3 }
+
+    esIpv6SnoopIfBindingsLimitGroup OBJECT-GROUP
+        OBJECTS { 
+            esIpv6SnoopIfBindingsDhcpLimit,
+            esIpv6SnoopIfBindingsDhcppdLimit,
+            esIpv6SnoopIfBindingsNdpLimit
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects which are used to configure as
+             well as show information regarding the bindings limit per 
+             interface."
+        ::= { esIpv6SnoopMIBGroups 4 }
+
+END
+
+

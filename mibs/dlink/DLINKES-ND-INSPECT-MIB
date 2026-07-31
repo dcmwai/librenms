@@ -1,0 +1,314 @@
+-- *****************************************************************
+-- DLINKES-ND-INSPECT-MIB: ND Inspection MIB
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-ND-INSPECT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    Unsigned32,
+    OBJECT-TYPE
+                FROM SNMPv2-SMI
+    MODULE-COMPLIANCE,
+    OBJECT-GROUP
+                FROM SNMPv2-CONF
+    TruthValue,
+    RowStatus,
+    DisplayString
+                FROM SNMPv2-TC
+    ifIndex
+                FROM IF-MIB
+    dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+    dlinkEsNdInspecMIB MODULE-IDENTITY
+        LAST-UPDATED "201812200000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:     +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "Support ND Inspection Enhancement.
+             Added esNdInspecPolicyMode node,
+             Added seNdInspecPolicyGroup1 and seNdInspecMIBCompliance1."
+        REVISION    "201812200000Z"
+
+        DESCRIPTION
+            "This MIB module defines objects for ND Inspection."
+        REVISION    "201708070000Z"
+        DESCRIPTION
+             "This is the first version of the MIB file.
+             "
+        ::= { dlinkCommon 144 }
+
+--
+-- Textual Conventions
+--
+
+
+-- -----------------------------------------------------------------------------
+    esNdInspecNotifications     OBJECT IDENTIFIER ::= { dlinkEsNdInspecMIB 0 }
+    esNdInspecObjects           OBJECT IDENTIFIER ::= { dlinkEsNdInspecMIB 1 }
+    esNdInspecConformance       OBJECT IDENTIFIER ::= { dlinkEsNdInspecMIB 2 }
+
+    esNdInspecPolicy            OBJECT IDENTIFIER ::= { esNdInspecObjects 1 }
+    esNdInspecInterface         OBJECT IDENTIFIER ::= { esNdInspecObjects 2 }
+
+-- -----------------------------------------------------------------------------
+    esNdInspecPolicyNumber  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the number of entries present in ND inspection policy
+             table."
+        ::= { esNdInspecPolicy 1 }
+
+    esNdInspecPolicyTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsNdInspecPolicyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains information about ND inspection policies."
+        ::= { esNdInspecPolicy 2 }
+
+    esNdInspecPolicyEntry OBJECT-TYPE
+        SYNTAX          EsNdInspecPolicyEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defined in esNdInspecPolicyTable. An entry is
+            created/removed when an ND inspection policy is created/deleted."
+        INDEX { esNdInspecPolicyName }
+        ::= { esNdInspecPolicyTable 1 }
+
+    EsNdInspecPolicyEntry ::= SEQUENCE {
+        esNdInspecPolicyName              DisplayString,
+        esNdInspecPolicyDeviceRole        INTEGER,
+        esNdInspecPolicyValidateSrcMac    TruthValue,
+        esNdInspecPolicyMode              INTEGER,
+        esNdInspecPolicyRowStatus         RowStatus
+    }
+
+    esNdInspecPolicyName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of the ND inspection policy."
+        ::= { esNdInspecPolicyEntry 1 }
+
+    esNdInspecPolicyDeviceRole OBJECT-TYPE
+        SYNTAX      INTEGER {
+            host(1),
+            router(2)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Indicates the role of the attached device.
+             host: The NS/NA messages will be inspected.
+             router: The NS/NA inspection is not performed.
+            "
+        DEFVAL { host }
+        ::= { esNdInspecPolicyEntry 2 }
+
+    esNdInspecPolicyValidateSrcMac OBJECT-TYPE
+        SYNTAX      TruthValue
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Indicates whether check the source MAC address against
+             the link-layer address for ND messages.
+            "
+        DEFVAL { false }
+        ::= { esNdInspecPolicyEntry 3 }
+
+    esNdInspecPolicyMode OBJECT-TYPE
+        SYNTAX      INTEGER {
+            precise(1),
+            fuzzy(2)
+        }
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "Indicates the mode of ND Inspection
+            precise mode will check the source IP address whether against 
+             the target address in Neighbor Advertisement messages.
+            "
+        DEFVAL { precise }
+        ::= { esNdInspecPolicyEntry 4 }
+
+    esNdInspecPolicyRowStatus  OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object allows the dynamic creation and deletion of a policy."
+        ::= { esNdInspecPolicyEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esNdInspecIfConfigTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsNdInspecIfConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to attach ND inspection policy at
+            each physical interface capable of this feature.
+            "
+        ::= { esNdInspecInterface 1 }
+
+    esNdInspecIfConfigEntry OBJECT-TYPE
+        SYNTAX          EsNdInspecIfConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration to enable or
+             disable state for ND inspection at each physical interface
+             capable of this feature.
+            "
+        INDEX { ifIndex }
+        ::= { esNdInspecIfConfigTable 1 }
+
+    EsNdInspecIfConfigEntry ::= SEQUENCE {
+        esNdInspecIfEnabled       TruthValue
+    }
+
+    esNdInspecIfEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of ND inspection on the interface.
+
+            If this object is set to 'true', ND inspection is enabled on the
+            interface.
+
+            If this object is set to 'false', ND inspection is disabled on the
+            interface.
+            "
+    ::= { esNdInspecIfConfigEntry 1 }
+
+-- -----------------------------------------------------------------------------
+    esNdInspecIfAttachTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsNdInspecIfAttachEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table provides the mechanism to configure the policy attaching
+            state for ND inspection at each physical interface capable of this feature.
+            "
+        ::= { esNdInspecInterface 2 }
+
+    esNdInspecIfAttachEntry OBJECT-TYPE
+        SYNTAX          EsNdInspecIfAttachEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A row instance contains the configuration to attach ND inspection policy
+            at each physical interface capable of this feature.
+            "
+        INDEX { ifIndex }
+        ::= { esNdInspecIfAttachTable 1 }
+
+    EsNdInspecIfAttachEntry ::= SEQUENCE {
+        esNdInspecIfAttachPolicy       DisplayString,
+        esNdInspecIfAttachRowStatus    RowStatus
+    }
+
+    esNdInspecIfAttachPolicy OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of ND inspection policy attached on
+            the interface.
+            "
+        ::= { esNdInspecIfAttachEntry 1 }
+
+    esNdInspecIfAttachRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+            and removal conventions for conceptual rows."
+        ::= { esNdInspecIfAttachEntry 99 }
+
+-- Conformance
+
+esNdInspecMIBCompliances     OBJECT IDENTIFIER ::= { esNdInspecConformance 1 }
+
+esNdInspecMIBGroups          OBJECT IDENTIFIER ::= { esNdInspecConformance 2 }
+
+esNdInspecMIBCompliance MODULE-COMPLIANCE
+    STATUS  current
+    DESCRIPTION
+        "The compliance statement for DLINKES-ND-INSPECT-MIB."
+    MODULE
+    MANDATORY-GROUPS {
+            esNdInspecIfConfigGroup
+    }
+
+    GROUP esNdInspecPolicyGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+         the configuration of ND inspection policy."
+
+    GROUP esNdInspecIfAttachGroup
+    DESCRIPTION
+        "This group is mandatory only for the platform which supports
+         attaching ND inspection policy per interface."
+
+    ::= { esNdInspecMIBCompliances 1 }
+
+-- Units of Conformance
+
+esNdInspecIfConfigGroup OBJECT-GROUP
+    OBJECTS {
+        esNdInspecIfEnabled
+    }
+    STATUS current
+    DESCRIPTION
+        "A collection of objects which are used to configure as
+         well as show information regarding the ND inspection feature
+         per interface."
+    ::= { esNdInspecMIBGroups 1 }
+
+esNdInspecPolicyGroup OBJECT-GROUP
+    OBJECTS {
+        esNdInspecPolicyNumber,
+        esNdInspecPolicyDeviceRole,
+        esNdInspecPolicyValidateSrcMac,
+        esNdInspecPolicyMode,
+        esNdInspecPolicyRowStatus
+    }
+    STATUS current
+    DESCRIPTION
+        "A collection of objects which are used to configure as
+         well as show information regarding the ND inspection policy."
+    ::= { esNdInspecMIBGroups 2 }
+
+esNdInspecIfAttachGroup OBJECT-GROUP
+    OBJECTS {
+        esNdInspecIfAttachPolicy,
+        esNdInspecIfAttachRowStatus
+    }
+    STATUS  current
+    DESCRIPTION
+        "A collection of object which are used to configure as
+         well as show information regarding the attaching policy
+         of interface."
+    ::= { esNdInspecMIBGroups 3 }
+
+END
+
+

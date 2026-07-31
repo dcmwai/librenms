@@ -1,0 +1,564 @@
+--  *****************************************************************
+--  DLINKES-DNS-MIB.mib : DNS MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+DLINKES-DNS-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+		InterfaceIndexOrZero
+			    FROM IF-MIB
+		InetAddressType, InetAddress
+			    FROM INET-ADDRESS-MIB
+		SnmpAdminString
+			    FROM SNMP-FRAMEWORK-MIB
+		OBJECT-GROUP, MODULE-COMPLIANCE
+			    FROM SNMPv2-CONF
+		Integer32, Unsigned32, OBJECT-TYPE, MODULE-IDENTITY
+			    FROM SNMPv2-SMI
+		TruthValue, RowStatus, TEXTUAL-CONVENTION
+			    FROM SNMPv2-TC
+		dlinkCommon
+			    FROM DLINK-ID-REC-MIB;
+
+
+	dlinkEsDnsMIB MODULE-IDENTITY
+		LAST-UPDATED "201308290000Z"
+		ORGANIZATION
+			"D-Link Corp."
+		CONTACT-INFO
+			"         D-Link Corporation
+			Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+			        Taipei City 114, Taiwan, R.O.C
+			Tel:    +886-2-66000123
+			E-mail: tsd@dlink.com.tw
+			"
+		DESCRIPTION
+			"This MIB contains objects to manage the DNS."
+
+		REVISION "201308290000Z"
+		DESCRIPTION
+			"1. Update esDnsStaticNameSrvIpAddr SYNTAX."
+
+		REVISION "201305090000Z"
+		DESCRIPTION
+			"First release of this MIB."
+
+		::= { dlinkCommon 77 }
+
+--
+-- Textual conventions
+--
+
+	DnsTime ::= TEXTUAL-CONVENTION
+		DISPLAY-HINT    "d"
+		STATUS current
+		DESCRIPTION
+			"DnsTime values are 32-bit unsigned integers which
+			measure time in seconds."
+		REFERENCE
+			"RFC-1035."
+		SYNTAX Unsigned32
+
+
+--
+-- Node definitions
+--
+
+	esDnsMIBNotifications       OBJECT IDENTIFIER ::= { dlinkEsDnsMIB 0 }
+	esDnsMIBObjects             OBJECT IDENTIFIER ::= { dlinkEsDnsMIB 1 }
+	esDnsMIBConformance         OBJECT IDENTIFIER ::= { dlinkEsDnsMIB 2 }
+
+	esDnsGlobal                 OBJECT IDENTIFIER ::= { esDnsMIBObjects 1 }
+
+
+	esDnsResolverEnabled OBJECT-TYPE
+		SYNTAX TruthValue
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS Resolver state."
+		::= { esDnsGlobal 1 }
+
+	esDnsResolverSourceInterface OBJECT-TYPE
+		SYNTAX InterfaceIndexOrZero
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates the interface whose IP address will be
+			used as the source address for sending the DNS query packet."
+		::= { esDnsGlobal 2 }
+
+	esDnsResolverDomainName OBJECT-TYPE
+		SYNTAX SnmpAdminString
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates default domain name used to qualify an
+			unqualified host name for resolving its IP address."
+		::= { esDnsGlobal 3 }
+
+	esDnsResolverTimeOut OBJECT-TYPE
+		SYNTAX Unsigned32 (1..60)
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS Resolver name server time out."
+		::= { esDnsGlobal 4 }
+
+	esDnsCacheSrvEnabled OBJECT-TYPE
+		SYNTAX TruthValue
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates if the DNS caching name server function is
+			enabled or disabled."
+		::= { esDnsGlobal 5 }
+
+	esDnsCacheSrvMaxForwarderQueue OBJECT-TYPE
+		SYNTAX Unsigned32 (0..1000000)
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates maximum number of requests which can be
+			kept in the forwarder queue. The value of 0 means no limit.."
+		::= { esDnsGlobal 6 }
+
+	esDnsStaticHostLookupEnabled OBJECT-TYPE
+		SYNTAX TruthValue
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates enable or disable lookup the dynamic cache
+			before ask the name server."
+		::= { esDnsGlobal 7 }
+
+	esDnsDynamicHostLookupEnabled OBJECT-TYPE
+		SYNTAX TruthValue
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"This object indicates enable or disable lookup the dynamic cache
+			before ask the name server."
+		::= { esDnsGlobal 8 }
+
+	esDnsNameSrv OBJECT IDENTIFIER ::= { esDnsMIBObjects 9 }
+
+	esDnsStaticNameSrvTable OBJECT-TYPE
+		SYNTAX SEQUENCE OF EsDnsStaticNameSrvEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This table is a list of DNS static server IP address
+			configuration, which is manually specified."
+		::= { esDnsNameSrv 1 }
+
+	esDnsStaticNameSrvEntry OBJECT-TYPE
+		SYNTAX EsDnsStaticNameSrvEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"An entry of esDnsStaticSrvIpTable."
+		INDEX { esDnsStaticNameSrvIpVrfName, esDnsStaticNameSrvIpType, esDnsStaticNameSrvIpAddr }
+		::= { esDnsStaticNameSrvTable 1 }
+
+	EsDnsStaticNameSrvEntry ::=
+		SEQUENCE {
+			esDnsStaticNameSrvIpVrfName
+				SnmpAdminString,
+			esDnsStaticNameSrvIpType
+				InetAddressType,
+			esDnsStaticNameSrvIpAddr
+				InetAddress,
+			esDnsStaticNameSrvIpPriority
+				Integer32,
+			esDnsStaticNameSrvIpRowStatus
+				RowStatus
+		 }
+
+	esDnsStaticNameSrvIpVrfName OBJECT-TYPE
+		SYNTAX SnmpAdminString (SIZE (1..32))
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This object indicates the name of the routing forwarding instance.
+			A zero length string indicates the VRF name is not specified."
+		::= { esDnsStaticNameSrvEntry 1 }
+
+	esDnsStaticNameSrvIpType OBJECT-TYPE
+		SYNTAX InetAddressType
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This node gives the type of the static DNS server IP address."
+		::= { esDnsStaticNameSrvEntry 2 }
+
+	esDnsStaticNameSrvIpAddr OBJECT-TYPE
+		SYNTAX InetAddress
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This node gives the IP address of the DNS server
+			specified by the user."
+		::= { esDnsStaticNameSrvEntry 3 }
+
+	esDnsStaticNameSrvIpPriority OBJECT-TYPE
+		SYNTAX Integer32 (1..2147483647)
+		MAX-ACCESS read-create
+		STATUS current
+		DESCRIPTION
+			"This node gives the priority of the DNS server, according to the
+			creation order.  The smaller the value is, the higher the priority
+			level is."
+		::= { esDnsStaticNameSrvEntry 4 }
+
+	esDnsStaticNameSrvIpRowStatus OBJECT-TYPE
+		SYNTAX RowStatus
+		MAX-ACCESS read-create
+		STATUS current
+		DESCRIPTION
+			"
+			This node is used to operate a table entry.
+			"
+		::= { esDnsStaticNameSrvEntry 5 }
+
+	esDnsDynamicNameSrvTable OBJECT-TYPE
+		SYNTAX SEQUENCE OF EsDnsDynamicNameSrvEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This table is a list of DNS dynamic server IP address
+			configuration, which is dynamically obtained through DHCP."
+		::= { esDnsNameSrv 2 }
+
+	esDnsDynamicNameSrvEntry OBJECT-TYPE
+		SYNTAX EsDnsDynamicNameSrvEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"An entry of esDnsDynamicNameSrvIpTable."
+		INDEX { esDnsDynamicNameSrvIpVrfName, esDnsDynamicNameSrvIpType, esDnsDynamicNameSrvIpAddr }
+		::= { esDnsDynamicNameSrvTable 1 }
+
+	EsDnsDynamicNameSrvEntry ::=
+		SEQUENCE {
+			esDnsDynamicNameSrvIpVrfName
+				SnmpAdminString,
+			esDnsDynamicNameSrvIpType
+				InetAddressType,
+			esDnsDynamicNameSrvIpAddr
+				InetAddress,
+			esDnsDynamicNameSrvIpPriority
+				Integer32
+		 }
+
+	esDnsDynamicNameSrvIpVrfName OBJECT-TYPE
+		SYNTAX SnmpAdminString (SIZE (1..32))
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This object indicates the name of the routing forwarding instance.
+			A zero length string indicates the VRF name is not specified."
+		::= { esDnsDynamicNameSrvEntry 1 }
+
+	esDnsDynamicNameSrvIpType OBJECT-TYPE
+		SYNTAX InetAddressType
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This node gives the type of the dynamic DNS server IP address."
+		::= { esDnsDynamicNameSrvEntry 2 }
+
+	esDnsDynamicNameSrvIpAddr OBJECT-TYPE
+		SYNTAX InetAddress (SIZE (1..16))
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This node gives the IP address of the DNS server dynamically
+			obtained through DHCP."
+		::= { esDnsDynamicNameSrvEntry 3 }
+
+	esDnsDynamicNameSrvIpPriority OBJECT-TYPE
+		SYNTAX Integer32 (1..2147483647)
+		MAX-ACCESS read-only
+		STATUS current
+		DESCRIPTION
+			"This node gives the priority of the DNS server, according to the
+			order obtained through DHCP.  The smaller the value is, the higher
+			the priority level is."
+		::= { esDnsDynamicNameSrvEntry 4 }
+
+	esDnsHost OBJECT IDENTIFIER ::= { esDnsMIBObjects 10 }
+
+	esDnsStaticHostTable OBJECT-TYPE
+		SYNTAX SEQUENCE OF EsDnsStaticHostEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This table contains DNS resolver static host information."
+		::= { esDnsHost 2 }
+
+	esDnsStaticHostEntry OBJECT-TYPE
+		SYNTAX EsDnsStaticHostEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"A list of information about DNS resolver static host."
+		INDEX { esDnsStaticHostIndex }
+		::= { esDnsStaticHostTable 1 }
+
+	EsDnsStaticHostEntry ::=
+		SEQUENCE {
+			esDnsStaticHostIndex
+				Unsigned32,
+			esDnsStaticHostVrfName
+				SnmpAdminString,
+			esDnsStaticHostName
+				SnmpAdminString,
+			esDnsStaticHostIPType
+				InetAddressType,
+			esDnsStaticHostIPAddr
+				InetAddress,
+			esDnsStaticHostRowStatus
+				RowStatus
+		 }
+
+	esDnsStaticHostIndex OBJECT-TYPE
+		SYNTAX Unsigned32 (1..2147483647)
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS resolver static host table index."
+		::= { esDnsStaticHostEntry 1 }
+
+	esDnsStaticHostVrfName OBJECT-TYPE
+		SYNTAX SnmpAdminString
+		MAX-ACCESS read-create
+		STATUS current
+		DESCRIPTION
+			"This object indicates the name of the routing forwarding instance.
+			A zero length string indicates the VRF name is not specified."
+		::= { esDnsStaticHostEntry 2 }
+
+	esDnsStaticHostName OBJECT-TYPE
+		SYNTAX SnmpAdminString
+		MAX-ACCESS read-create
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS resolver static host name."
+		::= { esDnsStaticHostEntry 3 }
+
+	esDnsStaticHostIPType OBJECT-TYPE
+		SYNTAX InetAddressType
+		MAX-ACCESS read-create
+		STATUS current
+		DESCRIPTION
+			"This object indicates the the DNS resolver static host IP address type."
+		::= { esDnsStaticHostEntry 4 }
+
+	esDnsStaticHostIPAddr OBJECT-TYPE
+		SYNTAX InetAddress (SIZE (1..16))
+		MAX-ACCESS read-create
+		STATUS current
+		DESCRIPTION
+			"This object indicates the the DNS resolver static host IP address.
+			Note: current IPv6 doesn't support VRF."
+		::= { esDnsStaticHostEntry 5 }
+
+	esDnsStaticHostRowStatus OBJECT-TYPE
+		SYNTAX RowStatus
+		MAX-ACCESS read-create
+		STATUS current
+		DESCRIPTION
+			"This object is used to operate a table entry."
+		::= { esDnsStaticHostEntry 7 }
+
+	esDnsDynamicHostTable OBJECT-TYPE
+		SYNTAX SEQUENCE OF EsDnsDynamicHostEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This table contains DNS resolver dynamic host information."
+		::= { esDnsHost 5 }
+
+	esDnsDynamicHostEntry OBJECT-TYPE
+		SYNTAX EsDnsDynamicHostEntry
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"A list of information about DNS resolver dynamic host."
+		INDEX { esDnsDynamicHostIndex }
+		::= { esDnsDynamicHostTable 1 }
+
+	EsDnsDynamicHostEntry ::=
+		SEQUENCE {
+			esDnsDynamicHostIndex
+				Unsigned32,
+			esDnsDynamicHostVrfName
+				SnmpAdminString,
+			esDnsDynamicHostName
+				SnmpAdminString,
+			esDnsDynamicHostTTL
+				DnsTime,
+			esDnsDynamicHostIPType
+				InetAddressType,
+			esDnsDynamicHostIPAddr
+				InetAddress,
+			esDnsDynamicHostClearCtrl
+				INTEGER
+		 }
+
+	esDnsDynamicHostIndex OBJECT-TYPE
+		SYNTAX Unsigned32 (1..2147483647)
+		MAX-ACCESS not-accessible
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS resolver dynamic host index."
+		::= { esDnsDynamicHostEntry 1 }
+
+	esDnsDynamicHostVrfName OBJECT-TYPE
+		SYNTAX SnmpAdminString
+		MAX-ACCESS read-only
+		STATUS current
+		DESCRIPTION
+			"This object indicates the name of the routing forwarding instance.
+			A zero length string indicates the VRF name is not specified."
+		::= { esDnsDynamicHostEntry 2 }
+
+	esDnsDynamicHostName OBJECT-TYPE
+		SYNTAX SnmpAdminString
+		MAX-ACCESS read-only
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS resolver dynamic host name."
+		::= { esDnsDynamicHostEntry 3 }
+
+	esDnsDynamicHostTTL OBJECT-TYPE
+		SYNTAX DnsTime
+		MAX-ACCESS read-only
+		STATUS current
+		DESCRIPTION
+			"This object indicates the time of the dynamic host remained in caches to live."
+		::= { esDnsDynamicHostEntry 4 }
+
+	esDnsDynamicHostIPType OBJECT-TYPE
+		SYNTAX InetAddressType
+		MAX-ACCESS read-only
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS resolver dynamic host IP Address Type."
+		::= { esDnsDynamicHostEntry 5 }
+
+	esDnsDynamicHostIPAddr OBJECT-TYPE
+		SYNTAX InetAddress
+		MAX-ACCESS read-only
+		STATUS current
+		DESCRIPTION
+			"This object indicates the DNS resolver dynamic host IP address.
+			Note: current IPv6 doesn't support VRF."
+		::= { esDnsDynamicHostEntry 6 }
+
+	esDnsDynamicHostClearCtrl OBJECT-TYPE
+		SYNTAX INTEGER
+			{
+			clear(1),
+			noOp(2)
+			}
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+			"Description: This object clears all counters, when set to 'clear'.
+			No action is taken if this object is set to 'noOp'.
+			When read, the value 'noOp' is returned"
+		::= { esDnsDynamicHostEntry 8 }
+
+	esDnsMIBCompliances OBJECT IDENTIFIER ::= { esDnsMIBConformance 1 }
+
+
+	esDnsMIBCompliance MODULE-COMPLIANCE
+		STATUS current
+		DESCRIPTION
+			"The compliance statement for the DoS Prevention MIB."
+		MODULE -- this module
+			MANDATORY-GROUPS { esDnsResolverGroup, esDnsStaticHostGroup, esDnsDynamicHostGroup, esDnsStaticNameSrvGroup }
+			GROUP esDnsDynamicNameSrvGroup
+				DESCRIPTION
+					" "
+			GROUP esDnsCacheSrvGroup
+				DESCRIPTION
+					" "
+		::= { esDnsMIBCompliances 1 }
+
+
+	esDnsMIBGroups OBJECT IDENTIFIER ::= { esDnsMIBConformance 2 }
+
+	esDnsResolverGroup OBJECT-GROUP
+		OBJECTS {
+		        esDnsResolverSourceInterface,
+		        esDnsResolverDomainName,
+		        esDnsResolverTimeOut,
+		        esDnsResolverEnabled }
+		STATUS current
+		DESCRIPTION
+			"The collection of objects provides control for resolver."
+		::= { esDnsMIBGroups 1 }
+
+	esDnsCacheSrvGroup OBJECT-GROUP
+		OBJECTS {
+		        esDnsCacheSrvMaxForwarderQueue,
+		        esDnsCacheSrvEnabled }
+		STATUS current
+		DESCRIPTION
+			"The collection of objects provides control for caching server."
+		::= { esDnsMIBGroups 2 }
+
+	esDnsStaticHostGroup OBJECT-GROUP
+		OBJECTS {
+		        esDnsStaticHostVrfName,
+		        esDnsStaticHostName,
+		        esDnsStaticHostRowStatus,
+		        esDnsStaticHostLookupEnabled,
+		        esDnsStaticHostIPType,
+			    esDnsStaticHostIPAddr }
+		STATUS current
+		DESCRIPTION
+			"The collection of objects provides the control for static host group."
+		::= { esDnsMIBGroups 3 }
+
+	esDnsDynamicHostGroup OBJECT-GROUP
+		OBJECTS {
+		        esDnsDynamicHostVrfName,
+		        esDnsDynamicHostName,
+		        esDnsDynamicHostTTL,
+		        esDnsDynamicHostClearCtrl,
+		        esDnsDynamicHostLookupEnabled,
+			    esDnsDynamicHostIPType,
+			    esDnsDynamicHostIPAddr }
+		STATUS current
+		DESCRIPTION
+			"The collection of objects provides information for dynamic host table."
+		::= { esDnsMIBGroups 4 }
+
+	esDnsStaticNameSrvGroup OBJECT-GROUP
+		OBJECTS {
+		        esDnsStaticNameSrvIpPriority,
+		        esDnsStaticNameSrvIpRowStatus }
+		STATUS current
+		DESCRIPTION
+			"The collection of objects provides control for static name server."
+		::= { esDnsMIBGroups 5 }
+
+	esDnsDynamicNameSrvGroup OBJECT-GROUP
+		OBJECTS { esDnsDynamicNameSrvIpPriority }
+		STATUS current
+		DESCRIPTION
+			"The collection of objects provides information for dynamic name server."
+		::= { esDnsMIBGroups 6 }
+
+END
+
+--
+-- DLINKES-DNS-MIB.mib
+--

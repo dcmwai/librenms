@@ -1,0 +1,794 @@
+--  *****************************************************************
+--  DLINKES-SYSLOG-MIB.mib : Syslog MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-SYSLOG-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-IDENTITY, OBJECT-TYPE, Unsigned32,
+        Integer32
+            FROM SNMPv2-SMI
+        RowStatus, TruthValue, DateAndTime, DisplayString
+            FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        SyslogFacility, SyslogSeverity
+            FROM SYSLOG-TC-MIB
+        InterfaceIndexOrZero
+                FROM IF-MIB
+        InetAddressType, InetAddress
+            FROM INET-ADDRESS-MIB
+        dlinkCommon
+             FROM DLINK-ID-REC-MIB;
+
+    dlinkEsSyslogMIB MODULE-IDENTITY
+        LAST-UPDATED "201401170000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for system log function."
+        REVISION "201401170000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file.
+            "
+        ::= { dlinkCommon 13 }
+
+-- -----------------------------------------------------------------------------
+    esSyslogMIBNotifications     OBJECT IDENTIFIER ::= { dlinkEsSyslogMIB 0 }
+    esSyslogMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsSyslogMIB 1 }
+    esSyslogMIBConformance       OBJECT IDENTIFIER ::= { dlinkEsSyslogMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esSyslogGeneral             OBJECT IDENTIFIER ::= { esSyslogMIBObjects 1 }
+
+    esSyslogSourceIfIndex  OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the interface whose IP address
+            will be used as the source address for sending the SYSLOG packet.
+            A special value of zero indicates the source interface is not
+            specified, the IP address of the closest interface will be used.
+            "
+        ::= { esSyslogGeneral 1 }
+
+    esSyslogDiscriminatorTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsSyslogDiscriminatorEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table contains a list of discriminators which can be further
+            used to filter SYSLOG messages sent to various destinations.
+            At least one sub-filter(facility filter or severity filter) needs
+            to be specified to make sure the the discriminator is available.
+            Facility filter:facility mode and facility string.
+            Severity filter:severity mode and severity list.
+            "
+        ::= { esSyslogGeneral 2 }
+
+    esSyslogDiscriminatorEntry OBJECT-TYPE
+        SYNTAX          EsSyslogDiscriminatorEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An entry defines a discriminator."
+        INDEX           { esSyslogDiscriminatorName }
+        ::= { esSyslogDiscriminatorTable 1 }
+
+    EsSyslogDiscriminatorEntry ::= SEQUENCE {
+        esSyslogDiscriminatorName            DisplayString,
+        esSyslogDiscriminatorRowstatus       RowStatus,
+        esSyslogDisFacilityFilterMode        INTEGER,
+        esSyslogDisFacilityFilterString      DisplayString,
+        esSyslogDisSeverityFilterMode        INTEGER,
+        esSyslogDisSeverityList              BITS
+        }
+
+    esSyslogDiscriminatorName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(1..15))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the discriminator.
+            "
+        ::= { esSyslogDiscriminatorEntry 1 }
+
+    esSyslogDiscriminatorRowstatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+            and removal conventions for conceptual rows.
+            "
+        ::= { esSyslogDiscriminatorEntry 2 }
+
+    esSyslogDisFacilityFilterMode OBJECT-TYPE
+       SYNTAX        INTEGER {
+            notSpecified(1),
+            drops(2),
+            includes(3)
+        }
+        MAX-ACCESS      read-create
+        STATUS            current
+        DESCRIPTION
+            "This object indicates the mode how esSyslogDisFacilityFilterString
+            is used to filter system log messages.
+            notSpecified(1) - esSyslogDisFacilityFilterString will become a zero
+                              length string.
+            drops(2) - The matching message will be filtered.
+            includes(3) - The matching message will be included, in other
+                          words, the unmatched messages are filtered.
+            "
+        DEFVAL { notSpecified }
+        ::= { esSyslogDiscriminatorEntry 3 }
+
+    esSyslogDisFacilityFilterString OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates a one or more facility name to filter or
+            include the matching messages.
+            If multiple facility names, they should be separated by comma without
+            space before and after the comma.
+            A zero length string indicates the regular expression is not specified.
+            "
+        ::= { esSyslogDiscriminatorEntry 4 }
+
+    esSyslogDisSeverityFilterMode OBJECT-TYPE
+       SYNTAX        INTEGER {
+            notSpecified(1),
+            drops(2),
+            includes(3)
+        }
+        MAX-ACCESS      read-create
+        STATUS            current
+        DESCRIPTION
+            "This object indicates the mode how the severity list of
+            esSyslogDisSeverityList is used to filter message.
+            notSpecified(1) - esSyslogDisSeverityList is not applicable.
+            drops(2) -  The list of severity level will be filtered.
+            includes(3) - The list of severity level will be included.
+            "
+        DEFVAL { notSpecified }
+        ::= { esSyslogDiscriminatorEntry 5 }
+
+    esSyslogDisSeverityList OBJECT-TYPE
+        SYNTAX          BITS {
+            emerg           (0),  -- emergency; system is unusable
+            alert           (1),  -- action must be taken immediately
+            crit            (2),  -- critical condition
+            err             (3),  -- error condition
+            warning         (4),  -- warning condition
+            notice          (5),  -- normal but significant condition
+            info            (6),  -- informational message
+            debug           (7)   -- debug-level messages
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates severity level to be specified by this
+             discriminator definition.
+
+             This object is a bit map, with each bit representing
+             a severitly level.
+             A 1-bit indicates that severity level is specified in the list.
+             A 0-bit indicates that severity level is unspecified.
+             Note: whether a severity level is included is always interpreted
+             within the context of esSyslogDisSeverityFilterMode.
+             esSyslogDisSeverityFilterMode  Specified     Result
+             ============================  ==========    ==============
+             notSpecified                  don't care    Not applicable
+             drops                         specified     filtered
+             drops                         unspecified   included
+             includes                      specified     included
+             includes                      unspecified   filtered
+            "
+        ::= { esSyslogDiscriminatorEntry 6 }
+
+    esSyslogLogOnEnabled  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object enables or disables the System Log function
+            during system runtime."
+        ::= { esSyslogGeneral 3 }
+
+    esSyslogSourceIfType  OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of source interface.
+            The default type is vlan,when the type is default and the value of
+            sourceIfIndex is zero, this means the source interface is not specified"
+        ::= { esSyslogGeneral 4 }
+
+-- -----------------------------------------------------------------------------
+    esSyslogLogbuffer OBJECT-IDENTITY
+        STATUS          current
+        DESCRIPTION
+            "This object identifier represents the group of objects that are
+            related to the logging system message to local buffer.
+            "
+        ::= { esSyslogMIBObjects 2 }
+
+    esSyslogClearLogBuffer OBJECT-TYPE
+        SYNTAX        INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS            current
+        DESCRIPTION
+            "This object is used to clear log messages at logging buffer when set
+            to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esSyslogLogbuffer 1 }
+
+    esSyslogLogBufferEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of logging system messages to the
+            local buffer.
+            Messages must enter the local message buffer first before it can
+            be further dispatched to other destinations.
+            "
+        ::= { esSyslogLogbuffer 2 }
+
+    esSyslogLogBufSeverity OBJECT-TYPE
+        SYNTAX          SyslogSeverity
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the severity level of system messages.
+            The messages at that severity level or a more severe level will be
+            logged to message buffers.
+            "
+        ::= { esSyslogLogbuffer 3 }
+
+    esSyslogLogBufDiscriminator OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of discriminator which is used
+            to filter the message to be sent to local buffer.
+            A zero length string indicates the discriminator is not specified.
+            "
+        ::= { esSyslogLogbuffer 4 }
+
+    esSyslogLogBufWriteDelay OBJECT-TYPE
+        SYNTAX          Integer32
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the interval for periodic writing of the
+            logging buffer to FLASH. The valid value is N to 65535.
+            N is project dependent. The default interval is 300 seconds.
+            Setting this object to -1 means infinite which will disable
+            periodical writing logging buffer to FLASH.
+            Setting this object to 0 means writing logging buffer
+            to flash by trigger way.
+            "
+        ::= { esSyslogLogbuffer 5 }
+
+    esSyslogClearAttackLogBufByUnit OBJECT-TYPE
+        SYNTAX            Integer32
+        MAX-ACCESS      read-write
+        STATUS            current
+        DESCRIPTION
+            "This object indicates the unit on which the attack log messages
+            will be cleared.
+            The special value -1 indicates clearing all attack log entries.
+            For a standalone device, 1 is used.
+            No action is taken if this object is set to 0.
+            When read, the value 0 is returned.
+            "
+        ::= { esSyslogLogbuffer 6 }
+-- -----------------------------------------------------------------------------
+    esSyslogLogConsole OBJECT-IDENTITY
+        STATUS          current
+        DESCRIPTION
+            "This object identifier represents the group of objects that are
+            related to the logging system messages to the local console.
+            "
+        ::= { esSyslogMIBObjects 3 }
+
+    esSyslogLogConsoleEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of logging system messages to the
+            local console.
+            "
+        ::= { esSyslogLogConsole 1 }
+
+    esSyslogLogConsoleSeverity OBJECT-TYPE
+        SYNTAX          SyslogSeverity
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the severity level of system messages.
+            The messages at that severity level or a more severe level will be
+            logged to the local console.
+            "
+        ::= { esSyslogLogConsole 2 }
+
+    esSyslogLogConsoleDiscriminator OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of discriminator which is used
+            to filter the message to be sent to local console.
+            A zero length string indicates the discriminator is not specified.
+            "
+        ::= { esSyslogLogConsole 3 }
+
+-- -----------------------------------------------------------------------------
+    esSyslogLogSmtp OBJECT-IDENTITY
+        STATUS          current
+        DESCRIPTION
+            "This object identifier represents the group of objects that are
+            related to the logging system messages to the email recipients.
+            "
+        ::= { esSyslogMIBObjects 4 }
+
+    esSyslogLogSmtpEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of logging of system messages to
+            the email recipients.
+            "
+        ::= { esSyslogLogSmtp 1 }
+
+    esSyslogLogSmtpSeverity OBJECT-TYPE
+        SYNTAX          SyslogSeverity
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the severity level of system messages.
+            The messages at that severity level or a more severe level will be
+            logged to the email recipients.
+            "
+        ::= { esSyslogLogSmtp 2 }
+
+    esSyslogLogSmtpDiscriminator OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of discriminator which is used
+            to filter the message to be sent to the email recipients.
+            A zero length string indicates the discriminator is not specified.
+            "
+        ::= { esSyslogLogSmtp 3 }
+
+-- -----------------------------------------------------------------------------
+    esSyslogServerTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsSyslogServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table consists of a list of SYSLOG servers to log system messages
+            and debug output to a remote SYSLOG server host."
+        ::= { esSyslogMIBObjects 5 }
+
+    esSyslogServerEntry OBJECT-TYPE
+        SYNTAX          EsSyslogServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defines information for a SYSLOG server.
+            "
+        INDEX  {
+            esSyslogServerAddressType,
+            esSyslogServerAddress,
+            esSyslogServerVrfName
+        }
+        ::= { esSyslogServerTable 1 }
+
+    EsSyslogServerEntry ::= SEQUENCE {
+        esSyslogServerAddressType      InetAddressType,
+        esSyslogServerAddress          InetAddress,
+        esSyslogServerVrfName          DisplayString,
+        esSyslogServerRowstatus        RowStatus,
+        esSyslogServerPort             Unsigned32,
+        esSyslogServerSeverity         SyslogSeverity,
+        esSyslogServerFacility         SyslogFacility,
+        esSyslogServerDiscriminator    DisplayString
+        }
+
+    esSyslogServerAddressType OBJECT-TYPE
+        SYNTAX          InetAddressType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of the server address."
+        ::= { esSyslogServerEntry 1 }
+
+    esSyslogServerAddress OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the IP or IPv6 address of the SYSLOG server."
+        ::= { esSyslogServerEntry 2 }
+
+    esSyslogServerVrfName OBJECT-TYPE
+        SYNTAX          DisplayString    (SIZE(0..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the routing forwarding instance.
+            If this object is a zero length string, the SYSLOG server is in
+            global routing and forwarding space."
+        ::= { esSyslogServerEntry 3 }
+
+    esSyslogServerRowstatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esSyslogServerEntry 4 }
+
+    esSyslogServerPort OBJECT-TYPE
+        SYNTAX          Unsigned32 (514 | 1024..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the UDP port number to be used for the
+            SYSLOG server.
+            "
+        DEFVAL      { 514 }
+        ::= { esSyslogServerEntry 5 }
+
+    esSyslogServerSeverity OBJECT-TYPE
+        SYNTAX          SyslogSeverity
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the severity of log messages that will be
+            sent to the server."
+        DEFVAL      { warning }
+        ::= { esSyslogServerEntry 6 }
+
+    esSyslogServerFacility OBJECT-TYPE
+        SYNTAX          SyslogFacility
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "Specifies the logging facility of the log host.
+            "
+        DEFVAL      { local7 }
+        ::= { esSyslogServerEntry 7 }
+
+     esSyslogServerDiscriminator OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of discriminator which is used
+            to filter the message to be sent to SYSLOG server.
+            A zero length string indicates the discriminator is not specified.
+            "
+        ::= { esSyslogServerEntry 8 }
+
+-- -----------------------------------------------------------------------------
+    esSyslogBufferTableNum  OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the number of entries presented in the
+            esSyslogBufferTable."
+        ::= { esSyslogMIBObjects 6 }
+
+    esSyslogBufferTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsSyslogBufferEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table consists of a list of system log messages."
+        ::= { esSyslogMIBObjects 7 }
+
+    esSyslogBufferEntry OBJECT-TYPE
+        SYNTAX          EsSyslogBufferEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defines a log message."
+        INDEX           { esSyslogBufferIndex }
+        ::= { esSyslogBufferTable 1 }
+
+    EsSyslogBufferEntry ::= SEQUENCE {
+        esSyslogBufferIndex          Unsigned32,
+        esSyslogBufferDateAndTime    DateAndTime,
+        esSyslogBufferDescription    DisplayString
+    }
+
+    esSyslogBufferIndex OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..100000)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An index that uniquely identifies the message."
+        ::= { esSyslogBufferEntry 1 }
+
+    esSyslogBufferDateAndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The date and time when the message is logged."
+        ::= { esSyslogBufferEntry 2 }
+
+    esSyslogBufferDescription OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The content of the log message."
+        ::= { esSyslogBufferEntry 3 }
+
+
+-- -----------------------------------------------------------------------------
+    esSyslogAttackLogTableNum  OBJECT-TYPE
+        SYNTAX      Unsigned32
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the number of entries presented in the
+            esSyslogAttackLogTable."
+        ::= { esSyslogMIBObjects 8 }
+
+    esSyslogAttackLogTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsSyslogAttackLogEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table consists of a list of attack log messages."
+        ::= { esSyslogMIBObjects 9 }
+
+    esSyslogAttackLogEntry OBJECT-TYPE
+        SYNTAX          EsSyslogAttackLogEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry defines a attack log message."
+        INDEX           {
+            esSyslogAttackLogUnitId,
+            esSyslogAttackLogIndex
+        }
+        ::= { esSyslogAttackLogTable 1 }
+
+    EsSyslogAttackLogEntry ::= SEQUENCE {
+        esSyslogAttackLogUnitId         Unsigned32,
+        esSyslogAttackLogIndex          Unsigned32,
+        esSyslogAttackLogDateAndTime    DateAndTime,
+        esSyslogAttackLogDescription    DisplayString
+    }
+
+    esSyslogAttackLogUnitId OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the unit (stacking device) or slot (chassis
+            device) ID of the attack log message."
+        ::= { esSyslogAttackLogEntry 1 }
+
+    esSyslogAttackLogIndex OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..100000)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An index that uniquely identifies the attack log message."
+        ::= { esSyslogAttackLogEntry 2 }
+
+    esSyslogAttackLogDateAndTime OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The date and time when the attack message is logged."
+        ::= { esSyslogAttackLogEntry 3 }
+
+    esSyslogAttackLogDescription OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The content of the attack log message."
+        ::= { esSyslogAttackLogEntry 4 }
+
+--****************************************************************************
+-- Conformance
+--****************************************************************************
+
+    esSyslogMIBCompliances OBJECT IDENTIFIER ::= { esSyslogMIBConformance 1 }
+
+
+-- compliance statements
+
+    esSyslogMIBCompliance MODULE-COMPLIANCE
+        STATUS      current
+        DESCRIPTION
+            "The compliance statement for entities which
+             implement the DLINKES-SYSLOG-MIB."
+        MODULE      -- this module
+        MANDATORY-GROUPS       {
+            esSyslogGeneralGroup
+        }
+
+        GROUP           esSyslogDiscriminatorGroup
+        DESCRIPTION
+            "Implementation of this group is optional."
+
+        GROUP           esSyslogLogConsoleGroup
+        DESCRIPTION
+            "Implementation of this group is optional."
+
+        GROUP           esSyslogLogSmtpGroup
+        DESCRIPTION
+            "Implementation of this group is optional."
+
+        GROUP           esSyslogLogServerGroup
+        DESCRIPTION
+            "Implementation of this group is optional."
+
+        GROUP           esSyslogAttackLogGroup
+        DESCRIPTION
+            "Implementation of this group is optional."
+
+        OBJECT          esSyslogSourceIfIndex
+        MIN-ACCESS      read-only
+        DESCRIPTION
+            "It is compliant to implement this object as
+            read-only. The write-access is only required
+            when source interface is configurable."
+
+        OBJECT          esSyslogLogConsoleDiscriminator
+        MIN-ACCESS      read-only
+        DESCRIPTION
+            "It is compliant to implement this object as
+            read-only. The write-access is only required
+            when discriminator feature is supported."
+
+        OBJECT          esSyslogLogSmtpDiscriminator
+        MIN-ACCESS      read-only
+        DESCRIPTION
+            "It is compliant to implement this object as
+            read-only. The write-access is only required
+            when discriminator feature is supported."
+
+        OBJECT          esSyslogServerDiscriminator
+        MIN-ACCESS      read-only
+        DESCRIPTION
+            "It is compliant to implement this object as
+            read-only. The write-access is only required
+            when discriminator feature is supported."
+
+        ::= { esSyslogMIBCompliances 1 }
+
+-- units of conformance
+
+    esSyslogMIBGroups      OBJECT IDENTIFIER ::=  { esSyslogMIBCompliances 2 }
+
+    esSyslogGeneralGroup OBJECT-GROUP
+        OBJECTS {
+            esSyslogClearLogBuffer,
+            esSyslogLogBufferEnabled,
+            esSyslogLogBufSeverity,
+            esSyslogLogBufDiscriminator,
+            esSyslogLogBufWriteDelay,
+            esSyslogBufferTableNum,
+            esSyslogBufferDateAndTime,
+            esSyslogBufferDescription,
+            esSyslogLogOnEnabled,
+            esSyslogSourceIfType
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects provides basic configuration of
+            SYSLOG feature.
+            "
+        ::= { esSyslogMIBGroups 1 }
+
+
+    esSyslogDiscriminatorGroup OBJECT-GROUP
+        OBJECTS {
+            esSyslogDiscriminatorRowstatus,
+            esSyslogDisFacilityFilterMode,
+            esSyslogDisFacilityFilterString,
+            esSyslogDisSeverityFilterMode,
+            esSyslogDisSeverityList,
+            esSyslogLogBufDiscriminator
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects provides configuration of
+            discriminator which is used to filter SYSLOG messages sent to
+            various destinations.
+            "
+        ::= { esSyslogMIBGroups 2 }
+
+    esSyslogLogConsoleGroup OBJECT-GROUP
+        OBJECTS {
+            esSyslogLogConsoleEnabled,
+            esSyslogLogConsoleSeverity,
+            esSyslogLogConsoleDiscriminator
+
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects provides configurations that are related
+            to the logging system messages to the local console.
+            "
+        ::= { esSyslogMIBGroups 3 }
+
+    esSyslogLogSmtpGroup OBJECT-GROUP
+        OBJECTS {
+            esSyslogLogSmtpEnabled,
+            esSyslogLogSmtpSeverity,
+            esSyslogLogSmtpDiscriminator
+
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects provides configurations that are related
+            to the logging system messages to the email recipients.
+            "
+        ::= { esSyslogMIBGroups 4 }
+
+   esSyslogLogServerGroup OBJECT-GROUP
+        OBJECTS {
+           esSyslogSourceIfIndex,
+           esSyslogServerRowstatus,
+           esSyslogServerPort,
+           esSyslogServerSeverity,
+           esSyslogServerFacility,
+           esSyslogServerDiscriminator
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects provides configurations that are related
+            to the logging system messages to the SYSLOG servers.
+            "
+        ::= { esSyslogMIBGroups 5 }
+
+    esSyslogAttackLogGroup OBJECT-GROUP
+        OBJECTS {
+            esSyslogClearAttackLogBufByUnit,
+            esSyslogAttackLogTableNum,
+            esSyslogAttackLogDateAndTime,
+            esSyslogAttackLogDescription
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects provides the management of attack log.
+            "
+        ::= { esSyslogMIBGroups 6 }
+END

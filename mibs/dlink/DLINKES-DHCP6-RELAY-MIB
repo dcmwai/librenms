@@ -1,0 +1,721 @@
+--  *****************************************************************
+--  DLINKSW-DHCP6-RELAY-MIB.mib : DHCPv6 Relay MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+
+DLINKES-DHCP6-RELAY-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE
+                        FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP
+                        FROM SNMPv2-CONF
+        InterfaceIndex,
+        InterfaceIndexOrZero
+                        FROM IF-MIB
+        TruthValue,
+        RowStatus,
+        DisplayString,
+        TEXTUAL-CONVENTION
+                        FROM SNMPv2-TC
+        InetAddressIPv6
+                        FROM INET-ADDRESS-MIB
+        dlinkCommon
+                        FROM DLINK-ID-REC-MIB
+        Dlink2kVlanList
+                        FROM DLINKES-TC-MIB;
+
+    dlinkEsDhcp6RelayMIB MODULE-IDENTITY
+        LAST-UPDATED "201702020000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "         D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:    +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for DHCPv6 Relay."
+
+        REVISION    "201702020000Z"
+        DESCRIPTION
+            "Modify mib object for EESDD."
+
+        REVISION     "201505070000Z"
+        DESCRIPTION
+            "1.Add the node dDhcp6RInterfaceIdExpertUdfUnitId and dDhcp6RRemoteIdExpertUdfUnitId.
+                   2.Add dDhcp6ROption18ExUdfProfileTable,dDhcp6ROption37ExUdfProfileTable, dDhcp6ROptionExUdfMacFormatCase, dDhcp6ROptionExUdfMacFormatDelimiter
+               and dDhcp6ROptionExUdfMacFormatDelimiterNumber to support flexible user-defined DHCP option 18 and 37.
+                   3.Add dDhcp6RelayVlanObjects to support dhcpv6 local relay.
+                   4.Add dDhcp6RPortIfTable to support dhcpv6 relay per port.
+                   5.Add dDhcp6RPortIfOption18Table and dDhcp6RPortIfOption37Table to support interface ID and remote ID option for physical port or port channel interface.
+                   6.Add new Remote ID type in dDhcp6RRemoteIdFormat: expertUdf(4).
+                   7.Add new Interface ID type in dDhcp6RInterfaceIdFormat: expertUdf(4)."
+
+        REVISION     "201407070000Z"
+        DESCRIPTION
+            "Change the default valude of dDhcp6RInterfaceIdInsertEnabled to true."
+
+        REVISION     "201401090000Z"
+        DESCRIPTION
+            "Add nodes about Interface ID option"
+
+        REVISION     "201309050000Z"
+        DESCRIPTION
+            "Add dDhcp6RIfRelayDestOutIfIndex into the dDhcp6RIfRelayDestEntry INDEX"
+
+        REVISION     "201301180000Z"
+        DESCRIPTION
+            "First release of this MIB."
+
+        ::= { dlinkCommon 88 }
+
+--
+-- Textual conventions
+--
+    RemoteIdType ::= TEXTUAL-CONVENTION
+        STATUS current
+        DESCRIPTION
+            "Represents a remote-id type to determine the content encoded in
+            relay agent Remote ID option.
+            default(1) - VLAN ID (2 bytes) + Module ID (1 byte) +
+                         Port ID (1 byte) + System MAC address (6 bytes)
+            cidWithUserDefine(2) - VLAN ID (2 bytes) + Module ID (1 byte) +
+                         Port ID (1 byte) + dDhcp6RRemoteIdUdfValue
+            userDefine(3) - dDhcp6RRemoteIdUdfValue
+            expertUdf(4) - The flexible user defined format
+            "
+
+        SYNTAX INTEGER    {
+            default(1),
+            cidWithUserDefine(2),
+            userDefine(3),
+            expertUdf(4)
+        }
+
+    InterfaceIdType ::= TEXTUAL-CONVENTION
+        STATUS current
+        DESCRIPTION
+            "Represents a interface-id type to determine the content encoded in
+            relay agent Interface ID option.
+            default(1) - Sub Type(1)+ VLAN ID (2 bytes)
+            cid(2) - Sub Type(1)+ VLAN ID (2 bytes) + Module ID (1 byte) +
+                         Port ID (1 byte)
+            vendor1(3) - Vendor format(HuaWei)
+            expertUdf(4) - The flexible user defined format
+            "
+
+        SYNTAX INTEGER    {
+            default(1),
+            cid(2),
+            vendor1(3),
+            expertUdf(4)
+        }
+
+-- -----------------------------------------------------------------------------
+    esDhcp6RelayMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsDhcp6RelayMIB 0 }
+    esDhcp6RelayMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsDhcp6RelayMIB 1 }
+    esDhcp6RelayMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsDhcp6RelayMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esDhcp6RelayGeneral          OBJECT IDENTIFIER ::= { esDhcp6RelayMIBObjects 1 }
+
+    esDhcp6RRemoteIdInsertEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the DHCPv6 relay agent inserts relay
+            agent Remote ID option (option 37)."
+        DEFVAL          { false }
+        ::= { esDhcp6RelayGeneral 1 }
+
+    esDhcp6RRemoteIdPolicy OBJECT-TYPE
+        SYNTAX          INTEGER { drop(1), keep(2)}
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the re-forwarding policy of DHCPv6 relay agent
+             Remote ID (option 37).
+             drop (1)    - discards the packet that already has option 37.
+             keep (2)    - the DHCP requests packet that already has option 37
+                           is left unchanged and directly relayed to the
+                           DHCPv6 server."
+        DEFVAL          { keep }
+        ::= { esDhcp6RelayGeneral 2 }
+
+    esDhcp6RRemoteIdFormat OBJECT-TYPE
+        SYNTAX          RemoteIdType
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the encoding type of relay agent remote ID."
+        ::= { esDhcp6RelayGeneral 3 }
+
+    esDhcp6RRemoteIdUdfType OBJECT-TYPE
+        SYNTAX  INTEGER {
+            string(1),
+            hex(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of esDhcp6RRemoteIdUdfValue.
+            string(1): The type of option value is character string.
+            hex(2)   : The type of option value is hexadecimal string."
+        ::= { esDhcp6RelayGeneral 4 }
+
+    esDhcp6RRemoteIdUdfValue OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the user defined field which will be used to
+            encode the relay agent Remote ID option.
+            esDhcp6RRemoteIdUdfValue is always interpreted within the context
+            of an esDhcp6RRemoteIdUdfType value."
+        ::= { esDhcp6RelayGeneral 5 }
+
+    esDhcp6RInterfaceIdInsertEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the DHCPv6 relay agent inserts relay
+            agent Interface ID option (option 18)."
+        DEFVAL          { true }
+        ::= { esDhcp6RelayGeneral 6 }
+
+    esDhcp6RInterfaceIdPolicy OBJECT-TYPE
+        SYNTAX          INTEGER { drop(1), keep(2)}
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the re-forwarding policy of DHCPv6 relay agent
+             Interface ID (option 18).
+             drop (1)    - discards the packet that already has option 18.
+             keep (2)    - the DHCP requests packet that already has option 18
+                           is left unchanged and directly relayed to the
+                           DHCPv6 server."
+        DEFVAL          { keep }
+        ::= { esDhcp6RelayGeneral 7 }
+
+    esDhcp6RInterfaceIdFormat OBJECT-TYPE
+        SYNTAX          InterfaceIdType
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the encoding type of relay agent interface ID."
+        ::= { esDhcp6RelayGeneral 8 }
+
+-- -----------------------------------------------------------------------------
+    esDhcp6RelayIfObjects          OBJECT IDENTIFIER ::= { esDhcp6RelayMIBObjects 2 }
+
+    esDhcp6RIfRelayDestTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsDhcp6RIfRelayDestEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table is a list of destination addresses for DHCPv6 relay.
+            Once a destination address is configured on an interface, the DHCPv6
+            relay function is enabled on that interface. Multiple relay addresses
+            can be configured for an interface. If all relay addresses of an
+            interface are removed, the DHCPv6 relay function on that interface
+            is disabled."
+        ::= { esDhcp6RelayIfObjects 1 }
+
+    esDhcp6RIfRelayDestEntry OBJECT-TYPE
+        SYNTAX          EsDhcp6RIfRelayDestEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+              "An entry in esDhcp6RIfRelayDestTable containing the information about
+              DHCPv6 relay on an interface."
+        INDEX   {
+            esDhcp6RIfRelayDestIndex,
+            esDhcp6RIfRelayDestDestAddr,
+            esDhcp6RIfRelayDestOutIfIndex }
+        ::= { esDhcp6RIfRelayDestTable 1 }
+
+    EsDhcp6RIfRelayDestEntry ::= SEQUENCE {
+        esDhcp6RIfRelayDestIndex             InterfaceIndex,
+        esDhcp6RIfRelayDestDestAddr          InetAddressIPv6,
+        esDhcp6RIfRelayDestOutIfIndex        InterfaceIndexOrZero,
+        esDhcp6RIfRelayDestRowStatus         RowStatus
+    }
+
+    esDhcp6RIfRelayDestIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The ifIndex of the DHCPv6 relay interface.
+            Only VLAN interfaces are valid interfaces. "
+        ::= { esDhcp6RIfRelayDestEntry 1 }
+
+    esDhcp6RIfRelayDestDestAddr OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The DHCPv6 Relay destination address."
+        ::= { esDhcp6RIfRelayDestEntry 2 }
+
+    esDhcp6RIfRelayDestOutIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex value of the destination VLAN
+            interface.
+            The special value 0 indicates the output interface for the relay
+            destination is unspecified."
+        ::= { esDhcp6RIfRelayDestEntry 3 }
+
+    esDhcp6RIfRelayDestRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The row status variable, used according to installation
+             and removal conventions for conceptual rows."
+        ::= { esDhcp6RIfRelayDestEntry 4 }
+
+-- -----------------------------------------------------------------------------
+    esDhcp6RelayPortIfOptionObjects         OBJECT IDENTIFIER ::= { esDhcp6RelayMIBObjects 3 }
+
+    esDhcp6RPortIfOption18Table OBJECT-TYPE
+        SYNTAX SEQUENCE OF EsDhcp6RPortIfOption18Entry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "This table is used to manage the interface ID option
+            for physical port or port channel interface."
+        ::={ esDhcp6RelayPortIfOptionObjects 1}
+
+    esDhcp6RPortIfOption18Entry OBJECT-TYPE
+        SYNTAX          EsDhcp6RPortIfOption18Entry
+        MAX-ACCESS      not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in esDhcp6RPortIfOption18Table containing the
+            configuration about the interface ID option for the
+            corresponding interface."
+        INDEX { esDhcp6RPortIfOption18IfIndex }
+        ::={ esDhcp6RPortIfOption18Table 1 }
+
+    EsDhcp6RPortIfOption18Entry ::=      SEQUENCE{
+        esDhcp6RPortIfOption18IfIndex       InterfaceIndex,
+        esDhcp6RPortIfOption18ExpertUdfCfg  DisplayString
+    }
+
+    esDhcp6RPortIfOption18IfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex value of the port or port channel.
+            Only physical port and port channel interface will appear in this
+            table."
+        ::= { esDhcp6RPortIfOption18Entry 1 }
+
+
+    esDhcp6RPortIfOption18ExpertUdfCfg OBJECT-TYPE
+        SYNTAX          DisplayString  (SIZE  (0..32))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the per port/port channel bind an profile of flexible defined
+             as interface ID.
+            This object is used when esDhcp6RInterfaceIdFormat is set to
+            'expertUdf'."
+        ::= { esDhcp6RPortIfOption18Entry 2 }
+
+    esDhcp6RPortIfOption37Table OBJECT-TYPE
+        SYNTAX SEQUENCE OF EsDhcp6RPortIfOption37Entry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "This table is used to manage the remote ID option
+            for physical port or port channel interface."
+        ::={ esDhcp6RelayPortIfOptionObjects 2}
+
+    esDhcp6RPortIfOption37Entry OBJECT-TYPE
+        SYNTAX          EsDhcp6RPortIfOption37Entry
+        MAX-ACCESS      not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in esDhcp6RPortIfOption37Table containing the
+            configuration about the remote ID option for the
+            corresponding interface."
+        INDEX { esDhcp6RPortIfOption37IfIndex }
+        ::={ esDhcp6RPortIfOption37Table 1 }
+
+    EsDhcp6RPortIfOption37Entry ::=      SEQUENCE{
+        esDhcp6RPortIfOption37IfIndex       InterfaceIndex,
+        esDhcp6RPortIfOption37ExpertUdfCfg  DisplayString
+    }
+
+    esDhcp6RPortIfOption37IfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex value of the port or port channel.
+            Only physical port and port channel interface will appear in this
+            table."
+        ::= { esDhcp6RPortIfOption37Entry 1 }
+
+
+    esDhcp6RPortIfOption37ExpertUdfCfg OBJECT-TYPE
+        SYNTAX          DisplayString  (SIZE  (0..32))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the per port/port channel bind an profile of flexible defined
+             as remote ID.
+            This object is used when esDhcp6RRemoteIdFormat is set to
+            'expertUdf'."
+        ::= { esDhcp6RPortIfOption37Entry 2 }
+
+-- -----------------------------------------------------------------------------
+    esDhcp6RelayPortIfObjects         OBJECT IDENTIFIER ::= { esDhcp6RelayMIBObjects 4 }
+
+    esDhcp6RPortIfTable OBJECT-TYPE
+        SYNTAX SEQUENCE OF EsDhcp6RPortIfEntry
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+            "This table is used to manage the dhcpv6 relay state
+            for physical port or port channel interface."
+        ::={ esDhcp6RelayPortIfObjects 1}
+
+    esDhcp6RPortIfEntry OBJECT-TYPE
+        SYNTAX          EsDhcp6RPortIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS current
+        DESCRIPTION
+            "An entry in esDhcp6RPortIfTable containing the
+            configuration about the dhcpv6 relay state for the
+            corresponding interface."
+        INDEX { esDhcp6RPortIfIfIndex }
+        ::={ esDhcp6RPortIfTable 1 }
+
+    EsDhcp6RPortIfEntry ::=      SEQUENCE{
+        esDhcp6RPortIfIfIndex       InterfaceIndex,
+        esDhcp6RPortIfState    TruthValue
+    }
+
+    esDhcp6RPortIfIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex value of the port or port channel.
+            Only physical port and port channel interface will appear in this
+            table."
+        ::= { esDhcp6RPortIfEntry 1 }
+
+    esDhcp6RPortIfState OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of dhcpv6 relay of each port."
+        DEFVAL          { false }
+        ::= { esDhcp6RPortIfEntry 2 }
+
+
+-- -----------------------------------------------------------------------------
+    esDhcp6RelayVlanObjects          OBJECT IDENTIFIER ::= { esDhcp6RelayMIBObjects 5 }
+    esDhcp6RVlanLocalRelayCrlFirst2K  OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the DHCPv6 Local Relay enabled VLAN in a
+            string of octets containing one bit per VLAN for VLANs 1 to 2048.
+            If the bit is set to '1', then the VLAN is enabled for DHCPv6 Local Relay.
+            "
+        ::= { esDhcp6RelayVlanObjects 1 }
+
+    esDhcp6RVlanLocalRelayCrlSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the DHCPv6 Local Relay enabled VLAN in a
+            string of octets containing one bit per VLAN for VLANs 2049 to 4094.
+            If the bit is set to '1', then the VLAN is enabled for DHCPv6 Local Relay.
+            "
+        ::= { esDhcp6RelayVlanObjects 2 }
+
+-- -----------------------------------------------------------------------------
+    esDhcp6RelayOptionExpertUdfObjects          OBJECT IDENTIFIER ::= { esDhcp6RelayMIBObjects 6 }
+
+    esDhcp6ROption18ExUdfProfileTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDhcp6ROption18ExUdfProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains the configuration of the flexible user defined option18 format."
+        ::= { esDhcp6RelayOptionExpertUdfObjects 1 }
+
+    esDhcp6ROption18ExUdfProfileEntry OBJECT-TYPE
+        SYNTAX          EsDhcp6ROption18ExUdfProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry identifying a profile that the flexible user defined option18 format ."
+        INDEX {
+            esDhcp6ROption18ExUdfProfileName
+        }
+        ::= { esDhcp6ROption18ExUdfProfileTable 1 }
+
+    EsDhcp6ROption18ExUdfProfileEntry ::=     SEQUENCE {
+        esDhcp6ROption18ExUdfProfileName      DisplayString,
+        esDhcp6ROption18ExUdfProfileValue     DisplayString,
+        esDhcp6ROption18ExUdfProfileRowStatus RowStatus
+    }
+
+    esDhcp6ROption18ExUdfProfileName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of this profile entry. If the objects
+             esDhcp6RInterfaceIdFormat set as expertUdf, the follow value fill in the profile name,
+             and then the profile will bind with interface-ID."
+        ::= { esDhcp6ROption18ExUdfProfileEntry 1 }
+
+    esDhcp6ROption18ExUdfProfileValue OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(0..255))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the user defined format in interface ID. The particular format rules, please reference UIS."
+        ::= { esDhcp6ROption18ExUdfProfileEntry 2 }
+
+    esDhcp6ROption18ExUdfProfileRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object manages this entry."
+        ::= { esDhcp6ROption18ExUdfProfileEntry 99}
+
+    esDhcp6ROption37ExUdfProfileTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDhcp6ROption37ExUdfProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains the configuration of the flexible user defined option37 format."
+        ::= { esDhcp6RelayOptionExpertUdfObjects 2 }
+
+    esDhcp6ROption37ExUdfProfileEntry OBJECT-TYPE
+        SYNTAX          EsDhcp6ROption37ExUdfProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry identifying a profile that the flexible user defined option37 format ."
+        INDEX {
+            esDhcp6ROption37ExUdfProfileName
+        }
+        ::= { esDhcp6ROption37ExUdfProfileTable 1 }
+
+    EsDhcp6ROption37ExUdfProfileEntry ::=     SEQUENCE {
+        esDhcp6ROption37ExUdfProfileName      DisplayString,
+        esDhcp6ROption37ExUdfProfileValue     DisplayString,
+        esDhcp6ROption37ExUdfProfileRowStatus RowStatus
+    }
+
+    esDhcp6ROption37ExUdfProfileName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The name of this profile entry. If the objects
+             esDhcp6RRemoteIdFormat set as expertUdf, the follow value fill in the profile name,
+             and then the profile will bind with remote-ID."
+        ::= { esDhcp6ROption37ExUdfProfileEntry 1 }
+
+    esDhcp6ROption37ExUdfProfileValue OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(0..255))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the user defined format in remote ID. The particular format rules, please reference UIS."
+        ::= { esDhcp6ROption37ExUdfProfileEntry 2 }
+
+    esDhcp6ROption37ExUdfProfileRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object manages this entry."
+        ::= { esDhcp6ROption37ExUdfProfileEntry 99}
+
+
+     esDhcp6ROptionExUdfMacFormatCase OBJECT-TYPE
+        SYNTAX  INTEGER {
+               uppercase(1),
+               lowercase(2)
+               }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the case format of the option18 and option37 MAC address for profile user define.
+             It will be used in the object esDhcp6ROption18ExUdfProfileValue and esDhcp6ROption37ExUdfProfileValue.
+
+             uppercase: Using uppercase format, the formatted is: AA-BB-CC-DD-EE-FF.
+             lowercase: Using lowercase format, the formatted is: aa-bb-cc-dd-ee-ff."
+        ::= { esDhcp6RelayOptionExpertUdfObjects 3 }
+
+     esDhcp6ROptionExUdfMacFormatDelimiter OBJECT-TYPE
+        SYNTAX  INTEGER {
+               none(1),
+               hyphen(2),
+               colon(3),
+               dot(4)
+               }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the delimiter format of option18 and option37 MAC address for profile user define.
+             It will be used in the object esDhcp6ROption18ExUdfProfileValue and esDhcp6ROption37ExUdfProfileValue.
+
+             none: Not using any delimiter, the format is: AABBCCDDEEFF
+             hyphen: Using '-' as delimiter, the format is: AA-BB-CC-DD-EE-FF
+             colon: Using ':' as delimiter, the format is: AA:BB:CC:DD:EE:FF
+             dot: Using '.' as delimiter, the format is: AA.BB.CC.DD.EE.FF"
+        ::= { esDhcp6RelayOptionExpertUdfObjects 4 }
+
+     esDhcp6ROptionExUdfMacFormatDelimiterNumber OBJECT-TYPE
+        SYNTAX  INTEGER {
+               oneDelimiterNumber(1),
+               twoDelimiterNumber(2),
+               fiveDelimiterNumber(3)
+               }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the delimiter number of option18 and option37 MAC address for profile user define.
+             It will be used in the object esDhcp6ROption18ExUdfProfileValue and esDhcp6ROption37ExUdfProfileValue.
+
+            oneDelimiterNumber: single delimiter, the format is: AABBCC.DDEEFF
+            oneDelimiterNumber: double delimiter, the format is: AABB.CCDD.EEFF
+            oneDelimiterNumber: multiple delimiter, the format is: AA.BB.CC.DD.EE.FF
+            Note: while esDhcp6ROptionExUdfMacFormatDelimiter is none(1), the delimiter number will not take effect."
+        ::= { esDhcp6RelayOptionExpertUdfObjects 5 }
+
+-- -----------------------------------------------------------------------------
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esDhcp6RelayCompliances OBJECT IDENTIFIER ::= { esDhcp6RelayMIBConformance 1 }
+
+    esDhcp6RelayCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-DHCP6-RELAY-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esDhcp6RBasicGroup
+        }
+        GROUP       esDhcp6RelayOption37Group
+        DESCRIPTION
+              "This group is required only if the agent supports relay agent
+              Remote ID (option 37)."
+
+        GROUP       esDhcp6RelayOption18Group
+        DESCRIPTION
+               "This group is required only if the agent supports relay agent
+              Interface ID (option 18)."
+
+        GROUP       esDhcp6RVlanCfgGroup
+        DESCRIPTION
+            "This group is required only for implementations that support
+            DHCPv6 Local Relay for per VLAN."
+
+        GROUP       esDhcp6RPortIfCfgGroup
+        DESCRIPTION
+            "This group is required only for implementations that support
+            DHCPv6 relay configuration for per port."
+
+        ::= { esDhcp6RelayCompliances 1 }
+
+    esDhcp6RelayGroups OBJECT IDENTIFIER ::= { esDhcp6RelayMIBConformance 2 }
+
+    esDhcp6RBasicGroup OBJECT-GROUP
+        OBJECTS {
+            esDhcp6RIfRelayDestRowStatus,
+            esDhcp6ROptionExUdfMacFormatCase,
+            esDhcp6ROptionExUdfMacFormatDelimiter,
+            esDhcp6ROptionExUdfMacFormatDelimiterNumber
+        }
+        STATUS current
+        DESCRIPTION
+            "This group contains the collection of objects related to
+            DHCPv6 relay configuration on an interface."
+        ::= { esDhcp6RelayGroups 1 }
+
+
+    esDhcp6RelayOption37Group OBJECT-GROUP
+        OBJECTS {
+            esDhcp6RRemoteIdInsertEnabled,
+            esDhcp6RRemoteIdPolicy,
+            esDhcp6RRemoteIdFormat,
+            esDhcp6RRemoteIdUdfType,
+            esDhcp6RRemoteIdUdfValue,
+            esDhcp6ROption37ExUdfProfileValue,
+            esDhcp6ROption37ExUdfProfileRowStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "This group contains the collection of objects related to
+            DHCPv6 relay agent Remote ID configuration."
+        ::= { esDhcp6RelayGroups 2 }
+
+    esDhcp6RelayOption18Group OBJECT-GROUP
+        OBJECTS {
+            esDhcp6RInterfaceIdInsertEnabled,
+            esDhcp6RInterfaceIdPolicy,
+            esDhcp6RInterfaceIdFormat,
+            esDhcp6ROption18ExUdfProfileValue,
+            esDhcp6ROption18ExUdfProfileRowStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "This group contains the collection of objects related to
+            DHCPv6 relay agent Interface ID configuration."
+        ::= { esDhcp6RelayGroups 3 }
+
+    esDhcp6RVlanCfgGroup OBJECT-GROUP
+        OBJECTS {
+           esDhcp6RVlanLocalRelayCrlFirst2K,
+           esDhcp6RVlanLocalRelayCrlSecond2K
+        }
+        STATUS current
+        DESCRIPTION
+            "This group contains the collection of objects related to
+            DHCPv6 local relay configuration."
+        ::= { esDhcp6RelayGroups 4 }
+
+    esDhcp6RPortIfCfgGroup OBJECT-GROUP
+        OBJECTS {
+           esDhcp6RPortIfOption18ExpertUdfCfg,
+           esDhcp6RPortIfOption37ExpertUdfCfg,
+           esDhcp6RPortIfState
+        }
+        STATUS current
+        DESCRIPTION
+           "A collection of objects related to dhcpv6 relay configuration per port."
+        ::= { esDhcp6RelayGroups 5 }
+
+END

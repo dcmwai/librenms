@@ -1,0 +1,1087 @@
+-- *********************************************************************
+-- DLINKES-NETWORK-ACCESS-MIB: Network Access Authentication
+-- configuration and information MIB
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+-- *******************************************************************
+
+DLINKES-NETWORK-ACCESS-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Unsigned32,
+        Integer32
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP
+            FROM SNMPv2-CONF
+        MacAddress,
+        TEXTUAL-CONVENTION,
+        TruthValue,
+        RowStatus,
+        DisplayString
+            FROM SNMPv2-TC
+        SnmpAdminString
+            FROM SNMP-FRAMEWORK-MIB
+        InetAddress,
+        InetAddressType
+            FROM INET-ADDRESS-MIB
+        ifIndex
+            FROM IF-MIB
+        VlanIdOrNone
+            FROM Q-BRIDGE-MIB
+        Dlink2kVlanList
+            FROM DLINKES-TC-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsNetworkAccessAuthMIB MODULE-IDENTITY
+        LAST-UPDATED    "201707100000Z"
+        ORGANIZATION    "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+             Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for Network Access Authentication
+            in the system.
+
+            Network Access Authentication provides generic configurations
+            for authentication methods in the system and manages the
+            failover sequence of these methods in a flexible manner."
+        REVISION        "201707100000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file for 'Network Access
+            Authentication.' functionality.
+            "
+        ::= { dlinkCommon 151 }
+
+
+-- Textual Conventions
+
+    DlinkAuthMethod ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "The authentication methods and protocols supported in
+            Network Access Authentication.
+
+            other   : other methods no defined here. 'other' is a read-only
+                      value and cannot be used in set operation.
+
+            dot1x   : 802.1X Protocol.
+
+            macAuth : MAC-based Access Control.
+
+            webAuth : Web-based Access Control.
+
+            jwac    : Japanese Web Authentication.
+            "
+        SYNTAX          INTEGER  {
+            other(1),
+            dot1x(2),
+            macAuth(3),
+            webAuth(4),
+            jwac(5)
+        }
+
+    DlinkAuthMethodList ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "The authentication methods being used by
+            Network Access Authentication.
+            This object is a bit map, with each bit representing
+            a different authentication type as identified below.
+            A 1-bit indicates the authentication method is used.
+            A 0-bit indicates the authentication method is not used.
+
+            dot1x   : 802.1X Protocol.
+
+            macAuth : MAC-based Access Control.
+
+            webAuth : Web-based Access Control.
+
+            jwac    : Japanese Web Authentication.
+            "
+        SYNTAX           BITS {
+            dot1x(0),
+            macAuth(1),
+            webAuth(2),
+            jwac(3)
+        }
+
+    DlinkAuthHostMode ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "The authentication mode of a controlled port.
+
+            multiHost : If a port is operated in multi-host mode, once
+                  a host is authenticated, all remaining hosts are
+                  also authenticated in a single domain.
+
+            multiAuth : If a port is operated in multi-auth mode, each host
+                  is authenticated separately in a single domain."
+        SYNTAX          INTEGER  {
+            multiHost(1),
+            multiAuth(2)
+        }
+
+    DlinkCompAuthMode ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "The compound authentication mode of a controlled port.
+
+            any     : The host needs pass one of the authentication methods
+                      (802.1X, MAC-based Access Control, WAC and JWAC).
+
+            macJwac : MAC-based Access Control will be verified first. If
+                      a client passed MAC authentication, JWAC will be verified.
+                      The host needs pass both authentication methods.
+
+            macWac : MAC-based Access Control will be verified first. If
+                      a client passed MAC authentication, WAC will be verified.
+                      The host needs pass both authentication methods. "
+        SYNTAX          INTEGER  {
+            any(1),
+            macJwac(2),
+            macWac(3)
+        }
+
+-- -----------------------------------------------------------------------------
+    esNetAccessAuthMIBNotifications  OBJECT IDENTIFIER    ::= { dlinkEsNetworkAccessAuthMIB 0 }
+    esNetAccessAuthMIBObjects        OBJECT IDENTIFIER    ::= { dlinkEsNetworkAccessAuthMIB 1 }
+    esNetAccessAuthMIBConformance    OBJECT IDENTIFIER    ::= { dlinkEsNetworkAccessAuthMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esNetAuthSystem         OBJECT IDENTIFIER     ::= { esNetAccessAuthMIBObjects 1 }
+    esNetAuthAuthenticator  OBJECT IDENTIFIER     ::= { esNetAccessAuthMIBObjects 2 }
+    esNetAuthSession        OBJECT IDENTIFIER     ::= { esNetAccessAuthMIBObjects 3 }
+    esNetAuthUser           OBJECT IDENTIFIER     ::= { esNetAccessAuthMIBObjects 4 }
+
+-- -----------------------------------------------------------------------------
+    esnaMacMoveMode OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            deny(1),
+            permit(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object controls whether to allow authenticated hosts to do
+            roaming across different switch ports.
+
+            deny : When a host is authenticated on one port,
+                   that address is not allowed to move on another
+                   authenticated manager-enabled port of the device.
+
+            permit: Authenticated hosts are allowed to move from one
+                   port to another on the same device. When a host moves to
+                   a new port, the authenticated session on the original
+                   port is deleted, and the host is re-authenticated on the
+                   new port."
+       ::= { esNetAuthSystem 1 }
+
+    esnaAuthorizationEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of acceptance of the authorized
+            configuration.
+            When authorization is enabled for authentication, the authorized
+            attributes (for example VLAN, 802.1p default priority, bandwidth,
+            and ACL) will be accepted."
+        ::= { esNetAuthSystem 2 }
+
+    esnaMacFormatCase OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            uppercase(1),
+            lowercase(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the format of the authentication MAC address.
+            uppercase: Using uppercase format, the formatted is: AA-BB-CC-DD-EE-FF.
+            lowercase: Using lowercase format, the formatted is: aa-bb-cc-dd-ee-ff."
+        DEFVAL { uppercase }
+        ::= { esNetAuthSystem 3 }
+
+    esnaMacFormatDelimiter OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            none(1),
+            hyphen(2),
+            colon(3),
+            dot(4)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the delimiter format of authentication MAC address.
+            none: Not using any delimiter, the format is: AABBCCDDEEFF
+            hyphen: Using '-' as delimiter, the format is: AA-BB-CC-DD-EE-FF
+            colon: Using ':' as delimiter, the format is: AA:BB:CC:DD:EE:FF
+            dot: Using '.' as delimiter, the format is: AA.BB.CC.DD.EE.FF"
+        DEFVAL { none }
+        ::= { esNetAuthSystem 4 }
+
+    esnaMacFormatDelimiterNumber OBJECT-TYPE
+        SYNTAX          Integer32 (1..2 | 5)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the delimiter number of authentication MAC address.
+            1: single delimiter, the format is: AABBCC.DDEEFF
+            2: double delimiter, the format is: AABB.CCDD.EEFF
+            5: multiple delimiter, the format is: AA.BB.CC.DD.EE.FF
+            Note: while esnaMacFormatDelimiter is none(1), the delimiter number
+            will not take effect."
+        ::= { esNetAuthSystem 5 }
+
+-- -----------------------------------------------------------------------------
+    esnaMaxAuthedUserLimit OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the maximum authenticated users of the system."
+       ::= { esNetAuthAuthenticator 1 }
+
+    esnaPortConfigTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsnaPortConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table is a list of configurations for ports. An entry will
+            exist for every interface which supports Network Access
+            Authentication feature."
+        ::= { esNetAuthAuthenticator 2 }
+
+    esnaPortConfigEntry OBJECT-TYPE
+        SYNTAX          EsnaPortConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains port-specific configuration for Network Access
+            Authentication."
+        INDEX           { ifIndex }
+        ::= { esnaPortConfigTable 1 }
+
+    EsnaPortConfigEntry ::= SEQUENCE {
+        esnaPortMaxAuthedUserLimit  Unsigned32,
+        esnaPortAuthHostMode        DlinkAuthHostMode,
+        esnaPortAuthVlansFirst2K    Dlink2kVlanList,
+        esnaPortAuthVlansSecond2K   Dlink2kVlanList,
+        esnaPortReauthEnabled       TruthValue,
+        esnaPortReauthInterval      Unsigned32,
+        esnaPortRestartInterval     Unsigned32,
+        esnaPortInactivityTimeout   Integer32,
+        esnaPortGuestVlanid         VlanIdOrNone
+    }
+
+    esnaPortMaxAuthedUserLimit OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the maximum authenticated users of this port."
+        ::= { esnaPortConfigEntry 1 }
+
+    esnaPortAuthHostMode OBJECT-TYPE
+        SYNTAX          DlinkAuthHostMode
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the authentication host mode of the entry."
+        ::= { esnaPortConfigEntry 2 }
+
+    esnaPortAuthVlansFirst2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object specifies the authentication VLAN(s)
+            in a string of octets containing one bit per VLAN for VLANs 1 to
+            2048.
+            If the bit is set to '1', then the VLAN needs authentication."
+    ::= { esnaPortConfigEntry 3 }
+
+    esnaPortAuthVlansSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the authentication VLAN(s)
+            in a string of octets containing one bit per VLAN for VLANs 2049
+            to 4094.
+            If the bit is set to '1', then the VLAN needs authentication."
+        ::= { esnaPortConfigEntry 4 }
+
+    esnaPortReauthEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the periodic re-authentication is
+            enabled."
+        ::= { esnaPortConfigEntry 5 }
+
+    esnaPortReauthInterval OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Specifies the re-authentication interval, after which the port
+            will be re-authenticated if value of the corresponding instance
+            of esnaPortReauthEnabled is 'true'.
+
+            A value of zero indicates that the re-authentication interval
+            is based on AAA server when this port is authenticated.
+            Besides, the action (re-authenticate or initialize) to take after
+            expiration of the timer is also based on server.
+            "
+            ::= { esnaPortConfigEntry 6 }
+
+    esnaPortRestartInterval OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Specifies the interval after which a further authentication
+            attempt should be made to this port if it is not authorized."
+        ::= { esnaPortConfigEntry 7 }
+
+    esnaPortInactivityTimeout OBJECT-TYPE
+        SYNTAX          Integer32 (-1 | 0 | 120..65535)
+        UNITS           "seconds"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Specifies the period of time that a client associating with
+            this port is allowed to be inactive before being terminated.
+
+            A value of zero indicates that inactivity timeout is disabled on
+            this port.
+
+            A value of -1 indicates that inactivity timeout is based on
+            AAA server when this port is authenticated."
+        ::= { esnaPortConfigEntry 8 }
+
+    esnaPortGuestVlanid  OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Specifies the VLAN ID of guest VLAN on the interface.
+            The guest VLAN allows the user access within the
+            guest VLAN before it is authenticated.
+
+            A value of zero for this object indicates guest
+            VLAN is not configured for the interface."
+        ::= { esnaPortConfigEntry 9 }
+
+-- -----------------------------------------------------------------------------
+    esnaPortMethodTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsnaPortMethodEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains a list of authentication methods information on
+            ports.  An entry will exist for every port which supports Network
+            Access Authentication feature."
+        ::= { esNetAuthAuthenticator 3 }
+
+    esnaPortMethodEntry OBJECT-TYPE
+        SYNTAX          EsnaPortMethodEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains configuration and information of
+            authentication methods for a particular port."
+        INDEX           { ifIndex }
+        ::= { esnaPortMethodTable 1 }
+
+    EsnaPortMethodEntry ::= SEQUENCE {
+        esnaPortMethodAvailable      DlinkAuthMethodList,
+        esnaPortMethodCompAuthMode   DlinkCompAuthMode
+    }
+
+    esnaPortMethodAvailable OBJECT-TYPE
+        SYNTAX          DlinkAuthMethodList
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the currently effective authentication methods
+            on the port.
+
+            e.g: The esnaPortMethodCompAuthMode of the interface is set to any(1),
+            but only dot1x is running on this interface, macAuth, webAuth
+            and jwac are disabled, only the bit of dot1x is '1'."
+        ::= { esnaPortMethodEntry 1 }
+
+    esnaPortMethodCompAuthMode OBJECT-TYPE
+        SYNTAX          DlinkCompAuthMode
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the compound authentication mode on the port."
+        ::= { esnaPortMethodEntry 2 }
+
+-- -----------------------------------------------------------------------------
+    esnaSessionTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsnaSessionEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains a list of authentication sessions.
+
+            An entry is created when an authentication session has been
+            successfully created within Network Access Authentication.
+
+            An entry is deleted when an authentication session has been
+            removed."
+        ::= { esNetAuthSession 1 }
+
+    esnaSessionEntry OBJECT-TYPE
+        SYNTAX          EsnaSessionEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains management information for a particular
+            authentication session."
+        INDEX           {
+            ifIndex,
+            esnaSessionId
+        }
+    ::= { esnaSessionTable 1 }
+
+    EsnaSessionEntry ::= SEQUENCE {
+        esnaSessionId                        Unsigned32,
+        esnaSessionClientMacAddress          MacAddress,
+        esnaSessionClientAddrType            InetAddressType,
+        esnaSessionClientAddress             InetAddress,
+        esnaSessionStatus                    INTEGER,
+        esnaSessionAuthUserName              SnmpAdminString,
+        esnaSessionAuthorizedBy              DlinkAuthMethod,
+        esnaSessionAuthVlan                  VlanIdOrNone,
+        esnaSessionAccountingID              SnmpAdminString,
+        esnaSessionAssignVid                 VlanIdOrNone,
+        esnaSessionAssignPriority            Integer32,
+        esnaSessionAssignIngressBandwidth    Integer32,
+        esnaSessionAssignEgressBandwidth     Integer32,
+        esnaSessionTimeout                   Unsigned32,
+        esnaSessionTimeLeft                  Unsigned32,
+        esnaSessionInactivityTimeout         Unsigned32,
+        esnaSessionInactivityTimeLeft        Unsigned32,
+        esnaSessionTerminateSession          INTEGER
+    }
+
+    esnaSessionId OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..4294967295)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates a unique identifier of the
+            authentication session."
+        ::= { esnaSessionEntry 1 }
+
+    esnaSessionClientMacAddress OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the MAC address of the device associates with
+            the authentication session."
+        ::= { esnaSessionEntry 2 }
+
+    esnaSessionClientAddrType OBJECT-TYPE
+        SYNTAX          InetAddressType
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the type of Internet address of the client
+            associates with the authentication session.
+            This object is meaningful only when the corresponding esnaSessionAuthorizedBy
+            is webAuth or jwac."
+        ::= { esnaSessionEntry 3 }
+
+    esnaSessionClientAddress OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the Internet address of the client associates
+            with the authentication session.
+            This object is meaningful only when the corresponding esnaSessionAuthorizedBy
+            is webAuth or jwac."
+        ::= { esnaSessionEntry 4 }
+
+    esnaSessionStatus OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            idle(1),
+            authenticating(2),
+            noMethod(3),
+            authenticationSuccess(4),
+            authenticationFailed(5)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current status of the authentication session.
+
+            idle        : the session has been initialized and no
+                          method has run yet.
+
+            authenticating     : an authentication method is running for
+                          this session.
+
+            noMethod    : no authentication method has provided a
+                          result for this session.
+
+            authenticationSuccess: an authentication method has resulted
+                          in authentication success for this session.
+
+            authenticationFailed: an authentication method has resulted
+                    in authentication failed for this session."
+            ::= { esnaSessionEntry 5 }
+
+    esnaSessionAuthUserName OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the user name of the authentication session.
+            This object is meaningless when the corresponding esnaSessionAuthorizedBy
+            is macAuth and a zero length string will be returned."
+        ::= { esnaSessionEntry 6 }
+
+    esnaSessionAuthorizedBy OBJECT-TYPE
+        SYNTAX          DlinkAuthMethod
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the method which authorizes the 
+            authentication session."
+        ::= { esnaSessionEntry 7 }
+
+    esnaSessionAuthVlan OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the authorized VLAN applied to the authentication
+           session. Value zero indicates that no authorized VLAN has been
+           applied, or it is not applicable."
+        ::= { esnaSessionEntry 8 }
+
+    esnaSessionAccountingID OBJECT-TYPE
+        SYNTAX          SnmpAdminString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the accounting session ID
+            that using to accounting after authenticated."
+        ::= { esnaSessionEntry 9 }
+
+    esnaSessionAssignVid OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the effectively assigned VLAN ID
+            that are authorized after host pass authenticated.
+
+            A value of zero indicates that no valid VLAN ID is authorized."
+        ::= { esnaSessionEntry 10 }
+
+    esnaSessionAssignPriority OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the effectively assigned priority
+            that is authorized after host pass authenticated.
+
+            A value of -1 indicates that no valid priority is authorized."
+        ::= { esnaSessionEntry 11 }
+
+    esnaSessionAssignIngressBandwidth OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the effectively assigned ingress bandwidth
+            that is authorized after host pass authenticated.
+
+            A value of -1 indicates that no valid ingress is authorized."
+        ::= { esnaSessionEntry 12 }
+
+    esnaSessionAssignEgressBandwidth OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the effectively assigned egress bandwidth
+            that is authorized after host pass authenticated.
+
+            A value of -1 indicates that no valid egress is authorized."
+        ::= { esnaSessionEntry 13 }
+
+    esnaSessionTimeout OBJECT-TYPE
+       SYNTAX          Unsigned32
+       UNITS           "seconds"
+       MAX-ACCESS      read-only
+       STATUS          current
+       DESCRIPTION
+            "Indicates the session timeout used by Network Access
+            Authentication for the authentication session."
+       ::= { esnaSessionEntry 14 }
+
+    esnaSessionTimeLeft OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the leftover time of the authentication session."
+        ::= { esnaSessionEntry 15 }
+
+    esnaSessionInactivityTimeout OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the inactivity timeout used by Network Access
+            Authentication for the authentication session."
+        ::= { esnaSessionEntry 16 }
+
+    esnaSessionInactivityTimeLeft OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Indicates the leftover time of the inactivity timer of
+            the authentication session."
+        ::= { esnaSessionEntry 17 }
+
+    esnaSessionTerminateSession OBJECT-TYPE
+        SYNTAX          INTEGER {
+            terminate(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object terminates the authentication session, when set
+            to 'terminate'.
+            Setting this object to 'false' has no effect.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esnaSessionEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esnaSessionMethodInfoTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsnaSessionMethodInfoEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table contains a list of authenticating state information of
+            methods for every authentication session.
+
+            An entry exists for every authentication method that can
+            initiate the authentication session within Network Access
+            Authentication."
+        ::= { esNetAuthSession 2 }
+
+    esnaSessionMethodInfoEntry OBJECT-TYPE
+        SYNTAX          EsnaSessionMethodInfoEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains information for a particular effective
+            authentication method which is associated with a session on an
+            interface."
+        INDEX           {
+            ifIndex,
+            esnaSessionId,
+            esnaSessionMethod
+        }
+        ::= { esnaSessionMethodInfoTable 1 }
+
+    EsnaSessionMethodInfoEntry ::= SEQUENCE {
+        esnaSessionMethod            DlinkAuthMethod,
+        esnaSessionMethodState       INTEGER
+    }
+
+    esnaSessionMethod OBJECT-TYPE
+        SYNTAX          DlinkAuthMethod
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the authentication method of the entry."
+        ::= { esnaSessionMethodInfoEntry 1 }
+
+    esnaSessionMethodState OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            notInitiated(1),
+            inProgress(2),
+            authcSuccess(3),
+            authcFailed(4)
+        }
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Indicates the state of this authentication method.
+
+        notInitiated : The method hasn't initiated the authentication process
+                       yet.
+        inProgress   : The authentication method is in progress.
+
+        authcSuccess: The session has been authenticated by the method.
+
+        authcFailed : The session has failed to be authenticated by the method.
+        "
+    ::= { esnaSessionMethodInfoEntry 2 }
+
+-- -----------------------------------------------------------------------------
+    esnaSessionTerminateIfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsnaSessionTerminateIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The table is used to terminate authentication sessions by interface."
+        ::= { esNetAuthSession 3 }
+
+    esnaSessionTerminateIfEntry OBJECT-TYPE
+        SYNTAX          EsnaSessionTerminateIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry is used to terminate authentication sessions by specifying
+            authentication methods per Network Access Authentication managed
+            port."
+        INDEX    { ifIndex }
+        ::= { esnaSessionTerminateIfTable 1 }
+
+    EsnaSessionTerminateIfEntry ::= SEQUENCE {
+        esnaSessionTerminateIfMethodList   DlinkAuthMethodList
+    }
+
+    esnaSessionTerminateIfMethodList OBJECT-TYPE
+        SYNTAX          DlinkAuthMethodList
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to terminate authentication sessions by methods on
+            an interface by setting the corresponding bit to '1'.
+
+            This object always returns '00'H when read."
+        ::= { esnaSessionTerminateIfEntry 1 }
+
+-- -----------------------------------------------------------------------------
+    esnaSessionTerminateMethod OBJECT-TYPE
+        SYNTAX          DlinkAuthMethod
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to terminate the authentication sessions by
+            setting this object to valid value.
+            Setting this object to 'other' has no effect.
+            When read, the value 'other' is returned."
+        ::= { esNetAuthSession 4 }
+
+    esnaSessionTerminateAll OBJECT-TYPE
+        SYNTAX          INTEGER {
+            terminateAll(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to terminate all authentication sessions by
+            setting this object to 'terminateAll'.
+            Setting this object to 'noOp' has no effect.
+            When read, the value 'noOp' is returned."
+        ::= { esNetAuthSession 5 }
+
+-- -----------------------------------------------------------------------------
+    esnaUserTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsnaUserEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table contains a list of users in the local database for
+            authentication."
+        ::= { esNetAuthUser 1 }
+
+    esnaUserEntry OBJECT-TYPE
+        SYNTAX           EsnaUserEntry
+        MAX-ACCESS       not-accessible
+        STATUS           current
+        DESCRIPTION
+            "An entry consists of information for an account."
+        INDEX { esnaUserName }
+        ::= { esnaUserTable 1 }
+
+    EsnaUserEntry ::=    SEQUENCE {
+        esnaUserName             DisplayString,
+        esnaUserPassword         DisplayString,
+        esnaUserTargetVlanid     VlanIdOrNone,
+        esnaUserRowStatus        RowStatus
+    }
+
+    esnaUserName OBJECT-TYPE
+        SYNTAX          DisplayString(SIZE(1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the username for this user account."
+        ::= { esnaUserEntry 1 }
+
+    esnaUserPassword OBJECT-TYPE
+        SYNTAX          DisplayString(SIZE(0..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the password in clear text form for this user
+           account.
+           When read, a zero length string will be returned for security reasons.
+           "
+        ::= { esnaUserEntry 2 }
+
+    esnaUserTargetVlanid OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the VLAN ID to be assigned for this user
+            account."
+        ::= { esnaUserEntry 3 }
+
+    esnaUserRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object manages this user account."
+        ::= { esnaUserEntry 99 }
+
+
+-- Conformanceance
+
+    esnaMIBCompliances  OBJECT IDENTIFIER  ::= { esNetAccessAuthMIBConformance 1 }
+
+    esnaMIBGroups  OBJECT IDENTIFIER       ::= { esNetAccessAuthMIBConformance 2 }
+
+
+    esnaCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement
+            DLINKES-NETWORK-ACCESS-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS {
+            esnaAuthPortConfigGroup,
+            esnaPortMethodGroup,
+            esnaSessionGroup,
+            esnaSessionMethodInfoGroup
+        }
+
+        GROUP           esnaMacMoveConfigGroup
+        DESCRIPTION
+            "This group is mandatory in devices which provide MAC move
+            configuration for Network Access Authentication."
+
+        GROUP           esnaAuthzConfigGroup
+        DESCRIPTION
+            "This group is mandatory in devices which provide authorization
+            configuration for Network Access Authentication."
+
+        GROUP           esnaMacFormatGroup
+        DESCRIPTION
+            "This group is mandatory in devices which provide MAC format
+            configuration for Network Access Authentication."
+
+        GROUP           esnaGuestVlanGroup
+        DESCRIPTION
+            "This group is mandatory in devices which provide guest VLAN
+            configuration for Network Access Authentication."
+
+        GROUP          esnaAuthenticationVlanGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            the feature of per VLAN authentication."
+
+        GROUP           esnaMaxAuthedUserLimitGroup
+        DESCRIPTION
+            "This group is mandatory in devices which provide maximum
+            authenticated user for Network Access Authentication."
+
+        GROUP          esnaAccountUserGroup
+        DESCRIPTION
+            "This group is mandatory in devices which provide the feature
+            to terminate authentication session for Network Access
+            Authentication."
+
+        GROUP          esnaSessionTerminateGroup
+        DESCRIPTION
+            "This group is mandatory in devices which provide terminate
+            authentication session for Network Access Authentication."
+       
+    ::= { esnaMIBCompliances 1 }
+
+-- Units of Conformanceance
+
+    esnaAuthPortConfigGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaPortAuthHostMode,
+            esnaPortReauthEnabled,
+            esnaPortReauthInterval,
+            esnaPortRestartInterval,
+            esnaPortInactivityTimeout
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects that provides port-specific configuration of
+            Network Access Authentication."
+        ::= { esnaMIBGroups 1 }
+
+    esnaPortMethodGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaPortMethodAvailable,
+            esnaPortMethodCompAuthMode
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects provides authentication methods configuration
+            for Network Access Authentication."
+        ::= { esnaMIBGroups 2 }
+
+    esnaSessionGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaSessionClientMacAddress,
+            esnaSessionClientAddrType,
+            esnaSessionClientAddress,
+            esnaSessionStatus,
+            esnaSessionAuthUserName,
+            esnaSessionAuthorizedBy,
+            esnaSessionAuthVlan,
+            esnaSessionAccountingID,
+            esnaSessionAssignVid,
+            esnaSessionAssignPriority,
+            esnaSessionAssignIngressBandwidth,
+            esnaSessionAssignEgressBandwidth,
+            esnaSessionTimeout,
+            esnaSessionTimeLeft,
+            esnaSessionInactivityTimeout,
+            esnaSessionInactivityTimeLeft
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects that provides authentication session
+            management information for Network Access Authentication."
+        ::= { esnaMIBGroups 3 }
+
+    esnaSessionMethodInfoGroup OBJECT-GROUP
+        OBJECTS         { esnaSessionMethodState }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects that provides authentication session state
+            information per authentication methods."
+        ::= { esnaMIBGroups 4 }
+
+    esnaMacMoveConfigGroup OBJECT-GROUP
+        OBJECTS         { esnaMacMoveMode }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects providing MAC move configuration
+            for Network Access Authentication on the device."
+        ::= { esnaMIBGroups 5 }
+
+    esnaAuthzConfigGroup OBJECT-GROUP
+        OBJECTS         { esnaAuthorizationEnabled  }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects provides authorization configuration
+            for Network Access Authentication on the device."
+        ::= { esnaMIBGroups 6 }
+
+    esnaMacFormatGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaMacFormatCase,
+            esnaMacFormatDelimiter,
+            esnaMacFormatDelimiterNumber
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects provides MAC format configuration
+            for Network Access Authentication on the device."
+        ::= { esnaMIBGroups 7 }
+
+    esnaMaxAuthedUserLimitGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaMaxAuthedUserLimit,
+            esnaPortMaxAuthedUserLimit
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects provides configuration of upper limits
+            for authenticated user."
+        ::= { esnaMIBGroups 8 }
+
+    esnaGuestVlanGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaPortGuestVlanid
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects providing guest VLAN configuration
+            for Network Access Authentication on the device."
+        ::= { esnaMIBGroups 9 }
+
+    esnaAuthenticationVlanGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaPortAuthVlansFirst2K,
+            esnaPortAuthVlansSecond2K
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects provides for the platform which supports
+            the feature of per VLAN authentication."
+        ::= { esnaMIBGroups 10 }
+
+    esnaSessionTerminateGroup OBJECT-GROUP
+        OBJECTS         {
+             esnaSessionTerminateSession,
+             esnaSessionTerminateIfMethodList,
+             esnaSessionTerminateMethod,
+             esnaSessionTerminateAll
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects providing terminate authentication session
+            information for Network Access Authentication on the device."
+        ::= { esnaMIBGroups 11 }
+
+    esnaAccountUserGroup OBJECT-GROUP
+        OBJECTS         {
+            esnaUserPassword,
+            esnaUserTargetVlanid,
+            esnaUserRowStatus
+        }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects providing local account
+            information for Network Access Authentication on the device."
+        ::= { esnaMIBGroups 12 }
+
+END

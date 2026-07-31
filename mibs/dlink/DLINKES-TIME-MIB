@@ -1,0 +1,429 @@
+--  *****************************************************************
+--  DLINKES-TIME-MIB.mib : D-Link Time MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-TIME-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        Unsigned32
+                    FROM SNMPv2-SMI
+        OBJECT-GROUP, 
+        MODULE-COMPLIANCE
+                    FROM SNMPv2-CONF
+        TEXTUAL-CONVENTION,
+        DateAndTime,
+        TruthValue,
+        RowStatus
+                    FROM SNMPv2-TC
+        InterfaceIndexOrZero
+                    FROM IF-MIB
+        InetAddressType,
+        InetAddress
+                    FROM INET-ADDRESS-MIB
+        dlinkCommon
+                    FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsTimeMIB MODULE-IDENTITY
+        LAST-UPDATED "201709170000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for Time and Simple Network Time
+            Protocol (SNTP)."
+        REVISION "201709170000Z"
+        DESCRIPTION
+            "1.Add Year for date type of EslinkTimeSummerTimeValue .
+             2.Fixed bugs of type error for esTimeSntpServerLastReceive.
+            "
+        REVISION "201708170000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file.
+            "
+    ::= { dlinkCommon 10 }
+
+    EslinkTimeSummerTimeValue ::= TEXTUAL-CONVENTION
+        STATUS       current
+        DESCRIPTION
+            "Denotes Summer Time starts or ends time.
+            This value is always interpreted within the context of a
+            esTimeSummerTimeAutoSwitchMode value.
+            When esTimeSummerTimeAutoSwitchMode is disable(1), this value is not
+            meaningful.
+            When esTimeSummerTimeAutoSwitchMode is recurring(2), the format is
+            defined as follows:
+            octets contents range
+            ------ -------- -------
+            1      week     1..4, ff last = ff
+            2      day      1..7  where Sunday = 1 Saturday = 7
+            3      month    1..12 where January = 1 December = 12
+            4      hour     0..23
+            5      minute   0..59
+
+            For example, the first Feb at 13:30pm should be given as 01 02 0d 1e
+            For the last Tuesday in December at 1:20am should be given as ff 03 0c 01 14
+
+        When esTimeSummerTimeAutoSwitchMode is date(3), the format is defined as follows:
+
+        octets    contents    range
+        ------    --------    -------
+           1-2        year    0..65536 in network-byte order
+             3       month    1..12 where January = 1 December = 12
+             4        date    1..31,
+             5        hour    0..23
+             6      minute    0..59
+
+             For example, the 2013-4-2 03:00 should be given as 07 dd 04 02 03 00
+             For the 2013-10-31 00:30 should be given as 07 dd 10 1f 00 1e                            "
+    SYNTAX       OCTET STRING (SIZE (0 | 5 | 6))
+
+-- -----------------------------------------------------------------------------
+    esTimeMIBNotifications     OBJECT IDENTIFIER ::= { dlinkEsTimeMIB 0 }
+    esTimeMIBObjects           OBJECT IDENTIFIER ::= { dlinkEsTimeMIB 1 }
+    esTimeMIBConformance       OBJECT IDENTIFIER ::= { dlinkEsTimeMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esTimeGeneral         OBJECT IDENTIFIER ::= { esTimeMIBObjects 1 }
+
+    esTimeSntpEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the state of SNTP function.
+            Setting this object to 'true' will enable SNTP function.
+            "
+        ::= { esTimeGeneral 1 }
+
+    esTimeSntpBcastClientEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to enable/disable the broadcast client mode.
+            Setting this object to 'true' indicates that the agent accepts
+            broadcast SNTP traffic from servers.
+            "
+        ::= { esTimeGeneral 2 }
+
+    esTimeSntpPollInterval OBJECT-TYPE
+        SYNTAX          Unsigned32 (30..99999)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the interval for the SNTP client to
+            synchronize its clock with server."
+        DEFVAL      { 720 }
+        ::= { esTimeGeneral 3 }
+
+    esTimeSntpSourceIfIndex OBJECT-TYPE
+        SYNTAX         InterfaceIndexOrZero
+        MAX-ACCESS     read-write
+        STATUS         current
+        DESCRIPTION
+            "This object indicates the ifIndex of the interface whose IP address
+            will be used as the source address for sending the SNTP packet.
+            A special value of 0 indicates the source interface is not specified
+            and the IP address of the closest interface will be used.
+            "
+        ::= { esTimeGeneral 4 }
+
+-- -----------------------------------------------------------------------------
+    esTimeClock                   OBJECT IDENTIFIER ::= { esTimeMIBObjects 2 }
+
+    esTimeManagedClock OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "Use the object to manually set the system clock."
+        ::= { esTimeClock 1 }
+
+    esTimeCurrentTimeSource OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            sntp(1),
+            noTimeSource(2)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "The object indicates the clock source."
+        ::= { esTimeClock 2 }
+
+    esTimeCurrentTime  OBJECT-TYPE
+        SYNTAX          DateAndTime
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current system time. System time can
+            be disciplined or adjusted by RTC, SNTP, or configured by user.
+            "
+        ::= { esTimeClock 3 }
+
+-- -----------------------------------------------------------------------------
+
+    esTimeSummerTime         OBJECT IDENTIFIER ::= { esTimeClock 5 }
+
+    esTimeSummerTimeAutoSwitchMode OBJECT-TYPE
+        SYNTAX          INTEGER  {
+            disable(1),
+            recurring(2),
+            date(3)
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the mode of the system to automatically
+            switch to Summer Time (Daylight Saving Time).
+            disable(1) - The Daylight Saving Time feature is disabled.
+            recurring(2) - The Daylight Saving Time feature is enabled.
+                         The Summer Time should start and end on the specified
+                         week day of the specified month.
+            date(3) - The Daylight Saving Time feature is enabled.
+                      The Summer Time should start and end on the specified date
+                      of the specified month.
+            "
+        DEFVAL { disable }
+        ::= { esTimeSummerTime 1 }
+
+    esTimeSummerTimeStart OBJECT-TYPE
+        SYNTAX          EslinkTimeSummerTimeValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates when the Summer Time starts.
+            This value is always interpreted within the context of a
+            esTimeSummerTimeAutoSwitchMode value.
+            "
+        ::= { esTimeSummerTime 2 }
+
+    esTimeSummerTimeEnd OBJECT-TYPE
+        SYNTAX          EslinkTimeSummerTimeValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates when the Summer Time ends.
+            This value is always interpreted within the context of a
+            esTimeSummerTimeAutoSwitchMode value.
+            "
+        ::= { esTimeSummerTime 3 }
+
+    esTimeSummerTimeOffset  OBJECT-TYPE
+        SYNTAX      Unsigned32 (30|60|90|120)
+        UNITS       "Minutes"
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "The value of this object indicates number of minutes to add
+            or to subtract during Summer Time. This object is not meaningful
+            when esTimeSummerTimeAutoSwitchMode object is 'disable'."
+        DEFVAL { 60 }
+        ::= { esTimeSummerTime 4 }
+
+-- -----------------------------------------------------------------------------
+    esTimeServer                  OBJECT IDENTIFIER ::= { esTimeMIBObjects 3 }
+    esTimeSntpServerTableNum  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the number of entries present in the esTimeSntpServerTable."
+        ::= { esTimeServer 1 }
+
+    esTimeSntpServerTable  OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DTimeSntpServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of information for SNTP Time
+            servers, which allow the software clock to be synchronized."
+        ::= { esTimeServer 2 }
+
+    esTimeSntpServerEntry  OBJECT-TYPE
+        SYNTAX          DTimeSntpServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains information about an SNTP Time server."
+        INDEX {
+            esTimeSntpServerAddrType,
+            esTimeSntpServerAddr
+        }
+        ::= { esTimeSntpServerTable 1 }
+
+    DTimeSntpServerEntry ::= SEQUENCE {
+        esTimeSntpServerAddrType         InetAddressType,
+        esTimeSntpServerAddr             InetAddress,
+        esTimeSntpServerVersion          Unsigned32,
+        esTimeSntpServerLastReceive      Unsigned32,
+        esTimeSntpServerSynced           TruthValue,
+        esTimeSntpServerBcast            TruthValue,
+        esTimeSntpServerRowStatus        RowStatus
+    }
+
+    esTimeSntpServerAddrType  OBJECT-TYPE
+        SYNTAX          InetAddressType
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the address type of the SNTP server."
+        ::= { esTimeSntpServerEntry 1 }
+
+    esTimeSntpServerAddr  OBJECT-TYPE
+        SYNTAX          InetAddress
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "IP or IPv6 address of the time server which provides the clock
+             synchronization."
+        ::= { esTimeSntpServerEntry 2 }
+
+    esTimeSntpServerVersion  OBJECT-TYPE
+        SYNTAX          Unsigned32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the SNTP server version. When
+            the value of esTimeSntpServerRowStatus at the same row is notInService(2),
+            this object is 0.
+            "
+        ::= { esTimeSntpServerEntry 3 }
+
+    esTimeSntpServerLastReceive OBJECT-TYPE
+        SYNTAX          Unsigned32
+        UNITS           "seconds"
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the elapsed time that the SNTP time has
+            been synchronized.
+            "
+        ::= { esTimeSntpServerEntry 4 }
+
+    esTimeSntpServerSynced  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the corresponding server is the
+            current synced server.
+            "
+        ::= { esTimeSntpServerEntry 5 }
+
+    esTimeSntpServerBcast  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the server is a broadcast SNTP server.
+            "
+        ::= { esTimeSntpServerEntry 6 }
+
+    esTimeSntpServerRowStatus  OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this entry."
+        ::= { esTimeSntpServerEntry 99 }
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esTimeCompliances OBJECT IDENTIFIER ::= { esTimeMIBConformance 1 }
+
+    esTimeCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-TIME-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esTimeSysInfoGroup
+        }
+
+        GROUP    esTimeClockGroup
+        DESCRIPTION
+           "This group is conditionally mandatory and must be implemented by
+            the agent only if system clock can be manually configured."
+
+        GROUP    esTimeSntpGroup
+        DESCRIPTION
+           "This group is conditionally mandatory and must be implemented by
+            the agent only if SNTP feature is supported."
+
+        GROUP    esTimeSummerTimeCfgGroup
+        DESCRIPTION
+           "This group is conditionally mandatory and must be implemented by
+           the agent only if Daylight Saving Time feature is supported.
+           "
+        ::= { esTimeCompliances 1 }
+
+-- units of conformance
+    esTimeGroups OBJECT IDENTIFIER ::= { esTimeMIBConformance 2 }
+
+    esTimeSysInfoGroup OBJECT-GROUP
+        OBJECTS {
+            esTimeCurrentTimeSource,
+            esTimeCurrentTime
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides the information for system time."
+        ::= { esTimeGroups 1 }
+
+    esTimeClockGroup OBJECT-GROUP
+        OBJECTS {
+            esTimeManagedClock
+         }
+        STATUS          current
+        DESCRIPTION
+            "A collection of objects provides configuration for system time."
+        ::= { esTimeGroups 2 }
+
+    esTimeSntpGroup OBJECT-GROUP
+        OBJECTS {
+               esTimeSntpEnabled,
+            esTimeSntpBcastClientEnabled,
+            esTimeSntpPollInterval,
+            esTimeSntpSourceIfIndex,
+            esTimeSntpServerTableNum,
+            esTimeSntpServerRowStatus,
+            esTimeSntpServerVersion,
+            esTimeSntpServerLastReceive,
+            esTimeSntpServerSynced,
+            esTimeSntpServerBcast
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides configuration for SNTP."
+            ::= { esTimeGroups 3 }
+
+    esTimeSummerTimeCfgGroup OBJECT-GROUP
+        OBJECTS {
+            esTimeSummerTimeAutoSwitchMode,
+            esTimeSummerTimeStart,
+            esTimeSummerTimeEnd,
+            esTimeSummerTimeOffset,
+            esTimeSntpServerTableNum,
+            esTimeSntpServerRowStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides configuration for Daylight
+            Saving Time feature."
+        ::= { esTimeGroups 4 }
+
+
+END

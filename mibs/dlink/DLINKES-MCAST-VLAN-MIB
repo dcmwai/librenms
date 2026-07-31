@@ -1,0 +1,588 @@
+--  *****************************************************************
+--  DLINKES-MCAST-VLAN-MIB.mib : Multicast VLAN MIB
+--
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-MCAST-VLAN-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,OBJECT-TYPE,Integer32
+                FROM SNMPv2-SMI
+        RowStatus,DisplayString,TruthValue
+                FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP
+                FROM SNMPv2-CONF
+        InetAddress,InetAddressType,InetAddressIPv4,InetAddressIPv6
+                FROM INET-ADDRESS-MIB
+        VlanId
+                FROM Q-BRIDGE-MIB
+        InterfaceIndex
+                FROM IF-MIB
+        dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+
+    dlinkEsMcastVlanMIB MODULE-IDENTITY
+        LAST-UPDATED "201407180000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for Multicast VLAN."
+
+        REVISION "201407180000Z"
+        DESCRIPTION
+            "Modify the OID of all rowstatus objects to 99."
+
+        REVISION "201404020000Z"
+        DESCRIPTION
+            "Remove objects esMcastVlanIPv4ProfileName and esMcastVlanIPv6ProfileName from
+            table esMcastVlanEntry.
+            Remove esMcastVlanIfCfgGoup.
+            Modify the type of esMcastVlanReplaceIPv6SrcAddr to InetAddressIPv6.
+            Add table esMcastVlanGrpProfileMapTable.
+            "
+
+        REVISION "201304250000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file for 'Multicast VLAN'
+            functionality."
+
+    ::= { dlinkCommon 35 }
+
+-- -----------------------------------------------------------------------------
+    esMcastVlanMIBNotifications     OBJECT IDENTIFIER ::= { dlinkEsMcastVlanMIB 0 }
+    esMcastVlanMIBObjects           OBJECT IDENTIFIER ::= { dlinkEsMcastVlanMIB 1 }
+    esMcastVlanMIBConformance       OBJECT IDENTIFIER ::= { dlinkEsMcastVlanMIB 2 }
+-- -----------------------------------------------------------------------------
+    esMcastVlanGlobalCtrl           OBJECT IDENTIFIER ::= { esMcastVlanMIBObjects 1 }
+
+    esMcastVlanStateGlobalEnabled OBJECT-TYPE
+        SYNTAX BITS {
+            ipv4(0),
+            ipv6(1)  }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the whether the Multicast VLAN is globally enabled.
+            Setting the bit to 1 means the corresponding type of Multicast VLAN
+            is globally enabled.
+            ipv4 (0) - IPv4 Multicast VLAN.
+            ipv6 (1) - IPv6 Multicast VLAN."
+        ::= { esMcastVlanGlobalCtrl 1 }
+
+    esMcastVlanFwdUnmatchedEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether forward received IGMP/MLD control
+            packet, when the packet is untagged, does not match any profile,
+            and the associated default VLAN is a multicast VLAN; or is tagged
+            with a multicast VLAN, but does not match the associated profile."
+        ::= { esMcastVlanGlobalCtrl 2 }
+
+    esMcastVlanIgnoreVlanEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether ignore the VLAN of the received
+            tagged IGMP/MLD control packet and the switch will try to find
+            a match group profile for the packet.
+            "
+        ::= { esMcastVlanGlobalCtrl 3 }
+
+-- -----------------------------------------------------------------------------
+    esMcastVlanIfCtrl           OBJECT IDENTIFIER ::= { esMcastVlanMIBObjects 2 }
+
+    esMcastVlanTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsMcastVlanEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains a list of multicast VLANs."
+        ::= { esMcastVlanIfCtrl 1 }
+
+    esMcastVlanEntry OBJECT-TYPE
+        SYNTAX  EsMcastVlanEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This entry contains the information of a multicast VLAN."
+        INDEX  { esMcastVlanID}
+        ::= { esMcastVlanTable 1 }
+
+    EsMcastVlanEntry ::= SEQUENCE {
+        esMcastVlanID                           VlanId,
+        esMcastVlanName                         DisplayString,
+        esMcastVlanReplaceIPv4SrcAddr           InetAddressIPv4,
+        esMcastVlanReplaceIPv4SrcAddrFrom       INTEGER,
+        esMcastVlanReplaceIPv4SrcAddrAction     INTEGER,
+        esMcastVlanReplaceIPv6SrcAddr           InetAddressIPv6,
+        esMcastVlanReplaceIPv6SrcAddrFrom       INTEGER,
+        esMcastVlanReplaceIPv6SrcAddrAction     INTEGER,
+        esMcastVlanReplaceIPv4Priority          Integer32,
+        esMcastVlanReplaceIPv6Priority          Integer32,
+        esMcastVlanRowStatus                    RowStatus
+    }
+
+    esMcastVlanID OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This indicates the VLAN ID of the multicast VLAN entry."
+        ::= { esMcastVlanEntry 1 }
+
+    esMcastVlanName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This indicates the VLAN name of the multicast VLAN entry."
+        ::= { esMcastVlanEntry 2 }
+
+    esMcastVlanReplaceIPv4SrcAddr OBJECT-TYPE
+        SYNTAX          InetAddressIPv4
+        MAX-ACCESS      read-create
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the IPv4 address, which will be used to replace
+            the source IP address for IGMP control packet reporting up to routers."
+        ::= { esMcastVlanEntry 3 }
+
+    esMcastVlanReplaceIPv4SrcAddrFrom OBJECT-TYPE
+        SYNTAX     INTEGER {
+            source(1),
+            receiver(2),
+            both(3)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of ports on which the source IP address
+            of the received IGMP report/leave packets will be replaced."
+        ::= { esMcastVlanEntry 4 }
+
+    esMcastVlanReplaceIPv4SrcAddrAction OBJECT-TYPE
+        SYNTAX          INTEGER {
+            userConfigure(1),
+            notReplace(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object specifies whether replacing the source IP address to
+         esMcastVlanReplaceIPv4SrcAddr or not."
+        ::={ esMcastVlanEntry 5}
+
+    esMcastVlanReplaceIPv6SrcAddr OBJECT-TYPE
+        SYNTAX          InetAddressIPv6
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the IPv6 address, which will be used to replace
+            the source IPv6 address of the MLD report/leave packets up to routers."
+        ::= { esMcastVlanEntry 6 }
+
+    esMcastVlanReplaceIPv6SrcAddrFrom OBJECT-TYPE
+        SYNTAX          INTEGER {
+            source (1),
+            receiver (2),
+            both (3)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of ports on which the source IPv6 address
+            of the received MLD report/leave packets will be replaced."
+        ::= { esMcastVlanEntry 7 }
+
+    esMcastVlanReplaceIPv6SrcAddrAction OBJECT-TYPE
+        SYNTAX          INTEGER {
+            userConfigure(1),
+            notReplace(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object specifies whether replacing the source IPv6 address to
+         esMcastVlanReplaceIPv6SrcAddr or not."
+        ::={ esMcastVlanEntry 8}
+
+    esMcastVlanReplaceIPv4Priority   OBJECT-TYPE
+        SYNTAX          Integer32 (-1|0..7)
+        MAX-ACCESS      read-create
+        STATUS current
+        DESCRIPTION
+            "This is the priority value (0 to 7) to be associated with the IPv4 data traffic
+            forwarded on the multicast VLAN.
+            When set to -1, the packet's original priority will be used."
+        DEFVAL {-1}
+        ::={ esMcastVlanEntry 9}
+
+    esMcastVlanReplaceIPv6Priority   OBJECT-TYPE
+        SYNTAX          Integer32 (-1|0..7)
+        MAX-ACCESS      read-create
+        STATUS current
+        DESCRIPTION
+            "This is the priority value (0 to 7) to be associated with the IPv6 data traffic
+            forwarded on the multicast VLAN.
+            When set to -1, the packet's original priority will be used."
+        DEFVAL {-1}
+        ::={ esMcastVlanEntry 10}
+
+    esMcastVlanRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This indicates the status of this entry."
+        ::= { esMcastVlanEntry 13 }
+
+-- -----------------------------------------------------------------------------
+    esMcastVlanMemberTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsMcastVlanMemberEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains a list of source ports and receiver ports of multicast VLANs."
+        ::= { esMcastVlanIfCtrl 2 }
+
+    esMcastVlanMemberEntry OBJECT-TYPE
+        SYNTAX  EsMcastVlanMemberEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "An entry indicates the source or receiver port of a multicast VLAN."
+        INDEX  {
+           esMcastVlanMemberVlanID,
+           esMcastVlanMemberPortIfIdx
+        }
+        ::= { esMcastVlanMemberTable 1 }
+
+    EsMcastVlanMemberEntry ::= SEQUENCE {
+        esMcastVlanMemberVlanID         VlanId,
+        esMcastVlanMemberPortIfIdx      InterfaceIndex,
+        esMcastVlanMemberPortType       INTEGER,
+        esMcastVlanMemberPortTagged     TruthValue,
+        esMcastVlanMemberRowStatus      RowStatus
+    }
+
+    esMcastVlanMemberVlanID OBJECT-TYPE
+        SYNTAX          VlanId
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the VLAN ID of the multicast VLAN."
+        ::= { esMcastVlanMemberEntry 1 }
+
+    esMcastVlanMemberPortIfIdx OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Indicates the specific physical port/port-channel interface"
+        ::= { esMcastVlanMemberEntry 2 }
+
+    esMcastVlanMemberPortType OBJECT-TYPE
+        SYNTAX          INTEGER {
+            receiver(1),
+            source(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the type of the member port.
+            'receiver' - Configure the port as a subscriber port that can only
+                         receive multicast data in the multicast VLAN.
+            'source'   - Configure the port as an uplink port that can send
+                         multicast data in the multicast VLAN.
+            "
+           ::= { esMcastVlanMemberEntry 3 }
+
+     esMcastVlanMemberPortTagged OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the packets forwarded in the multicast
+            VLAN is tagged or untagged on specified port interface."
+        ::= { esMcastVlanMemberEntry 4 }
+
+    esMcastVlanMemberRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This indicates the status of this entry."
+        ::= { esMcastVlanMemberEntry 5 }
+
+-- -----------------------------------------------------------------------------
+    esMcastVlanGrpProfileCtrl   OBJECT IDENTIFIER ::= { esMcastVlanMIBObjects 3 }
+
+    esMcastVlanGrpProfileTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsMcastVlanGrpProfileEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains a list of group profile names for multicast VLAN."
+        ::= { esMcastVlanGrpProfileCtrl 1 }
+
+    esMcastVlanGrpProfileEntry OBJECT-TYPE
+        SYNTAX  EsMcastVlanGrpProfileEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "An entry contains the name of a multicast VLAN group profile."
+        INDEX  { esMcastVlanGrpProfileName }
+        ::= { esMcastVlanGrpProfileTable 1 }
+
+    EsMcastVlanGrpProfileEntry ::= SEQUENCE {
+        esMcastVlanGrpProfileName       DisplayString,
+        esMcastVlanGrpProfileStatus     RowStatus
+    }
+
+    esMcastVlanGrpProfileName    OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE (1..32))
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This indicates the name of the multicast VLAN group profile."
+        ::= { esMcastVlanGrpProfileEntry 1  }
+
+    esMcastVlanGrpProfileStatus    OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This indicates the status of this entry."
+        ::= { esMcastVlanGrpProfileEntry 2 }
+
+    esMcastVlanGrpRangeTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsMcastVlanGrpRangeEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains a list of multicast address ranges for multicast
+            VLAN group profiles."
+        ::= { esMcastVlanGrpProfileCtrl 2 }
+
+    esMcastVlanGrpRangeEntry OBJECT-TYPE
+        SYNTAX  EsMcastVlanGrpRangeEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This entry contains a multicast address range for a multicast VLAN
+            group profile."
+        INDEX  {
+            esMcastVlanGrpProfileName,
+            esMcastVlanGrpRangeType,
+            esMcastVlanGrpRangeStart,
+            esMcastVlanGrpRangeEnd
+        }
+        ::= { esMcastVlanGrpRangeTable 1 }
+
+    EsMcastVlanGrpRangeEntry ::= SEQUENCE {
+        esMcastVlanGrpRangeType         InetAddressType,
+        esMcastVlanGrpRangeStart        InetAddress,
+        esMcastVlanGrpRangeEnd          InetAddress,
+        esMcastVlanGrpRangeStatus       RowStatus
+    }
+
+    esMcastVlanGrpRangeType OBJECT-TYPE
+        SYNTAX  InetAddressType
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This is the IP type of the multicast address range."
+        ::= { esMcastVlanGrpRangeEntry 1 }
+
+    esMcastVlanGrpRangeStart    OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+               "This specifies the multicast start address of the range."
+        ::= { esMcastVlanGrpRangeEntry 2  }
+
+    esMcastVlanGrpRangeEnd    OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+               "This specifies the multicast end address of the range."
+        ::= { esMcastVlanGrpRangeEntry 3  }
+
+    esMcastVlanGrpRangeStatus    OBJECT-TYPE
+        SYNTAX   RowStatus
+        MAX-ACCESS read-create
+        STATUS   current
+        DESCRIPTION
+            "This indicates the status of the group range entry."
+        ::= { esMcastVlanGrpRangeEntry 4 }
+
+    esMcastVlanGrpProfileMapTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF EsMcastVlanGrpProfileMapEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This table contains a list of mapping information for multicast VLANs and
+        group profiles."
+        ::= { esMcastVlanGrpProfileCtrl 3 }
+
+    esMcastVlanGrpProfileMapEntry OBJECT-TYPE
+        SYNTAX  EsMcastVlanGrpProfileMapEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+            "This entry contains the mapping information for a multicast VLAN and a
+            group profile."
+        INDEX  {
+            esMcastVlanID,
+            esMcastVlanGrpProfileName
+        }
+        ::= { esMcastVlanGrpProfileMapTable 1 }
+
+    EsMcastVlanGrpProfileMapEntry ::= SEQUENCE {
+        esMcastVlanGrpProfileMapRowStatus     RowStatus
+    }
+
+    esMcastVlanGrpProfileMapRowStatus OBJECT-TYPE
+        SYNTAX   RowStatus
+        MAX-ACCESS read-create
+        STATUS   current
+        DESCRIPTION
+             "This indicates the status of this entry."
+        ::= { esMcastVlanGrpProfileMapEntry 99 }
+
+--
+-- Conformance information
+--
+
+esMcastVlanMIBCompliances   OBJECT IDENTIFIER ::= { esMcastVlanMIBConformance 1 }
+esMcastVlanMIBGroups        OBJECT IDENTIFIER ::= { esMcastVlanMIBConformance 2 }
+
+--
+-- Compliance statements
+--
+
+    esMcastVlanMIBCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-MCAST-VLAN-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esMcastVlanGblCfgGroup,
+            esMcastVlanMemberGoup,
+            esMcastVlanGrpProfileCfgGoup
+        }
+
+        GROUP        esMcastVlanFwdUnmatchedGroup
+        DESCRIPTION
+            "This group is optional."
+
+        GROUP        esMcastVlanIgnoreVlanGroup
+        DESCRIPTION
+            "This group is optional."
+
+        GROUP        esMcastVlanReplaceSrcAddrGroup
+        DESCRIPTION
+            "This group is optional."
+
+        GROUP        esMcastVlanReplacePriorityGroup
+        DESCRIPTION
+            "This group is optional."
+
+    ::= { esMcastVlanMIBCompliances 1 }
+
+--
+-- Units of conformance
+--
+    esMcastVlanGblCfgGroup OBJECT-GROUP
+        OBJECTS {
+            esMcastVlanStateGlobalEnabled
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing global configuration about multicast VLAN."
+        ::= { esMcastVlanMIBGroups 1 }
+
+    esMcastVlanMemberGoup OBJECT-GROUP
+        OBJECTS {
+            esMcastVlanMemberPortType,
+            esMcastVlanMemberPortTagged,
+            esMcastVlanMemberRowStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing multicast VLAN member configuration."
+            ::= { esMcastVlanMIBGroups 2 }
+
+    esMcastVlanGrpProfileCfgGoup OBJECT-GROUP
+        OBJECTS {
+            esMcastVlanGrpProfileStatus,
+            esMcastVlanGrpRangeStatus,
+            esMcastVlanGrpProfileMapRowStatus
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects providing multicast VLAN group profile
+            configuration."
+            ::= { esMcastVlanMIBGroups 3 }
+
+     esMcastVlanFwdUnmatchedGroup OBJECT-GROUP
+        OBJECTS {
+            esMcastVlanFwdUnmatchedEnabled
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects provides the forward unmatched packets feature."
+        ::= { esMcastVlanMIBGroups 4 }
+
+     esMcastVlanIgnoreVlanGroup OBJECT-GROUP
+        OBJECTS {
+            esMcastVlanIgnoreVlanEnabled
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects provides the ignore VLAN feature."
+        ::= { esMcastVlanMIBGroups 5 }
+
+     esMcastVlanReplaceSrcAddrGroup OBJECT-GROUP
+        OBJECTS {
+            esMcastVlanName,
+            esMcastVlanReplaceIPv4SrcAddr,
+            esMcastVlanReplaceIPv4SrcAddrFrom,
+            esMcastVlanReplaceIPv4SrcAddrAction,
+            esMcastVlanReplaceIPv6SrcAddr,
+            esMcastVlanReplaceIPv6SrcAddrFrom,
+            esMcastVlanReplaceIPv6SrcAddrAction,
+            esMcastVlanRowStatus
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects provides the replacing source IP feature."
+        ::= { esMcastVlanMIBGroups 6 }
+
+     esMcastVlanReplacePriorityGroup OBJECT-GROUP
+        OBJECTS {
+            esMcastVlanReplaceIPv4Priority,
+            esMcastVlanReplaceIPv6Priority
+        }
+        STATUS      current
+        DESCRIPTION
+            "A collection of objects provides the replacing priority feature."
+        ::= { esMcastVlanMIBGroups 7 }
+
+END
+

@@ -1,0 +1,1005 @@
+-- *****************************************************************
+-- DLINKES-AAA-SERVER-MIB:  D-Link AAA Server MIB
+--
+--  Copyright (c) 2014 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+
+DLINKES-AAA-SERVER-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, Counter32, Unsigned32
+        FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        DisplayString,  RowStatus,  TEXTUAL-CONVENTION
+            FROM SNMPv2-TC
+        InetAddressType, InetAddress, InetAddressIPv4
+            FROM INET-ADDRESS-MIB
+        InterfaceIndex
+            FROM IF-MIB
+        esAaaMIBObjects
+        FROM DLINKES-AAA-COMMON-MIB;
+
+
+    dlinkEsAAAServerMIB MODULE-IDENTITY
+        LAST-UPDATED    "201707100000Z"
+        ORGANIZATION    "D-Link Corp."
+        CONTACT-INFO
+            "D-Link Corporation
+            Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                    Taipei City 114, Taiwan, R.O.C
+            Tel:    +886-2-66000123
+            E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB provides configuration and statistics reflecting the state
+            of AAA Server operation within the device and AAA communications
+            with external servers.
+
+            AAA stands for authentication, authorization, and accounting
+
+            The AAA Server MIB provides the following information:
+            1) A Table for configuring AAA servers
+            2) Identities of external AAA servers
+            3) Distinct statistics for each AAA function
+            4) Status of servers providing AAA functions
+
+            A server is defined as a logical entity which provides any of the
+            three AAA functions. A TACACS+ server consists of all three
+            functions with a single IP address and single TCP port.
+            A RADIUS server consists of the authentication/accounting pair
+            with a single IP address but distinct UDP ports, or it may be
+            just one of authentication or accounting. It is possible to have
+            two distinct RADIUS servers at the same IP address, one providing
+            authentication only, the other accounting only.
+
+            Note: Regarding RADIUS server statistics please refer to
+            RADIUS-AUTH-CLIENT-MIB (RFC2618) and RADIUS-ACCT-CLIENT-MIB (RFC2620)
+            "
+
+        REVISION     "201707100000Z"
+        DESCRIPTION
+            "Add node esasRadiusServerAttr4Address."
+
+        REVISION     "201707100000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file.
+            "
+        ::= { esAaaMIBObjects 2 }
+
+
+    DlinkAAAProtocol ::= TEXTUAL-CONVENTION
+        STATUS          current
+        DESCRIPTION
+            "Protocol used with this server.
+            none(0) - No protocol specified, this value is read-only.
+            tacacsplus(1) - TACACS+
+
+            radius(2)   - RADIUS
+            "
+        REFERENCE
+            "
+            RFC 2865 Remote Authentication Dial In User Service
+            (RADIUS)
+            RFC 2866 RADIUS Accounting
+            The TACACS+ Protocol Version 1.78, Internet Draft
+            "
+        SYNTAX      INTEGER {
+            none(0),
+            tacacsplus(1),
+            radius(2)
+        }
+
+    DlinkAAAGroupName ::= TEXTUAL-CONVENTION
+        DISPLAY-HINT    "32a"
+        STATUS          current
+        DESCRIPTION
+            "Represents group name.
+
+            The following name are reserved and cannot be created by user:
+            enable, none, local, tacacs, xtacacs, tacacs+, radius
+            "
+        SYNTAX   OCTET STRING (SIZE(0..32))
+
+
+     VrfName ::= TEXTUAL-CONVENTION
+     STATUS       current
+     DESCRIPTION
+     "Represents VRF name.
+     "
+     SYNTAX       OCTET STRING (SIZE(1..32))
+
+
+-- -----------------------------------------------------------------------------
+    esAaaSrvMIBNotifications   OBJECT IDENTIFIER ::= { dlinkEsAAAServerMIB 0 }
+    esAaaSrvMIBObjects         OBJECT IDENTIFIER ::= { dlinkEsAAAServerMIB 1 }
+    esAaaSrvMIBConformance     OBJECT IDENTIFIER ::= { dlinkEsAAAServerMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esasConfig  OBJECT   IDENTIFIER ::= { esAaaSrvMIBObjects 1    }
+
+-- -----------------------------------------------------------------------------
+    esasServerConfigTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsasServerConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table consists of a list of configurations for each
+            AAA server. An entry is created/removed when a new server
+            is created/removed.
+
+            The following table describes examples of AAA servers.
+
+            Protocol   Index AddressType IPv6Address   AuthenPort AcctPort Key    Priority
+            ---------- ----- ----------- ------------- ---------- -------- ------ --------
+            tacacsplus 1     ipv6        2000::2       49         0               1
+            tacacsplus 2     ipv4        10.0.0.1      49         0               3
+            tacacsplus 3     ipv4        192.168.1.254 49         0               2
+            radius     1     ipv4        192.168.1.254 1812       1813            1
+            radius     2     ipv4        20.0.0.12     1812       1813            2
+            "
+        ::= { esasConfig 1 }
+
+    esasServerConfigEntry OBJECT-TYPE
+        SYNTAX      EsasServerConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry consists of an AAA server configuration.
+
+            An entry is created/removed when a server is defined
+            or undefined with configuration commands via CLI
+            or by issuing appropriate SNMP sets.
+
+            A management station wishing to create an entry should
+            first generate a random number to be used as the index
+            to this sparse table. The station should then create the
+            associated instance of the row status and row index objects.
+
+            esasServerPriority is automatically assigned once the entry is
+            made active and reflects the relative priority of the
+            defined server with respect to already configured servers.
+            Newly-created servers will be assigned the lowest priority.
+            To reassign server priorities to existing server entries,
+            it may be necessary to destroy and recreate entries in order
+            of priority.
+
+            Upon reload, esasServerIndex values may be changed, but the
+            priorities that were saved before reload will be retained,
+            with lowest priority number corresponding to the higher
+            priority servers.
+            "
+        INDEX {
+            esasServerProtocol,
+            esasServerIndex
+        }
+        ::= { esasServerConfigTable 1}
+
+    EsasServerConfigEntry ::=    SEQUENCE {
+        esasServerProtocol           DlinkAAAProtocol,
+        esasServerIndex              Unsigned32,
+        esasServerAddrType           InetAddressType,
+        esasServerAddress            InetAddress,
+        esasServerAuthenPort         Unsigned32,
+        esasServerAcctPort           Unsigned32,
+        esasServerKey                DisplayString,
+        esasServerTimeout            Unsigned32,
+        esasServerRetransmit         Unsigned32,
+        esasServerPriority           Unsigned32,
+        esasServerRowStatus          RowStatus
+    }
+
+    esasServerProtocol OBJECT-TYPE
+        SYNTAX          DlinkAAAProtocol
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The variable indicates the protocol of the corresponding AAA server.
+            "
+        ::= { esasServerConfigEntry 1 }
+
+    esasServerIndex OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..4294967295)
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A management station wishing to initiate a new AAA server
+            configuration should use a random value for this object
+            when creating an instance of esasServerConfigEntry.
+            "
+        ::= { esasServerConfigEntry 2 }
+
+    esasServerAddrType OBJECT-TYPE
+        SYNTAX      InetAddressType
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the address type of the AAA server.
+            "
+        ::= { esasServerConfigEntry 3 }
+
+    esasServerAddress OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The address of the server.
+            "
+        ::= { esasServerConfigEntry 4 }
+
+    esasServerAuthenPort OBJECT-TYPE
+        SYNTAX      Unsigned32 (0..65535)
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "UDP/TCP port used for authentication in the configuration
+            For TACACS+, this object should be explicitly set.
+            Default value is 1812 for RADIUS.
+            "
+        DEFVAL  { 1812 }
+        ::= { esasServerConfigEntry 5 }
+
+    esasServerAcctPort OBJECT-TYPE
+        SYNTAX      Unsigned32 (0..65535)
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "UDP/TCP port used for accounting service in the configuration
+            For TACACS+, the value of esasServerAcctPort is ignored.
+            esasServerAuthenPort will be used instead.
+
+            Default value is 1813 for RADIUS.
+            "
+        DEFVAL { 1813 }
+        ::= { esasServerConfigEntry 6 }
+    
+    esasServerKey    OBJECT-TYPE
+        SYNTAX      DisplayString (SIZE  (0..254))
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The server key to be used with this server. 
+            The maximum length for RADIUS is 32 characters.
+            The maximum length for TACACS+ is 254 characters.
+            When read, a zero length string will be returned for security reasons.
+           "
+        DEFVAL { "" }
+        ::= { esasServerConfigEntry 7 }
+
+    esasServerTimeout OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..255)
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The time in seconds for waiting server reply.
+
+            Default value is 5 seconds.
+            "
+        DEFVAL { 5 }
+        ::= { esasServerConfigEntry 8 }
+
+    esasServerRetransmit OBJECT-TYPE
+        SYNTAX      Unsigned32 (0..20)
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The retransmit times of requests to the server
+            when no response is received.
+            For TACACS+, the value of esasServerRetransmit is ignored.
+
+            Default value is 2 for RADIUS.
+            "
+        DEFVAL { 2 }
+        ::= { esasServerConfigEntry 9}
+
+
+    esasServerPriority  OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..4294967295)
+        MAX-ACCESS      read-only
+        STATUS      current
+        DESCRIPTION
+            "A number that indicates the priority of the server in
+            this entry. Lower numbers indicate higher priority.
+            "
+        ::= { esasServerConfigEntry 10 }
+
+
+    esasServerRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The status of this entry.
+            "
+        ::= { esasServerConfigEntry 99 }
+
+-- -----------------------------------------------------------------------------
+    esasRadiusServerDeadTime OBJECT-TYPE
+        SYNTAX      Unsigned32 (0..1440)
+        MAX-ACCESS      read-write
+        STATUS      current
+        DESCRIPTION
+            "This variable controls the default duration
+            of time to skip the unresponsive server.
+
+            The valid range is 0 to 1440 (24 hours).
+            When setting to 0, the unresponsive server
+            will not be marked as dead.
+
+            The default value is 0.
+            "
+        DEFVAL { 0 }
+        ::= { esasConfig 2 }
+
+    esasRadiusServerAttr4Address OBJECT-TYPE
+        SYNTAX        InetAddressIPv4
+        MAX-ACCESS      read-write
+        STATUS      current
+        DESCRIPTION
+            "This objesct indicates the IP address for the RADIUS attribute 4 address."
+        ::= { esasConfig 3 }
+
+-- -----------------------------------------------------------------------------
+    esasStatistics        OBJECT IDENTIFIER ::= { esAaaSrvMIBObjects 2    }
+
+    esasTacplusStatisticsTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsasTacplusStatisticsEntry
+        MAX-ACCESS          not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of statistics for each TACACS+ server.
+
+            The following table describes examples of TACACS+ servers statistics.
+
+            Protocol   Index SocketOpens SocketCloses TotalPktSend TotalPktRecv ReferenceCount
+            ---------- ----- ----------- ------------ ------------ ------------ --------------
+            tacacsplus 1     1           1            0            0            0
+            tacacsplus 2     5           5            20           20           5
+            tacacsplus 3     10          10           25           25           10
+            "
+        ::= { esasStatistics 1 }
+
+    esasTacplusStatisticsEntry OBJECT-TYPE
+        SYNTAX          EsasTacplusStatisticsEntry
+        MAX-ACCESS          not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry consists of statistical information about a particular server.
+
+            Objects in this table are read-only and appear automatically whenever a
+            TACACS+ server in the esasServerConfigTable is made active.
+            "
+        AUGMENTS { esasServerConfigEntry }
+        ::= { esasTacplusStatisticsTable 1 }
+
+    EsasTacplusStatisticsEntry::=      SEQUENCE {
+        esasTacplusSocketOpens           Counter32,
+        esasTacplusSocketCloses          Counter32,
+        esasTacplusTotalPktSent          Counter32,
+        esasTacplusTotalPktRecv          Counter32,
+        esasTacplusReferenceCount        Counter32
+    }
+
+    esasTacplusSocketOpens OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS          read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of successful TCP socket connections to the TACACS+ server.
+            "
+        ::= { esasTacplusStatisticsEntry 1 }
+
+    esasTacplusSocketCloses OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS          read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of successfully closed TCP socket attempts.
+            "
+        ::= { esasTacplusStatisticsEntry 2 }
+
+    esasTacplusTotalPktSent OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS          read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of packets sent to the TACACS+ server
+            "
+        ::= { esasTacplusStatisticsEntry 3 }
+
+    esasTacplusTotalPktRecv OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS          read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of packets received from the TACACS+ server.
+            "
+        ::= { esasTacplusStatisticsEntry 4 }
+
+    esasTacplusReferenceCount OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS          read-only
+        STATUS          current
+        DESCRIPTION
+            "The number of packets received from the TACACS+ server.
+            "
+        ::= { esasTacplusStatisticsEntry 5 }
+
+-- -----------------------------------------------------------------------------
+    esasGroup         OBJECT IDENTIFIER ::= { esAaaSrvMIBObjects 3    }
+    esasGroupTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsasGroupEntry
+        MAX-ACCESS          not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of configurations for each
+            AAA server group. An entry is created/removed when a new server group
+            is created/removed.
+
+            The following table describes examples of AAA groups.
+
+            Protocol   Name
+            ---------- ----------
+            tacacsplus tac_con
+            tacacsplus tac_telnet
+            radius     rad_acct
+            radius     rad_ssh
+            "
+        ::= { esasGroup  1 }
+
+    esasGroupEntry OBJECT-TYPE
+        SYNTAX      EsasGroupEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An AAA server group configuration identified by its protocol,
+            and its name.
+
+            An entry is created/removed when a server group is defined
+            or undefined with configuration commands via CLI
+            or by issuing appropriate sets to this table using snmp.
+            "
+        INDEX {
+            esasGroupProtocol,
+            esasGroupName
+        }
+        ::= { esasGroupTable 1}
+
+    EsasGroupEntry ::=    SEQUENCE {
+        esasGroupProtocol       DlinkAAAProtocol,
+        esasGroupName           DlinkAAAGroupName,
+        esasGroupRowStatus      RowStatus
+    }
+
+    esasGroupProtocol OBJECT-TYPE
+        SYNTAX          DlinkAAAProtocol
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The variable denotes the protocol used by the
+            managed device with the AAA group corresponding to
+            this entry in the table.
+            "
+        ::= { esasGroupEntry 1 }
+
+    esasGroupName    OBJECT-TYPE
+        SYNTAX    DlinkAAAGroupName
+        MAX-ACCESS    not-accessible
+        STATUS    current
+        DESCRIPTION
+            "The server group name.
+            "
+        DEFVAL { "" }
+        ::= { esasGroupEntry 2 }
+
+    esasGroupRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The status of this table entry. Once the entry status is
+            set to active, the associated entry cannot be modified
+            except destroyed by setting this object to destroy(6).
+            "
+        ::= { esasGroupEntry 3 }
+
+-- esasGroupServerTable
+
+    esasGroupServerTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsasGroupServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table consists of a list of configurations for each
+            AAA server group. An entry is created/removed when a new server group
+            is created/removed.
+
+            The following table describes examples of AAA server groups.
+
+            Protocol   Name       SrvIndex AddressType   IPv6Address    Priority
+            ---------- ---------- -------- ------------- -------------  --------
+            tacacsplus tac_con    1        ipv6          2000::2            1
+            tacacsplus tac_telnet 2        ipv4          10.0.0.1           2
+            tacacsplus tac_telnet 3        ipv4          192.168.1.254      3
+            radius     rad_ssh    1        ipv4          20.0.0.12          1
+            radius     rad_ssh    2        ipv4          20.0.0.13          2
+            radius     rad_ssh    3        ipv4          20.0.0.14          3
+            radius     rad_ssh    4        ipv4          20.0.0.15          4
+            "
+        ::= { esasGroup  2 }
+
+    esasGroupServerEntry OBJECT-TYPE
+        SYNTAX      EsasGroupServerEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An AAA server group configuration identified by its protocol,
+            its name and its index.
+
+            An entry is created/removed when a server group is defined
+            or undefined with configuration commands via CLI
+            or by issuing appropriate sets to this table using snmp.
+
+            A management station wishing to create an entry should
+            first generate a random number to be used as the index
+            to this sparse table.
+
+            esasGroupSrvPriority is automatically assigned once the entry is
+            made active and reflects the relative priority of the
+            defined server with respect to already configured servers.
+            Newly-created servers will be assigned the lowest priority.
+            To reassign server priorities to existing server entries,
+            it may be necessary to destroy and recreate entries in order
+            of priority.
+
+            Upon reload, esasGroupSrvIndex values may be changed, but the
+            priorities that were saved before reload will be retained,
+            with lowest priority number corresponding to the higher
+            priority servers.
+            "
+        INDEX {
+            esasGroupProtocol,
+            esasGroupName,
+            esasGroupSrvIndex
+        }
+        ::= { esasGroupServerTable 1}
+
+    EsasGroupServerEntry ::=  SEQUENCE {
+        esasGroupSrvIndex               Unsigned32,
+        esasGroupSrvAddrType            InetAddressType,
+        esasGroupSrvAddress             InetAddress,
+        esasGroupSrvPriority            Unsigned32,
+        esasGroupServerRowStatus        RowStatus
+    }
+
+    esasGroupSrvIndex OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..4294967295)
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "A management station wishing to initiate a new AAA server
+            group configuration should use a random value for this object
+            when creating an instance of esasGroupEntry.
+
+            The RowStatus semantics of the esasGroupConfigRowStatus object
+            will prevent access conflicts.
+            "
+        ::= { esasGroupServerEntry 1 }
+
+    esasGroupSrvAddrType OBJECT-TYPE
+        SYNTAX      InetAddressType
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the type of network address denoted
+            in esasGroupSrvAddress object.
+            "
+        ::= { esasGroupServerEntry 2 }
+
+    esasGroupSrvAddress OBJECT-TYPE
+        SYNTAX      InetAddress
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The address of the server of the entry.
+            "
+        ::= { esasGroupServerEntry 3 }
+
+
+    esasGroupSrvPriority  OBJECT-TYPE
+        SYNTAX      Unsigned32 (1..4294967295)
+        MAX-ACCESS      read-only
+        STATUS      current
+        DESCRIPTION
+            "A number that indicates the priority of the server in
+            this group. Lower numbers indicate higher priority.
+            "
+        ::= { esasGroupServerEntry 4 }
+
+    esasGroupServerRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of this table entry. Once the entry status is
+            set to active, the associated entry cannot be modified
+            except destroyed by setting this object to destroy(6).
+            "
+        ::= { esasGroupServerEntry 5 }
+
+
+-- -----------------------------------------------------------------------------
+    esasVrf                   OBJECT IDENTIFIER ::= { esAaaSrvMIBObjects 4    }
+
+    esasGroupVrfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsasGroupVrfEntry
+        MAX-ACCESS          not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table shows current VRF configurations for each
+            AAA server group, allows existing VRF to be removed
+            and new ones to be created.
+
+            The following table describes the examples of VRF setting for AAA
+            server groups.
+
+            Protocol   group Name   VRF name
+            ---------- ----------   ----------
+            tacacsplus tac_con      vrf1
+            tacacsplus tac_telnet   vrf_taplus
+            radius     rad_acct     vrf_radius
+            radius     rad_ssh      vrf_100
+            "
+        ::= { esasVrf    1 }
+
+    esasGroupVrfEntry OBJECT-TYPE
+        SYNTAX          EsasGroupVrfEntry
+        MAX-ACCESS          not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An AAA group VRF configuration identified by its protocol
+            and its group name.
+
+            An entry is created/removed when a VRF setting is defined
+            or undefined with configuration commands via CLI
+            or by issuing appropriate sets to this table using snmp.
+
+            When a group VRF configuration is deleted, indicates the
+            server group will use the global (default) routing table.
+            "
+        INDEX {
+            esasGroupProtocol,
+            esasGroupName
+        }
+        ::= { esasGroupVrfTable 1 }
+
+    EsasGroupVrfEntry ::=    SEQUENCE {
+        esasGroupVrfName                   VrfName,
+        esasGroupVrfConfigRowStatus        RowStatus
+    }
+
+    esasGroupVrfName OBJECT-TYPE
+        SYNTAX      VrfName
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The VRF name of the entry.
+            "
+        ::= { esasGroupVrfEntry 1 }
+
+    esasGroupVrfConfigRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS  read-create
+        STATUS      current
+        DESCRIPTION
+            "The status of this table entry.
+            "
+        ::= { esasGroupVrfEntry 2 }
+
+
+-- -----------------------------------------------------------------------------
+    esasSrcIf                 OBJECT IDENTIFIER ::= { esAaaSrvMIBObjects 5    }
+
+    esasGroupSrcIfTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsasGroupSrcIfEntry
+        MAX-ACCESS  not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table consists of a list of source interface configurations
+            for each AAA server group.
+            "
+        ::= { esasSrcIf  1 }
+
+    esasGroupSrcIfEntry OBJECT-TYPE
+        SYNTAX      EsasGroupSrcIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An AAA group source interface configuration identified
+            by its protocol and its group name.
+
+            An entry is created/removed when a source interface setting
+            is defined or undefined with configuration commands via CLI
+            or by issuing appropriate sets to this table using snmp.
+
+            Note: The group name of radius and tacacs+ are reserved group
+            names and its corresponding source interface is global setting
+            for RADIUS and TACACS+ servers respectively. If both global
+            and group-specific have the source interface settings,
+            the setting of group-specific takes precedence.
+            "
+        INDEX {
+            esasGroupProtocol,
+            esasGroupName,
+            esasGroupSrcAddrType
+        }
+        ::= { esasGroupSrcIfTable 1}
+
+    EsasGroupSrcIfEntry ::=     SEQUENCE {
+        esasGroupSrcAddrType             InetAddressType,
+        esasGroupSrcIfIndex              InterfaceIndex,
+        esasGroupSrcIfConfigRowStatus    RowStatus
+    }
+
+    esasGroupSrcAddrType OBJECT-TYPE
+        SYNTAX      InetAddressType
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the type of the address which will be used
+            as source address for sending RADIUS packets.
+            "
+        ::= { esasGroupSrcIfEntry 1 }
+
+    esasGroupSrcIfIndex  OBJECT-TYPE
+        SYNTAX      InterfaceIndex
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "This object indicates the ifIndex of the interface whose IP/IPv6
+            address will be used as source IP/IPv6 address for sending RADIUS packets.
+            "
+        ::= { esasGroupSrcIfEntry 2 }
+
+    esasGroupSrcIfConfigRowStatus OBJECT-TYPE
+        SYNTAX      RowStatus
+        MAX-ACCESS      read-create
+        STATUS      current
+        DESCRIPTION
+            "The status of this table entry.
+            "
+        ::= { esasGroupSrcIfEntry 3 }
+
+-- -----------------------------------------------------------------------------
+    esasClear                 OBJECT IDENTIFIER ::= { esAaaSrvMIBObjects 6    }
+
+    esasClearServerStatTable OBJECT-TYPE
+        SYNTAX      SEQUENCE OF EsasClearServerStatEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "This table is used to clear statistics of the AAA servers.
+            "
+        ::= { esasClear  1 }
+
+    esasClearServerStatEntry OBJECT-TYPE
+        SYNTAX      EsasClearServerStatEntry
+        MAX-ACCESS      not-accessible
+        STATUS      current
+        DESCRIPTION
+            "An entry which can be used to clear the statistics of the AAA server.
+            "
+        INDEX {
+            esasServerProtocol,
+            esasServerIndex
+        }
+        ::= { esasClearServerStatTable 1}
+
+    EsasClearServerStatEntry ::=     SEQUENCE {
+        esasClearServerStatAction        INTEGER
+    }
+
+    esasClearServerStatAction OBJECT-TYPE
+        SYNTAX      INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS      read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to clear statistics of an AAA server when set
+            to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= { esasClearServerStatEntry 1 }
+
+-- -----------------------------------------------------------------------------
+    esasClearServerStatByGroup OBJECT-TYPE
+        SYNTAX      DlinkAAAGroupName
+        MAX-ACCESS      read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to clear AAA server statistics based on group name.
+            Setting this object to the group name which you want to clear.
+            When read, a zero length string is returned."
+        ::= {esasClear 2 }
+
+    esasClearServerStatByProtocol OBJECT-TYPE
+        SYNTAX      DlinkAAAProtocol
+        MAX-ACCESS      read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to clear AAA server statistics based on protocol.
+            Setting this object to the protocol which you want to clear.
+            When read, none(0) is returned."
+        ::= {esasClear 3}
+    esasClearAllServerStat OBJECT-TYPE
+        SYNTAX      INTEGER {
+            clear(1),
+            noOp(2)
+        }
+        MAX-ACCESS  read-write
+        STATUS      current
+        DESCRIPTION
+            "This object is used to clear all AAA server statistics when set
+            to 'clear'.
+            No action is taken if this object is set to 'noOp'.
+            When read, the value 'noOp' is returned."
+        ::= {esasClear 4 }
+
+
+
+-- ******************************************************************
+-- Conformance and Compliance
+-- ******************************************************************
+
+    esasMIBCompliances  OBJECT IDENTIFIER ::= { esAaaSrvMIBConformance 1 }
+
+-- compliance statements
+
+    esasMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-AAA-SERVER-MIB."
+        MODULE      -- this module
+        MANDATORY-GROUPS    {
+            esasConfigGroup,
+            esasTacplusStatisticsGroup
+        }
+
+        GROUP esasSrvGroupGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            AAA server group configuration.
+            "
+
+        GROUP esasVrfGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            AAA VRF configuration.
+            "
+
+        GROUP esasSrcIfGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            AAA source interface configuration.
+            "
+
+        GROUP esasClearStatGroup
+        DESCRIPTION
+            "This group is mandatory only for the platform which supports
+            clear server statistics.
+            "
+
+        OBJECT      esasServerAddrType
+        MIN-ACCESS  read-only
+        DESCRIPTION
+            "Write access is not required after server entry created."
+
+        OBJECT      esasServerAddress
+        MIN-ACCESS  read-only
+        DESCRIPTION
+            "Write access is not required after server entry created."
+
+        OBJECT      esasServerKey
+        MIN-ACCESS  read-only
+        DESCRIPTION
+            "The maximum length of RADIUS server host is 32 characters.
+            The maximum length of TACACS+ server host 254 characters.
+            When read, a zero length string will be returned for security reasons."
+
+        ::= { esasMIBCompliances  1 }
+
+
+-- units of conformance
+
+    esasMIBGroups       OBJECT IDENTIFIER ::= { esAaaSrvMIBConformance 2 }
+
+    esasTacplusStatisticsGroup OBJECT-GROUP
+        OBJECTS {
+            esasTacplusSocketOpens,
+            esasTacplusSocketCloses,
+            esasTacplusTotalPktSent,
+            esasTacplusTotalPktRecv,
+            esasTacplusReferenceCount
+        }
+        STATUS          current
+        DESCRIPTION
+            "Objects for providing AAA tacacs+ server statistics and status.
+            "
+        ::= { esasMIBGroups 1 }
+
+    esasConfigGroup OBJECT-GROUP
+        OBJECTS {
+            esasRadiusServerDeadTime,
+            esasRadiusServerAttr4Address,
+            esasServerAddrType,
+            esasServerAddress,
+            esasServerAuthenPort,
+            esasServerAcctPort,            
+            esasServerTimeout,
+            esasServerRetransmit,
+            esasServerKey,
+            esasServerPriority,
+            esasServerRowStatus
+        }
+        STATUS          current
+        DESCRIPTION
+            "Objects for configuring the AAA servers.
+            "
+        ::= { esasMIBGroups 2 }
+
+    esasSrvGroupGroup OBJECT-GROUP
+        OBJECTS {
+            esasGroupRowStatus,
+            esasGroupSrvAddrType,
+            esasGroupSrvAddress,
+            esasGroupSrvPriority,
+            esasGroupServerRowStatus
+        }
+        STATUS          current
+        DESCRIPTION
+            "Objects for configuring the AAA server groups.
+            "
+        ::= { esasMIBGroups 3 }
+
+    esasVrfGroup OBJECT-GROUP
+        OBJECTS {
+            esasGroupVrfName,
+            esasGroupVrfConfigRowStatus
+        }
+        STATUS      current
+        DESCRIPTION
+            "Objects for configuring the AAA VRF setting.
+            "
+        ::= { esasMIBGroups 4 }
+
+    esasSrcIfGroup OBJECT-GROUP
+        OBJECTS {                
+            esasGroupSrcIfIndex,
+            esasGroupSrcIfConfigRowStatus
+        }
+        STATUS      current
+        DESCRIPTION
+            "Objects for configuring the AAA source interface setting.
+            "
+        ::= { esasMIBGroups 5 }
+
+    esasClearStatGroup OBJECT-GROUP
+        OBJECTS {
+            esasClearServerStatAction,
+            esasClearServerStatByGroup,
+            esasClearServerStatByProtocol,
+            esasClearAllServerStat
+        }
+        STATUS      current
+        DESCRIPTION
+            "Objects for clear the AAA server statistics.
+            "
+        ::= { esasMIBGroups 6 }
+
+END
+
+

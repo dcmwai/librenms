@@ -1,0 +1,450 @@
+--  *****************************************************************
+--  DLINKES-L2PT-MIB.mib : D-Link L2 Protocol Tunnel MIB
+-- 
+--  Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+DLINKES-L2PT-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, Counter64, Unsigned32
+            FROM SNMPv2-SMI              
+        MacAddress
+       	    FROM SNMPv2-TC
+        MODULE-COMPLIANCE, OBJECT-GROUP
+		        FROM SNMPv2-CONF
+        ifIndex, InterfaceIndexOrZero
+            FROM IF-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+    dlinkEsL2ptMIB MODULE-IDENTITY
+        LAST-UPDATED "201403200000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "         D-Link Corporation
+            
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:    +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "      
+        DESCRIPTION
+		        "The structure of Layer 2 protocol tunneling for the 
+		         proprietary enterprise."  
+            
+        REVISION "201303120000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."
+            
+        REVISION "201403200000Z"
+        DESCRIPTION
+            "Added esL2ptTunnelingMacTable to support Layer 2 protocol tunneling multicast address setting for the specified protocol."
+        ::= { dlinkCommon 31 }
+
+-- -----------------------------------------------------------------------------
+
+    esL2ptMIBNotifications    OBJECT IDENTIFIER ::= { dlinkEsL2ptMIB 0 }
+    esL2ptMIBObjects          OBJECT IDENTIFIER ::= { dlinkEsL2ptMIB 1 }
+    esL2ptMIBConformance      OBJECT IDENTIFIER ::= { dlinkEsL2ptMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esL2ptGlbDropThreshold  OBJECT-TYPE        
+        SYNTAX          Unsigned32 (0 | 100..20000)
+        UNITS           "packet per second"
+        MAX-ACCESS      read-write      
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the maximum rate of incoming L2 protocol
+            packets that can be tunneled. If the arrival rate of L2 protocol
+            packets reaches this threshold, the exceeded packets will be dropped.
+            The value 0 indicates there is no limit for incoming L2 protocol
+            tunneled packets."
+        ::= { esL2ptMIBObjects 1 }        
+        
+    esL2ptCos  OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the CoS value for tunneling of the protocol
+            packets.            
+            "
+        DEFVAL { 5 }
+        ::= { esL2ptMIBObjects 2 }    
+        
+    esL2ptClearAllCounters  OBJECT-TYPE
+        SYNTAX          INTEGER {
+            clear(1),
+            noOp(2)  
+        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object clears counters on all interfaces when set to 'clear'.
+             No action is taken if this object is set to 'noOp'.
+             When read, the value 'noOp' is returned."                      
+        ::= { esL2ptMIBObjects 3 } 
+    
+    esL2ptClearCountersByIf  OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the physical port/port-
+            channel interface on which the Layer 2 protocol tunnel counters
+            will be cleared.
+            When read, the value of 0 is returned."                      
+        ::= { esL2ptMIBObjects 4 }    
+    	
+-- -----------------------------------------------------------------------------
+    esL2ptIfCfgTable  OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsL2ptIfCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains the Layer 2 protocol tunneling 
+             configuration on interfaces.
+             
+             All interfaces which can be configured, include the 
+             physical port and port-channel, will be list."
+        ::= { esL2ptMIBObjects 5 }
+
+    esL2ptIfCfgEntry  OBJECT-TYPE
+        SYNTAX          EsL2ptIfCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A list with the Layer 2 protocol tunneling information 
+             of protocol on an interface."
+        INDEX  { ifIndex }
+        ::= { esL2ptIfCfgTable 1 }
+
+    EsL2ptIfCfgEntry ::=         SEQUENCE {            
+            esL2ptIfEnabledProtocols       BITS                     
+        }
+   
+    esL2ptIfEnabledProtocols  OBJECT-TYPE
+		SYNTAX BITS {
+			gvrp(0),
+			lldp(1),
+			stp(2),
+		    venderSpecificMac1(3),
+		    venderSpecificMac2(4)
+		}
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION  
+		    "This object indicates the tunneled protocols.	
+		        	 		    
+		    If the 'gvrp' BIT is set, the GVRP PDU will be tunneled.
+		    If the 'lldp' BIT is set, the LLDP PDU will be tunneled.
+		    If the 'stp' BIT is set, the STP BPDU will be tunneled.		  	    
+		    If the 'venderSpecificMac1' BIT is set, the PDU with the	            
+		        destination MAC address 01-00-0C-CC-CC-CC will be tunneled.	
+		    If the 'venderSpecificMac2' BIT is set, the PDU with the
+	            destination MAC address 01-00-0C-CC-CC-CD will be tunneled.	           
+	        "
+		    ::= { esL2ptIfCfgEntry 1 }		  		
+
+-- -----------------------------------------------------------------------------
+    esL2ptIfThresholdCfgTable  OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsL2ptIfThresholdCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains the threshold configuration per-protocol 
+            and per-interface when the protocol is enabled on the interface.                       
+            "
+        ::= { esL2ptMIBObjects 6 }
+
+    esL2ptIfThresholdCfgEntry  OBJECT-TYPE
+        SYNTAX          EsL2ptIfThresholdCfgEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A list with the Layer 2 protocol tunneling information 
+             of protocol on interface."
+        INDEX  { 
+            ifIndex,
+            esL2ptProtocolType
+        }
+        ::= { esL2ptIfThresholdCfgTable 1 }
+
+    EsL2ptIfThresholdCfgEntry ::=         SEQUENCE {            
+        esL2ptIfThresholdDrop            Unsigned32,
+        esL2ptIfThresholdShutdown        Unsigned32                     
+    }
+		    	    	         
+    esL2ptIfThresholdDrop  OBJECT-TYPE
+        SYNTAX          Unsigned32 (0 | 1..4096)
+        UNITS           "packet per second"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+        	"This object indicates the drop threshold for a given 
+        	protocol on the interface.
+	        If the arrival rate of a tunneled protocol packets reached 
+	        this threshold, the exceeded packets of this protocol will 
+	        be dropped.
+	         	      
+         	The value 0 indicates the drop threshold is not configured
+	        for the protocol."
+    	::= { esL2ptIfThresholdCfgEntry 1 }
+    	
+    esL2ptIfThresholdShutdown  OBJECT-TYPE
+        SYNTAX          Unsigned32 (0 | 1..4096)
+        UNITS           "packet per second"
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+        	"This object indicates the shutdown threshold for a given 
+        	protocol on the interface.
+	        If the arrival rate of a tunneled protocol packets reached 
+	        this threshold, the port will shutdown.
+	          
+	        The value 0 indicates the shutdown threshold is not configured
+	        for the protocol."
+    	::= { esL2ptIfThresholdCfgEntry 2 }
+
+-- -----------------------------------------------------------------------------
+    esL2ptGlbCntTable  OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsL2ptGlbCntEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains the Layer 2 protocol tunneling 
+             information of global counters."
+        ::= { esL2ptMIBObjects 7 }
+
+    esL2ptGlbCntEntry OBJECT-TYPE
+        SYNTAX          EsL2ptGlbCntEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A list with the Layer 2 protocol tunneling information 
+             of global counters."
+        INDEX  { esL2ptProtocolType }
+        ::= { esL2ptGlbCntTable 1 }
+
+    EsL2ptGlbCntEntry ::=
+        SEQUENCE {           
+            esL2ptProtocolType      INTEGER,
+            esL2ptGlbDropCnt        Counter64
+        }
+
+    esL2ptProtocolType  OBJECT-TYPE
+		SYNTAX INTEGER {
+			gvrp(1),
+			lldp(2),
+			stp(3),
+		    venderSpecificMac1(4),
+		    venderSpecificMac2(5)
+		}
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION  
+		    "This object indicates the tunneled protocol.
+            venderSpecificMac1 - Tunnel the protocol packets with the 
+                destination MAC: 01-00-0C-CC-CC-CC. 
+            venderSpecificMac2 - Tunnel the protocol packets with the 
+                destination MAC: 01-00-0C-CC-CC-CD.
+            "
+		::= { esL2ptGlbCntEntry 1 }
+		
+    esL2ptGlbDropCnt  OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+        	  "This object indicates the global drop counter for a given 
+        	   protocol."
+    	  ::= { esL2ptGlbCntEntry 2 }
+
+-- -----------------------------------------------------------------------------
+    esL2ptIfProtocolCntTable  OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsL2ptIfProtocolCntEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains the counters for Layer 2 protocol tunneling 
+            of the interfaces on which the corresponding protocol is enabled.
+            "
+        ::= { esL2ptMIBObjects 8 }
+
+    esL2ptIfProtocolCntEntry  OBJECT-TYPE
+        SYNTAX          EsL2ptIfProtocolCntEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains the counters for Layer 2 protocol tunneling on
+            an interface."
+        INDEX { 
+            ifIndex,
+            esL2ptProtocolType
+        }
+        ::= { esL2ptIfProtocolCntTable 1 }
+
+    EsL2ptIfProtocolCntEntry ::=         SEQUENCE {            
+            esL2ptIfProtocolEncapCnt               Counter64,
+            esL2ptIfProtocolDecapCnt               Counter64,
+            esL2ptIfProtocolDropCnt                Counter64
+        }
+		    	
+    esL2ptIfProtocolEncapCnt  OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+        	"This object indicates the number of Layer 2 protocol packets 
+        	received and encapsulated by l2pt enabled interface."
+    	::= { esL2ptIfProtocolCntEntry 1 }
+    	
+    esL2ptIfProtocolDecapCnt  OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+        	"This object indicates the number of Layer 2 protocol packets 
+        	de-capsulated and transmitted to the l2pt enabled interface."
+    	::= { esL2ptIfProtocolCntEntry 2 }
+    	
+    esL2ptIfProtocolDropCnt  OBJECT-TYPE
+        SYNTAX          Counter64
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+        	  "This object indicates the number of specified Layer 2 protocol 
+        	   packets which are dropped."
+    	::= { esL2ptIfProtocolCntEntry 3 }
+    	
+-- ---------------------------------------------------------------------------- 
+    esL2ptTunnelingMacTable  OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsL2ptTunnelingMacEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A table that contains the protocol tunneling multicast address setting."
+        ::= { esL2ptMIBObjects 9 }
+
+    esL2ptTunnelingMacEntry  OBJECT-TYPE
+        SYNTAX          EsL2ptTunnelingMacEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "A list with the Layer 2 protocol tunneling multicast address."
+        INDEX  { 
+            esL2ptProtocolType
+        }
+        ::= { esL2ptTunnelingMacTable 1 }
+
+    EsL2ptTunnelingMacEntry ::=         SEQUENCE {            
+        esL2ptTunnelingMac        	MacAddress
+    }
+    
+    esL2ptTunnelingMac  OBJECT-TYPE
+        SYNTAX          MacAddress
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+        	"This object indicates the tunneling multicast address of the specified protocol.
+	        By default:
+            The layer 2 protocol tunneling multicast address for STP is 01-05-5D-00-00-00. 
+            The layer 2 protocol tunneling multicast address for GVRP is 01-05-5D-00-00-21.
+            The layer 2 protocol tunneling multicast address for CISCO protocol MAC 
+            01-00-0C-CC-CC-CC is 01-05-5D-00-00-10.
+            The layer 2 protocol tunneling multicast address for CISCO protocol MAC 
+            01-00-0C-CC-CC-CD is 01-05-5D-00-00-11."
+    	::= { esL2ptTunnelingMacEntry 1 }
+        
+-- -----------------------------------------------------------------------------
+--  MIB Conformance statements
+-- -----------------------------------------------------------------------------   
+    esL2ptMIBCompliances  OBJECT IDENTIFIER
+        ::= { esL2ptMIBConformance 1 }
+
+    esL2ptMIBGroups  OBJECT IDENTIFIER
+        ::= { esL2ptMIBConformance 2 } 
+    
+    esL2ptMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+			DLINKES-L2PT-MIB."
+        MODULE          -- this module
+        MANDATORY-GROUPS { 
+            esL2ptGlbCfgGroup,
+            esL2ptProtocolGroup 
+        }
+        
+        GROUP  esL2ptIfThresholdCfgGroup
+        DESCRIPTION
+            "The group is required only when the threshold configuration 
+            per protocol/per interface is supported."
+                    
+        GROUP  esL2ptCntGroup
+        DESCRIPTION
+            "The group is required when clear or display the counters 
+             information."
+             
+        GROUP  esL2ptTunnelingMacGroup
+        DESCRIPTION
+            "The group is required when the protocol tunneling multicast address setting for the specified protocol is supported."
+                 
+        ::= { esL2ptMIBCompliances 1 }
+            
+    esL2ptGlbCfgGroup  OBJECT-GROUP
+		OBJECTS {    
+		    esL2ptGlbDropThreshold, 
+		    esL2ptCos            
+		}
+        STATUS          current
+		DESCRIPTION 
+			"A collection of objects providing global configuration."
+		::= { esL2ptMIBGroups 1 }
+		
+    esL2ptProtocolGroup  OBJECT-GROUP
+		OBJECTS {    
+		        esL2ptIfEnabledProtocols		                    
+		}
+		STATUS          current
+		DESCRIPTION 
+			"A collection of objects providing protocol configuration."
+		::= { esL2ptMIBGroups 2 }
+		
+	esL2ptIfThresholdCfgGroup  OBJECT-GROUP
+		OBJECTS {    
+			esL2ptIfThresholdDrop,
+			esL2ptIfThresholdShutdown
+		}
+		STATUS          current
+		DESCRIPTION 
+			"A collection of objects providing per-interface/per-protocol 
+            threshold configuration is implemented. 
+			"			
+		    ::= { esL2ptMIBGroups 3 }
+		
+	esL2ptCntGroup  OBJECT-GROUP
+		OBJECTS { 
+		    esL2ptClearAllCounters,
+            esL2ptClearCountersByIf,
+		    esL2ptGlbDropCnt,
+		    esL2ptIfProtocolEncapCnt,
+            esL2ptIfProtocolDecapCnt,
+            esL2ptIfProtocolDropCnt		       
+		}
+		STATUS          current
+		DESCRIPTION 
+			"A collection of objects providing L2PT counters management and
+            information."
+		::= { esL2ptMIBGroups 4 }
+		
+	esL2ptTunnelingMacGroup  OBJECT-GROUP
+		OBJECTS { 
+		    esL2ptTunnelingMac
+		}
+		STATUS          current
+		DESCRIPTION 
+			"A collection of objects providing L2PT multicast address setting."
+		::= { esL2ptMIBGroups 5 }
+END

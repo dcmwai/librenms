@@ -1,0 +1,315 @@
+-- *****************************************************************
+-- DLINKES-POWER-SAVING-MIB.mib : D-Link Power Saving MIB
+--
+-- Copyright (c) 2013 D-Link Corporation, all rights reserved.
+--
+-- *****************************************************************
+DLINKES-POWER-SAVING-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        OBJECT-GROUP, MODULE-COMPLIANCE			
+            FROM SNMPv2-CONF
+        MODULE-IDENTITY, OBJECT-TYPE
+            FROM SNMPv2-SMI
+        DisplayString, TruthValue
+            FROM SNMPv2-TC
+        ifIndex
+            FROM IF-MIB			
+        dlinkCommon
+	    FROM DLINK-ID-REC-MIB;
+
+    dlinkEsPowerSavingMIB MODULE-IDENTITY
+        LAST-UPDATED "201706160000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+                 Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                         Taipei City 114, Taiwan, R.O.C
+                 Tel:     +886-2-66000123
+                 E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+                "The Structure of Power Saving Information for the
+                 proprietary enterprise."
+      
+        REVISION "201706160000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."
+        ::= { dlinkCommon 16 }
+
+-- -----------------------------------------------------------------------------
+    esPowerSavingMIBNotifications OBJECT IDENTIFIER ::= { dlinkEsPowerSavingMIB 0 }		
+    esPowerSavingMIBObjects       OBJECT IDENTIFIER ::= { dlinkEsPowerSavingMIB 1 }
+    esPowerSavingMIBConformance   OBJECT IDENTIFIER ::= { dlinkEsPowerSavingMIB 2 }
+    
+--------------------------------------------------------------------------------
+    esPowerSavingGeneral          OBJECT IDENTIFIER ::= { esPowerSavingMIBObjects 1 }
+    
+	espsLinkDetectionEnabled OBJECT-TYPE
+       	SYNTAX          TruthValue
+    	MAX-ACCESS      read-write
+        STATUS          current
+    	DESCRIPTION      	   
+    	    "This object indicates the state of power saving by link status."    	            
+    	DEFVAL { false }
+    	::= { esPowerSavingGeneral 1 }
+ 		
+    espsLengthDetectionEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+    	MAX-ACCESS      read-write
+        STATUS          current
+    	DESCRIPTION  
+    	    "This object indicates the state of power saving by cable length detection."
+        DEFVAL { false }
+    	::= { esPowerSavingGeneral 2 }
+    		
+ 	espsHibernationEnabled OBJECT-TYPE
+		SYNTAX          TruthValue
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+            "This object indicates the state of powre saving by scheduled system 
+            hibernation.
+            Note:
+			For stackable devices, the hibernation function only can be supported
+			on the standalone mode.
+			"
+		DEFVAL { false }
+		::= { esPowerSavingGeneral 3 }
+	
+	espsDimLedEnabled OBJECT-TYPE
+		SYNTAX         TruthValue
+		MAX-ACCESS     read-write
+		STATUS         current
+		DESCRIPTION
+			"This object indicates the state of power saving by scheduled dimming LED."
+		DEFVAL { false }
+		::= { esPowerSavingGeneral 4 }
+
+	espsLedAdminEnabled OBJECT-TYPE
+		SYNTAX          TruthValue 
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the administrative state of LED of all ports."
+		DEFVAL { true}
+		::= { esPowerSavingGeneral 5 }
+				
+	espsPortShutdownEnabled OBJECT-TYPE
+		SYNTAX          TruthValue 
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the state of power saving by scheduled port shutdown."
+		DEFVAL { false }
+		::= { esPowerSavingGeneral 6 }	
+
+--------------------------------------------------------------------------------	
+    esPowerSavingIfObjects        OBJECT IDENTIFIER ::= { esPowerSavingMIBObjects 2 }
+    	
+    espsIfEeeTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF DpsIfEeeEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table consists of a list of EEE (Energy-Efficient Ethernet)
+            state information for ports."
+        ::= { esPowerSavingIfObjects 1}       	
+
+	espsIfEeeEntry OBJECT-TYPE
+		SYNTAX          DpsIfEeeEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"An entry contains EEE configuration on a port."
+		INDEX       { ifIndex }
+		::= { espsIfEeeTable 1 }
+
+	DpsIfEeeEntry ::= 		SEQUENCE {
+	    espsIfEeeStatus	INTEGER
+	}               	
+
+	espsIfEeeStatus OBJECT-TYPE
+		SYNTAX  INTEGER {
+			enabled(1),
+			disabled(2),
+			notAvailable(3)
+		}
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the EEE status on an interface.
+            To set espsIfEeeStatus to notAvailable has no effect.
+			When read the value of 'notAvailable' means EEE is not supported 
+			on the port."
+		::= { espsIfEeeEntry 2 }		
+				
+-- -----------------------------------------------------------------------------  	
+	espsScheduleCtrl OBJECT IDENTIFIER ::= { esPowerSavingMIBObjects 3 }
+
+	espsHibernationTimeRange OBJECT-TYPE
+		SYNTAX          DisplayString (SIZE (0..32))
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the time-range profile for system hibernation
+			schedule.
+			A zero length string indicates the schedule is not specified.
+			"		
+		::= { espsScheduleCtrl 1 }
+			
+	espsDimLedTimeRange OBJECT-TYPE
+		SYNTAX          DisplayString (SIZE (0..32))
+		MAX-ACCESS      read-write
+		STATUS          current
+		DESCRIPTION
+			"This object indicates the time-range profile for dimming LED schedule.
+			A zero length string indicates the schedule is not specified.
+			"		
+		::= { espsScheduleCtrl 2 }	
+				 
+	espsPortShutdownScheduleTable OBJECT-TYPE
+		SYNTAX          SEQUENCE OF DpsPortShutdownScheduleEntry
+		MAX-ACCESS      not-accessible
+		STATUS          current
+		DESCRIPTION
+			"A list of the shutdown configurations of the power saving."
+		::= { espsScheduleCtrl 3 }
+
+	espsPortShutdownScheduleEntry OBJECT-TYPE
+		SYNTAX          DpsPortShutdownScheduleEntry
+		MAX-ACCESS      not-accessible
+		STATUS  current
+		DESCRIPTION
+			"An entry contains the time-range profile for port-shutdown schedule
+			on a port. "
+		INDEX   { ifIndex }
+		::= { espsPortShutdownScheduleTable 1 }
+
+	DpsPortShutdownScheduleEntry ::= 		SEQUENCE {
+		espsPortShutdownTimeRange	DisplayString				
+	}
+				
+	espsPortShutdownTimeRange  OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (0..32))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+             "This object indicates the name of time-range profile.
+             A zero length string indicates the schedule is not specified."
+        ::= { espsPortShutdownScheduleEntry 1 }
+           		   
+
+-- *****************************************************************************
+-- MIB Conformance statements
+-- *****************************************************************************
+    espsMIBCompliances  OBJECT IDENTIFIER  ::= { esPowerSavingMIBConformance 1 }
+
+    espsMIBGroups  OBJECT IDENTIFIER  ::= { esPowerSavingMIBConformance 2 }
+
+    espsMIBCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+			DLINKES-POWER-SAVING-MIB."
+        MODULE          -- this module
+
+		GROUP espsLinkCfgGroup
+        DESCRIPTION
+            "This group does not need to be implemented if link down
+            auto power saving is not supported."
+		
+		GROUP espsLenCfgGroup
+        DESCRIPTION
+            "This group does not need to be implemented if cable diagnosis is
+            not supported."
+        
+		GROUP espsHiberCfgGroup
+        DESCRIPTION
+            "This group is mandatory if power saving schedule function
+             is supported."
+        
+		GROUP espsDimLedCfgGroup
+        DESCRIPTION
+            "This group is mandatory if power saving schedule function
+             is supported."
+        
+		GROUP espsShutdownCfgGroup
+        DESCRIPTION
+            "This group is mandatory if power saving schedule function
+             is supported."
+        
+		GROUP espsIfEeeCfgGroup
+        DESCRIPTION
+            "This group does not need to be implemented if EEE function
+            is not supported."
+        
+        ::= { espsMIBCompliances 1 }
+		
+-------------------------------------------------------------------------------
+	espsLinkCfgGroup OBJECT-GROUP
+	    OBJECTS {
+	        espsLinkDetectionEnabled
+	    }
+	    STATUS current
+	    DESCRIPTION
+		    "A collection of objects to configure or display the link status
+		    detection state."
+	    ::= { espsMIBGroups 1 }
+	
+	espsLenCfgGroup OBJECT-GROUP
+	    OBJECTS {
+	        espsLengthDetectionEnabled
+	    }
+	    STATUS current
+	    DESCRIPTION
+		    "A collection of objects to configure or display the
+            cable length detection state."
+	    ::= { espsMIBGroups 2 }  		
+	
+    espsHiberCfgGroup OBJECT-GROUP
+	    OBJECTS {
+	        espsHibernationEnabled,
+	 	    espsHibernationTimeRange
+	    }
+	    STATUS current
+	    DESCRIPTION
+		    "A collection of objects to configure or display the
+            system hibernation schedule information."
+	    ::= { espsMIBGroups 3 }
+	
+    espsDimLedCfgGroup OBJECT-GROUP
+	    OBJECTS {
+	        espsDimLedEnabled,
+		    espsLedAdminEnabled,
+		    espsDimLedTimeRange
+	    }
+	    STATUS current
+	    DESCRIPTION
+		    "A collection of objects to configure or display the
+            dimming LED schedule or LED administrative state information."
+	    ::= { espsMIBGroups 4 }
+
+    espsShutdownCfgGroup OBJECT-GROUP
+	    OBJECTS {
+	        espsPortShutdownEnabled,
+		    espsPortShutdownTimeRange
+	    }
+	    STATUS current
+	    DESCRIPTION
+		    "A collection of objects to configure or display the
+            port shutdown schedule information."
+	    ::= { espsMIBGroups 5 }
+
+    espsIfEeeCfgGroup OBJECT-GROUP
+	    OBJECTS {
+	        espsIfEeeStatus
+	    }
+	    STATUS current
+	    DESCRIPTION
+		    "A collection of objects to configure or display the
+            EEE state of ports."
+	    ::= { espsMIBGroups 6 }
+                   	
+	
+END

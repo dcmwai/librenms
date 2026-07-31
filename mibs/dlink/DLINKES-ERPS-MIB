@@ -1,0 +1,806 @@
+--  *****************************************************************
+--  DLINKES-ERPS-MIB.mib : Ethernet Ring Protection Switching MIB
+--
+--  Copyright (c) 2014 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-ERPS-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, Unsigned32
+                FROM SNMPv2-SMI
+        RowStatus, MacAddress, TruthValue, DisplayString
+                FROM SNMPv2-TC
+        NOTIFICATION-TYPE
+                FROM SNMPv2-SMI
+        MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
+                FROM SNMPv2-CONF
+        InterfaceIndexOrZero
+                FROM IF-MIB
+        VlanIdOrNone
+                FROM Q-BRIDGE-MIB
+        Dlink2kVlanList
+                FROM DLINKES-TC-MIB
+        dlinkCommon
+                FROM DLINK-ID-REC-MIB;
+
+    dlinkEsErpsMIB    MODULE-IDENTITY
+        LAST-UPDATED "201512160000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "The MIB module for managing Ethernet Ring Protection Switching."
+
+        REVISION "201512160000Z"
+        DESCRIPTION
+            "Modify the MAX-ACCESS of both esErpsEtherRingInstanceId and esErpsEtherSubRingInstanceId
+             from read-write to not-accessible;
+             Add the esErpsEtherRingInstanceId and esErpsEtherSubRingInstanceId as the
+             index of esErpsEtherSubRingEntry"
+
+        REVISION "201510300000Z"
+        DESCRIPTION
+            "Modify the tab character to blank character on the description of
+            esErpsEtherRingEntry and esErpsInstEntry"
+
+        REVISION "201509230000Z"
+        DESCRIPTION
+            "Modify the description of esErpsInstAdminSwitchMode to indicate its default value
+            for ERPS v2;
+            Modify the description of esErpsInstAdminSwtichRingPort to indicate its default
+            value for ERPS v2;
+            Modify the description of esErpsEtherRingAdminPort1IfIdx to indicates when the
+            interconnect node is a local node endpoint of an open ring "
+
+        REVISION "201505070000Z"
+        DESCRIPTION
+            "Modify the description of some node which only accessible for ERPS v2"
+
+        REVISION "201501080000Z"
+        DESCRIPTION
+            "Add esErpsVersion,esErpsEtherRingId,esErpsEtherRingType,esErpsEtherRingInstanceId,
+            esErpsEtherSubRingInstanceId,esErpsInstAdminSwitchMode,esErpsInstAdminSwtichRingPort
+            for ERPS v2 implementation."
+
+        REVISION "201301180000Z"
+        DESCRIPTION
+            "This is the first version of the MIB file for 'ERPS'
+            functionality."
+
+        ::= { dlinkCommon 78 }
+
+-- -----------------------------------------------------------------------------
+    esErpsMIBNotification        OBJECT IDENTIFIER ::= { dlinkEsErpsMIB 0 }
+    esErpsMIBObjects              OBJECT IDENTIFIER ::= { dlinkEsErpsMIB 1 }
+    esErpsMIBConformance            OBJECT IDENTIFIER ::= { dlinkEsErpsMIB 2 }
+
+-- -----------------------------------------------------------------------------
+    esErpsGenCtrl                OBJECT IDENTIFIER ::= { esErpsMIBObjects 1 }
+
+    esErpsNotificationEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether sending notification for ERPS
+            state change or RPL owner conflict event."
+        ::= { esErpsGenCtrl 3 }
+
+--     esErpsVersion OBJECT-TYPE
+--        SYNTAX          INTEGER{
+--            g8032v1(0),
+--            g8032v2(1)
+--        }
+--        MAX-ACCESS      read-create
+--        STATUS          current
+--        DESCRIPTION
+--            "This object indicates the administratively configured ring version."
+--        DEFVAL { 1 }
+--        ::= { esErpsGenCtrl 4 }
+-- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+    esErpsProfileTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsErpsProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of G8032 profiles."
+        ::= { esErpsMIBObjects 2 }
+
+    esErpsProfileEntry OBJECT-TYPE
+        SYNTAX          EsErpsProfileEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains information about a G8032 profile.
+            An entry is created/removed when a G8032 profile is defined
+            or deleted."
+        INDEX    { esErpsProfName }
+        ::= { esErpsProfileTable 1 }
+
+    EsErpsProfileEntry ::= SEQUENCE {
+        esErpsProfName                      DisplayString,
+        esErpsProfRowStatus                 RowStatus,
+        esErpsProfTcnPropagationEnabled     TruthValue,
+        esErpsProfRevertiveEnabled          TruthValue,
+        esErpsProfGuardTimer                Unsigned32,
+        esErpsProfHoldOffTimer              Unsigned32,
+        esErpsProfWtrTimer                  Unsigned32
+    }
+
+    esErpsProfName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the G8032 profile."
+        ::= { esErpsProfileEntry 1 }
+
+    esErpsProfRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of the conceptual row."
+        ::= { esErpsProfileEntry 2 }
+
+    esErpsProfTcnPropagationEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether the propagation of topology change
+            notification from sub ERP instance to major instance is enabled or
+            not for the G8032 profile."
+        DEFVAL { false }
+        ::= { esErpsProfileEntry 3 }
+
+     esErpsProfRevertiveEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates whether restoring to the working transport entity,
+            i.e. blocked on the RPL of the entry.
+            In non-revertive operation, the traffic channel continues to use the RPL,
+            if it is not failed, after a switch link defect condition has cleared."
+        DEFVAL { true }
+        ::= { esErpsProfileEntry 4 }
+
+     esErpsProfGuardTimer OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 10..2000 )
+        UNITS           "milliseconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object configures the guard timer in milliseconds for an ERP domain.
+             The valid range is 10 to 2000. The value should be multiple of 10."
+        DEFVAL { 500 }
+        ::= { esErpsProfileEntry 5 }
+
+    esErpsProfHoldOffTimer OBJECT-TYPE
+           SYNTAX          Unsigned32 ( 0..10 )
+        UNITS            "seconds"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object configures the hold-off timer in seconds for an ERP domain.
+             The valid range is 0 to 10."
+        DEFVAL { 0 }
+        ::= { esErpsProfileEntry 6 }
+
+    esErpsProfWtrTimer OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 1..12 )
+        UNITS            "minutes"
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object configures the WTR timer in minutes for an ERP domain.
+              The valid range is 1 to 12."
+        DEFVAL { 5 }
+        ::= { esErpsProfileEntry 7 }
+
+-- -----------------------------------------------------------------------------
+    esErpsEtherRingTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsErpsEtherRingEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains configuration of the G8032 physical rings."
+        ::= { esErpsMIBObjects 3 }
+
+    esErpsEtherRingEntry OBJECT-TYPE
+        SYNTAX          EsErpsEtherRingEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains G8032 physical ring inforamtion.
+            An entry is created/removed when a    G8032 physical ring is defined
+            or deleted.
+            "
+        INDEX    { esErpsEtherRingName }
+        ::= { esErpsEtherRingTable 1 }
+
+    EsErpsEtherRingEntry ::= SEQUENCE {
+        esErpsEtherRingName                 DisplayString,
+        esErpsEtherRingRowStatus            RowStatus,
+        esErpsEtherRingAdminPort0IfIdx      InterfaceIndexOrZero,
+        esErpsEtherRingAdminPort1IfIdx      InterfaceIndexOrZero,
+        esErpsEtherRingId                   Unsigned32,
+        esErpsEtherRingType                 INTEGER
+    }
+
+    esErpsEtherRingName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the G8032 ring."
+        ::= { esErpsEtherRingEntry 1 }
+
+     esErpsEtherRingRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of the conceptual row."
+        ::= { esErpsEtherRingEntry 2 }
+
+    esErpsEtherRingAdminPort0IfIdx OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the interface which is the
+            configured first ring port of the physical ring.
+            The interface can be physical port or port-channel interface.
+            The special value of zero indicates the first ring port is not
+            specified.
+            "
+        DEFVAL { 0 }
+        ::= { esErpsEtherRingEntry 3 }
+
+     esErpsEtherRingAdminPort1IfIdx OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the interface which is the
+            configured second ring port of the physical ring.
+            The interface can be physical port or port-channel interface.
+            Setting this object to -1 indicates that the
+            interconnect node is a local node endpoint of an open ring.
+
+            The special value of zero indicates the second ring port is not
+            specified."
+        DEFVAL { 0 }
+        ::= { esErpsEtherRingEntry 4 }
+
+    esErpsEtherRingId OBJECT-TYPE
+        SYNTAX          Unsigned32 ( 1..239 )
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object configures the ring id. The valid range is 1 to 239.
+            For ERPSv1, the node is not accessible and always return 0xff for read operation."
+        DEFVAL { 1 }
+        ::= { esErpsEtherRingEntry 5 }
+
+     esErpsEtherRingType OBJECT-TYPE
+        SYNTAX          INTEGER{
+            majorRing(1),
+            subRing(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the administratively configured ring type.
+            For ERPSv1, the node is not accessible and always return 0xff for read operation."
+        ::= { esErpsEtherRingEntry 6 }
+
+-- -----------------------------------------------------------------------------
+    esErpsEtherSubRingTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsErpsEtherSubRingEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains sub ring configuration of the G8032 physical rings."
+        ::= { esErpsMIBObjects 4 }
+
+    esErpsEtherSubRingEntry OBJECT-TYPE
+        SYNTAX          EsErpsEtherSubRingEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains a sub ring setting of a physical ring.
+            An entry is created/removed when a sub ring is specified or removed.
+            For ERPSv1,please use ring name and sub-ring name to do association,ignore
+            esErpsEtherRingInstanceId and esErpsEtherSubRingInstanceId. For ERPSv2, add
+            an association method to use ring instance id and sub-ring instance id.
+            "
+        INDEX {
+            esErpsEtherRingName,
+            esErpsEtherSubRingName,
+            esErpsEtherRingInstanceId,
+            esErpsEtherSubRingInstanceId
+        }
+        ::= { esErpsEtherSubRingTable 1 }
+
+    EsErpsEtherSubRingEntry ::= SEQUENCE {
+        esErpsEtherSubRingName           DisplayString,
+        esErpsEtherSubRingRowStatus      RowStatus,
+        esErpsEtherRingInstanceId        Unsigned32,
+        esErpsEtherSubRingInstanceId     Unsigned32
+    }
+
+    esErpsEtherSubRingName OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(1..32))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the sub ring."
+        ::= { esErpsEtherSubRingEntry 1 }
+
+     esErpsEtherSubRingRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of the conceptual row."
+        ::= { esErpsEtherSubRingEntry 2 }
+
+    esErpsEtherRingInstanceId OBJECT-TYPE
+           SYNTAX          Unsigned32 ( 1..32 )
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ring instance id."
+        ::= { esErpsEtherSubRingEntry 3 }
+
+    esErpsEtherSubRingInstanceId OBJECT-TYPE
+           SYNTAX          Unsigned32 ( 1..32 )
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the sub ring instance id."
+        ::= { esErpsEtherSubRingEntry 4 }
+
+-- -----------------------------------------------------------------------------
+   esErpsInstTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsErpsInstEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This table contains a list of ERP instance configuration and
+            status information."
+        ::= { esErpsMIBObjects 5 }
+
+    esErpsInstEntry OBJECT-TYPE
+        SYNTAX          EsErpsInstEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "An entry contains information about an ERP instance.
+            The first instance identifier index value (esErpsEtherRingName)
+            identifies the esErpsEtherRingEntry that an ERP instance (esErpsInstEntry)
+            belongs to. An entry is removed from this table when its
+            corresponding esErpsEtherRingEntry is deleted.
+            An entry is created/removed when an ERP instance is defined
+            or deleted."
+        INDEX    {
+            esErpsEtherRingName,
+            esErpsInstInstanceId
+        }
+        ::= { esErpsInstTable 1 }
+
+    EsErpsInstEntry ::= SEQUENCE {
+        esErpsInstInstanceId            Unsigned32,
+        esErpsInstRowStatus             RowStatus,
+        esErpsInstDescription           DisplayString,
+        esErpsInstMel                   Unsigned32,
+        esErpsInstProfile               DisplayString,
+        esErpsInstApsChannelVlanId      VlanIdOrNone,
+        esErpsInstIncludeVlansFirst2K   Dlink2kVlanList,
+        esErpsInstIncludeVlansSecond2K  Dlink2kVlanList,
+        esErpsInstAdminRplPort          INTEGER,
+        esErpsInstOperRplPort           INTEGER,
+        esErpsInstAdminRplNodeRole      INTEGER,
+        esErpsInstOperRplNodeRole       INTEGER,
+        esErpsInstOperPort0IfIdx        InterfaceIndexOrZero,
+        esErpsInstOperPort0State        INTEGER,
+        esErpsInstOperPort1IfIdx        InterfaceIndexOrZero,
+        esErpsInstOperPort1State        INTEGER,
+        esErpsInstAdminActivate         TruthValue,
+        esErpsInstInstanceState         INTEGER,
+        esErpsInstAdminSwitchMode       INTEGER,
+        esErpsInstAdminSwtichRingPort   INTEGER
+    }
+
+    esErpsInstInstanceId OBJECT-TYPE
+        SYNTAX          Unsigned32 (1..32)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the ERP instance."
+        ::= { esErpsInstEntry 1 }
+
+    esErpsInstRowStatus OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "The status of the conceptual row."
+        ::= { esErpsInstEntry 2 }
+
+    esErpsInstDescription OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(0..64))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates a description for the ERP instance.
+            A zero length string indicates the description is not specified."
+        ::= { esErpsInstEntry 3 }
+
+    esErpsInstMel OBJECT-TYPE
+        SYNTAX          Unsigned32 (0..7)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ring MEL value of the ERP instance."
+        ::= { esErpsInstEntry 4 }
+
+     esErpsInstProfile OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE(0..32))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the name of the G8032 profile to be
+            associated with the ERP instance.
+            A zero length string indicates the associated profile is
+            not specified."
+        ::= { esErpsInstEntry 5 }
+
+    esErpsInstApsChannelVlanId OBJECT-TYPE
+        SYNTAX          VlanIdOrNone
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the APS channel VLAN for the ERP instance.
+            A special value of 0 indicates the APS channel VLAN is not
+            specified."
+        ::= { esErpsInstEntry 6 }
+
+    esErpsInstIncludeVlansFirst2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the service protected VLANs of ERP instance
+            in a string of octets containing one bit per VLAN for VLANs 1 to
+            2048.
+            If the bit is set to '1', then the VLAN is configured to be
+            protected by the Ethernet ring protection mechanism."
+        ::= { esErpsInstEntry 7 }
+
+    esErpsInstIncludeVlansSecond2K OBJECT-TYPE
+        SYNTAX          Dlink2kVlanList
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object specifies the service protected VLANs of ERP instance
+            in a string of octets containing one bit per VLAN for VLANs 2049 to
+            4094.
+            If the bit is set to '1', then the VLAN is configured to be
+            protected by the Ethernet ring protection mechanism."
+        ::= { esErpsInstEntry 8 }
+
+    esErpsInstAdminRplPort OBJECT-TYPE
+        SYNTAX          INTEGER{
+             port0(0),
+             port1(1),
+             none(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the administratively configured RPL port of
+             the entry.
+             port0(0) - Specify port0 as the RPL port.
+             port1(1) - Specify port1 as the RPL port.
+             none(2)  - The RPL port is not specified.
+            "
+        ::= { esErpsInstEntry 9 }
+
+    esErpsInstOperRplPort OBJECT-TYPE
+        SYNTAX          INTEGER {
+             port0(0),
+             port1(1),
+             none(2)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the operational RPL port of the entry."
+        ::= { esErpsInstEntry 10 }
+
+    esErpsInstAdminRplNodeRole OBJECT-TYPE
+        SYNTAX          INTEGER{
+            none(0),
+            owner(1),
+            neighbor(2)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the administratively configured node role.
+            This object has to be none(0) if administrative RPL port is
+            not specified."
+        ::= { esErpsInstEntry 11 }
+
+    esErpsInstOperRplNodeRole OBJECT-TYPE
+        SYNTAX          INTEGER{
+            none(0),
+            owner(1),
+            neighbor(2)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current ring node role."
+        ::= { esErpsInstEntry 12 }
+
+     esErpsInstOperPort0IfIdx OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the operational first ring
+            port of the physical ring.
+            The value of administrative port0 inherits esErpsEtherRingAdminPort0IfIdx
+            of physical ring to which the instance belongs.
+            The special value of zero indicates the operational port0 is not
+            available."
+        ::= { esErpsInstEntry 13 }
+
+     esErpsInstOperPort0State OBJECT-TYPE
+        SYNTAX          INTEGER {
+            notApplicable(1),
+            forwarding(2),
+            blocked(3),
+            virtualChannel(4)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the operational state of port0."
+        ::= { esErpsInstEntry 14 }
+
+    esErpsInstOperPort1IfIdx OBJECT-TYPE
+        SYNTAX          InterfaceIndexOrZero
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the ifIndex of the operational second ring
+            port of the physical ring.
+            The value of administrative port1 inherits esErpsEtherRingAdminPort1IfIdx
+            of physical ring to which the instance belongs.
+            The special value of zero indicates the operational port1 is not
+            available."
+        ::= { esErpsInstEntry 15 }
+
+     esErpsInstOperPort1State OBJECT-TYPE
+        SYNTAX          INTEGER {
+            notApplicable(1),
+            forwarding(2),
+            blocked(3),
+            virtualChannel(4)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the operational state of port1."
+        ::= { esErpsInstEntry 16 }
+
+     esErpsInstAdminActivate OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the administrative state of the ERP instance.
+            Setting this object to 'true' activates the ERP instance.
+            Setting this object to 'false' deactivates the ERP instance."
+        DEFVAL { false }
+        ::= { esErpsInstEntry 17 }
+
+    esErpsInstInstanceState OBJECT-TYPE
+        SYNTAX          INTEGER {
+            deactivated(0),
+            nonOperational(1),
+            init(2),
+            idle(3),
+            protection(4)
+        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the current ring node state of the ERP instance.
+             The state could be:
+             deactivated(0)        : The ERP instance is deactivated.
+             nonOperational(1)    : The ERP instance is enabled but is not activated
+                                  due to inconsistent setting.
+             init(2)            : The instance is initializing.
+             idle(3)            : The instance is in normal state. The RPL port
+                                  is blocked.
+             protection(4)        : The instance detects failure at some ring port.
+                                  The RPL port is restored to protect the port."
+        ::= { esErpsInstEntry 18 }
+
+     esErpsInstAdminSwitchMode OBJECT-TYPE
+        SYNTAX          INTEGER {
+            forceBlock(1),
+            manualBlock(2),
+            clearBlock(3)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the designated ring port switch mode.For ERPSv1,
+            the node is not accessible and always return 0xff for read operation;
+            For ERPSv2, its default value is 0xff indicate there is no operation
+            on this node."
+        ::= { esErpsInstEntry 19 }
+
+     esErpsInstAdminSwtichRingPort OBJECT-TYPE
+        SYNTAX          INTEGER {
+             port0(0),
+             port1(1)
+        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+            "This object indicates the designated ring port. For ERPSv1,
+            the node is not accessible and always return 0xff for read operation;
+            For ERPSv2, its default value is 0xff indicate there is no operation
+            on this node."
+        ::= { esErpsInstEntry 20 }
+-- -----------------------------------------------------------------------------
+    esErpsEventInfo                OBJECT IDENTIFIER ::= { esErpsMIBObjects 6 }
+
+    esErpsEventNodeId OBJECT-TYPE
+        SYNTAX      MacAddress
+        MAX-ACCESS  read-only
+        STATUS      current
+        DESCRIPTION
+            "The MAC address included in the notification currently being
+            sent, indicating the ring node that is involved the ERPS event."
+        ::= { esErpsEventInfo 1 }
+
+--  ***************************************************************************
+--  Notifications
+--  ***************************************************************************
+    esErpsFailuredetectedNotif    NOTIFICATION-TYPE
+        OBJECTS     {esErpsEventNodeId }
+        STATUS      current
+        DESCRIPTION
+            "A esErpsFailureNotification is sent when esErpsNotificationEnabled
+            is 'true' and a signal failure is detected."
+        ::= { esErpsMIBNotification 1 }
+
+    esErpsFailureClearedNotif NOTIFICATION-TYPE
+        OBJECTS     {esErpsEventNodeId }
+        STATUS          current
+        DESCRIPTION
+             "A esErpsFailureClearedNotif is sent when esErpsNotificationEnabled
+              is 'true' and a signal failure is cleared."
+        ::= { esErpsMIBNotification 2 }
+
+    esErpsRPLOwnerConflictNotif   NOTIFICATION-TYPE
+        OBJECTS     {esErpsEventNodeId }
+        STATUS          current
+        DESCRIPTION
+            "A esErpsOwnerConflictNotif is sent when esErpsNotificationEnabled
+              is 'true' and RPL owner conflict is detected."
+        ::= { esErpsMIBNotification 3 }
+
+--  ***************************************************************************
+--  Conformance
+--  ***************************************************************************
+    esErpsCompliances OBJECT IDENTIFIER ::= { esErpsMIBConformance 1 }
+
+    esErpsCompliance MODULE-COMPLIANCE
+        STATUS current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKSW-ERPS-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS {
+            esErpsInstanceGroup,
+            esErpsProfileCfgGroup,
+            esErpsNotifyCfgGroup,
+            esErpsNotificationGroup
+        }
+        ::= { esErpsCompliances 1 }
+
+    esErpsGroups OBJECT IDENTIFIER ::= { esErpsMIBConformance 2 }
+
+
+    esErpsInstanceGroup OBJECT-GROUP
+        OBJECTS {
+            esErpsEtherRingRowStatus,
+            esErpsEtherRingAdminPort0IfIdx,
+            esErpsEtherRingAdminPort1IfIdx,
+            esErpsEtherRingId,
+            esErpsEtherRingType,
+            esErpsEtherSubRingRowStatus,
+            esErpsInstRowStatus,
+            esErpsInstInstanceState,
+            esErpsInstAdminSwitchMode,
+            esErpsInstAdminSwtichRingPort,
+            esErpsInstDescription,
+            esErpsInstMel,
+            esErpsInstProfile,
+            esErpsInstApsChannelVlanId,
+            esErpsInstIncludeVlansFirst2K,
+            esErpsInstIncludeVlansSecond2K,
+            esErpsInstAdminRplPort,
+            esErpsInstOperRplPort,
+            esErpsInstAdminRplNodeRole,
+            esErpsInstOperRplNodeRole,
+            esErpsInstOperPort0IfIdx,
+            esErpsInstOperPort0State,
+            esErpsInstOperPort1IfIdx,
+            esErpsInstOperPort1State,
+            esErpsInstAdminActivate
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides the RPS instance configuration and
+            status information."
+        ::= { esErpsGroups 1 }
+
+    esErpsProfileCfgGroup OBJECT-GROUP
+        OBJECTS {
+            esErpsProfRowStatus,
+            esErpsProfTcnPropagationEnabled,
+            esErpsProfRevertiveEnabled,
+            esErpsProfGuardTimer,
+            esErpsProfHoldOffTimer,
+            esErpsProfWtrTimer
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects provides the profile configuration for ERPS."
+        ::= { esErpsGroups 2 }
+
+
+    esErpsNotifyCfgGroup OBJECT-GROUP
+        OBJECTS {
+            esErpsNotificationEnabled,
+            esErpsEventNodeId
+        }
+        STATUS current
+        DESCRIPTION
+            "A collection of objects about the information for ERPS notification.
+            "
+        ::= { esErpsGroups 3 }
+
+    esErpsNotificationGroup NOTIFICATION-GROUP
+        NOTIFICATIONS {
+            esErpsFailuredetectedNotif,
+            esErpsFailureClearedNotif,
+            esErpsRPLOwnerConflictNotif
+        }
+        STATUS current
+        DESCRIPTION
+            "The collection of notifications used for monitoring ERPS status"
+        ::= { esErpsGroups 4 }
+
+END

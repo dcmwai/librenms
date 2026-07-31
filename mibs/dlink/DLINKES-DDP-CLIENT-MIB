@@ -1,0 +1,150 @@
+--  *****************************************************************
+--  DLINKES-DDP-CLIENT-MIB.mib : DLINK discovery protocol MIB
+      
+--
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--
+--  *****************************************************************
+DLINKES-DDP-CLIENT-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        NOTIFICATION-TYPE,
+        Unsigned32
+            FROM SNMPv2-SMI
+        TruthValue
+            FROM SNMPv2-TC 
+        MODULE-COMPLIANCE, OBJECT-GROUP
+            FROM SNMPv2-CONF
+        ifIndex
+            FROM IF-MIB       
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+            
+    dlinkEsDdpClientMIB MODULE-IDENTITY
+        LAST-UPDATED "201707100000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:    +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+            "This MIB module defines objects for D-Link Discovery Protocol client."
+
+        REVISION "201707100000Z"
+        DESCRIPTION
+            " This is the first version of the MIB file.
+            "
+        ::= { dlinkCommon 161 }
+
+-- -----------------------------------------------------------------------------
+    esDdpClientNotifications    OBJECT IDENTIFIER ::= { dlinkEsDdpClientMIB 0 }
+    esDdpClientObjects          OBJECT IDENTIFIER ::= { dlinkEsDdpClientMIB 1 }
+    esDdpClientConformance      OBJECT IDENTIFIER ::= { dlinkEsDdpClientMIB 2 }
+
+-- -----------------------------------------------------------------------------
+-- Notifications
+-- -----------------------------------------------------------------------------
+
+-- -----------------------------------------------------------------------------
+-- Objects
+-- -----------------------------------------------------------------------------
+    esDdpClientCtrl            OBJECT IDENTIFIER ::= { esDdpClientObjects 1 }
+
+    esDdpClientGlobalState  OBJECT-TYPE
+        SYNTAX        TruthValue    
+        MAX-ACCESS    read-write
+        STATUS        current
+        DESCRIPTION
+            "This object represents the DDP client's global state
+		        true - Indicates the DDP client is enabled
+		        false - Indicates the DDP client is disabled"
+       DEFVAL { true }   	
+        ::= { esDdpClientCtrl 1 }
+       
+    esDdpClientReportTimer OBJECT-TYPE 
+        SYNTAX       	Unsigned32 (0|30|60|90|120)
+        UNITS        	"second"
+        MAX-ACCESS	  read-write
+        STATUS		    current
+        DESCRIPTION
+            "This object specifies the interval at which DDP report messages are sent
+            by the device.
+            Setting the object to 0 prohibits the device from sending DDP report message."
+        DEFVAL { 30 }   
+        ::= { esDdpClientCtrl 2 }
+        
+    esDdpClientTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsDdpClientEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION           
+            "The table contains a list of port-specific information for DDP client."
+        ::= { esDdpClientCtrl 3}    
+
+    esDdpClientEntry OBJECT-TYPE
+        SYNTAX          EsDdpClientEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "Each entry represents the DDP Client state on a port."
+        INDEX           { ifIndex }
+        ::= { esDdpClientTable 1 }
+   
+    EsDdpClientEntry ::= SEQUENCE     	{
+        esDdpClientPortState        TruthValue
+    }  
+     
+    esDdpClientPortState OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object represents the DDP Client state on a port
+		        true - Indicates DDP client is enabled on the port
+		        false - Indicates DDP client is disabled on the port
+		        "
+        DEFVAL { true }   
+        ::= { esDdpClientEntry 1 }    
+            
+-- -----------------------------------------------------------------------------
+-- Conformance
+-- -----------------------------------------------------------------------------
+
+    esDdpClientCompliances OBJECT IDENTIFIER ::= { esDdpClientConformance 1 }
+    esDdpClientGroups	  OBJECT IDENTIFIER ::= { esDdpClientConformance 2 }
+    
+--  compliance statements
+    esDdpClientCompliance MODULE-COMPLIANCE
+        STATUS         current
+        DESCRIPTION
+            "The compliance statement for entities which implement the
+            DLINKES-DDP-CLIENT-MIB."
+
+        MODULE  -- this module
+        MANDATORY-GROUPS 
+            { 
+            	esDdpClientControlGroup
+            }
+        GROUP esDdpClientControlGroup
+            DESCRIPTION
+                "This group is mandatory for those devices support DLINK discovery protocol."     
+        ::= { esDdpClientCompliances 1 }
+        
+--  units of conformance
+
+    esDdpClientControlGroup OBJECT-GROUP
+        OBJECTS             {
+            esDdpClientGlobalState,
+            esDdpClientPortState
+        }
+        STATUS  current
+        DESCRIPTION
+            "A collection of objects providing accessing to global status and report time or the status of a port."
+        ::= { esDdpClientGroups 1 } 
+
+END

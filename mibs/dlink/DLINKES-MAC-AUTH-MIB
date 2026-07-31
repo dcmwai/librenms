@@ -1,0 +1,237 @@
+--  *****************************************************************
+--  DLINKES-MAC-AUTH-MIB.mib : MAC Authentication MIB
+-- 
+--  Copyright (c) 2017 D-Link Corporation, all rights reserved.
+--   
+--  *****************************************************************
+
+    DLINKES-MAC-AUTH-MIB DEFINITIONS ::= BEGIN
+ 
+    IMPORTS
+
+        MODULE-IDENTITY,
+        OBJECT-TYPE,
+        NOTIFICATION-TYPE
+            FROM SNMPv2-SMI
+        MODULE-COMPLIANCE,
+        OBJECT-GROUP,
+        NOTIFICATION-GROUP
+            FROM SNMPv2-CONF
+        TruthValue, 
+        DisplayString
+            FROM SNMPv2-TC 
+        ifIndex 
+            FROM IF-MIB
+        esnaSessionClientMacAddress,
+        esnaSessionAuthVlan
+            FROM DLINKES-NETWORK-ACCESS-MIB
+        dlinkCommon
+            FROM DLINK-ID-REC-MIB;
+
+    dlinkEsMacAuthMIB MODULE-IDENTITY
+        LAST-UPDATED "201707100000Z"
+        ORGANIZATION "D-Link Corp."
+        CONTACT-INFO
+            "        D-Link Corporation
+
+             Postal: No. 289, Sinhu 3rd Rd., Neihu District,
+                     Taipei City 114, Taiwan, R.O.C
+             Tel:     +886-2-66000123
+             E-mail: tsd@dlink.com.tw
+            "
+        DESCRIPTION
+           "This MIB contains managed objects for the MAC authentication  
+           application of the device."
+        REVISION        "201707100000Z"
+        DESCRIPTION
+            "Initial version of this MIB module."
+        ::= { dlinkCommon 153 }
+
+-- ***************************************************************************
+-- Node definitions
+-- ***************************************************************************
+    esMacAuthNotifications    OBJECT IDENTIFIER ::= { dlinkEsMacAuthMIB 0 }
+    esMacAuthMIBObjects       OBJECT IDENTIFIER ::= { dlinkEsMacAuthMIB 1 }
+    esMacAuthMIBConformance   OBJECT IDENTIFIER ::= { dlinkEsMacAuthMIB 2 }
+        
+-- -----------------------------------------------------------------------------
+    esMacAuthGlobalCtrl    OBJECT IDENTIFIER ::= { esMacAuthMIBObjects 1 }
+
+   
+    esMacAuthNotifEnabled  OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION   
+            "Set to 'true' to enable global SNMP notification for MAC 
+            authentication feature.  
+            Setting the object to 'false' will disable SNMP notifications."
+        DEFVAL      { false }              
+        ::= { esMacAuthGlobalCtrl 1 }
+
+    esMacAuthEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object enables ('true') or disables ('false')
+            the MAC authentication globally."
+        DEFVAL     { false }
+        ::= { esMacAuthGlobalCtrl 2 }
+                       
+    esMacAuthPWD  OBJECT-TYPE
+        SYNTAX          DisplayString(SIZE(0..16))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object is used to set the password of authentication for local
+            and radius authentication.
+            When use client's MAC address as the password, a zero length string 
+            will be returned. or the string '******' will be returned."             
+        ::= { esMacAuthGlobalCtrl 3 }
+
+    esMacAuthUserName  OBJECT-TYPE
+        SYNTAX  DisplayString(SIZE(0..16))
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+            "This object indicates the username of local and radius authentication. 
+            When use client's MAC address as the username, a zero length string will be returned."             
+        ::= { esMacAuthGlobalCtrl 4 }
+
+-- -----------------------------------------------------------------------------           
+    esMacAuthIfTable OBJECT-TYPE
+        SYNTAX          SEQUENCE OF EsMacAuthIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+            "The table is used to configure the interface-specific settings of
+            MAC authentication."
+        ::= { esMacAuthMIBObjects 2 }
+
+    esMacAuthIfEntry OBJECT-TYPE
+        SYNTAX          EsMacAuthIfEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION            
+            "An entry contains MAC authentication information for a particular interface."
+        INDEX   { ifIndex }
+        ::= { esMacAuthIfTable 1 }
+
+    EsMacAuthIfEntry ::= SEQUENCE {       
+        esMacAuthIfEnabled            TruthValue               
+    }
+
+    esMacAuthIfEnabled OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+            "This object enables ('true') or disables ('false') the 
+            authentication state for a particular interface."
+        DEFVAL     {false}
+        ::= { esMacAuthIfEntry 1 }
+
+--  ***************************************************************************
+--  Notifications
+--  ***************************************************************************
+    
+    esMacAuthLoggedSuccess NOTIFICATION-TYPE
+        OBJECTS  { 
+            ifIndex, 
+            esnaSessionClientMacAddress, 
+            esnaSessionAuthVlan 
+        }
+        STATUS  current
+        DESCRIPTION
+            "The trap is sent when a host has successfully logged in (passed 
+            MAC-based Access Control)."
+        ::= { esMacAuthNotifications 1 }
+
+    esMacAuthLoggedFail NOTIFICATION-TYPE
+        OBJECTS  { 
+            ifIndex, 
+            esnaSessionClientMacAddress, 
+            esnaSessionAuthVlan 
+        }
+        STATUS  current
+        DESCRIPTION
+            "The trap is sent when a host failed to pass MAC-based Access Control
+            (login failed)."
+        ::= { esMacAuthNotifications 2 }
+
+    esMacAuthLoggedAgesOut NOTIFICATION-TYPE
+        OBJECTS  { 
+            ifIndex, 
+            esnaSessionClientMacAddress, 
+            esnaSessionAuthVlan 
+        }
+        STATUS  current
+        DESCRIPTION
+            "The trap is sent when a MAC-based Access Control host aged out."
+        ::= { esMacAuthNotifications 3 }
+
+--  ***************************************************************************	
+--  Conformance
+--  ***************************************************************************
+    esMacAuthMIBCompliances 
+        OBJECT IDENTIFIER ::= { esMacAuthMIBConformance 1 }
+    esMacAuthMIBGroups
+        OBJECT IDENTIFIER ::= { esMacAuthMIBConformance 2 }
+
+    esMacAuthMIBCompliance MODULE-COMPLIANCE
+        STATUS  current   
+        DESCRIPTION
+            "The compliance statement for entities which implement the 
+            DLINKES-MAC-AUTH-MIB."
+        MODULE -- this module
+        MANDATORY-GROUPS { 
+            esMacAuthGlobalCfgGroup,   
+            esMacAuthIfCfgGroup         
+        }
+        ::= { esMacAuthMIBCompliances 1 }
+
+    esMacAuthGlobalCfgGroup OBJECT-GROUP
+        OBJECTS {   
+            esMacAuthEnabled,
+            esMacAuthPWD,
+            esMacAuthUserName
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects provides the configuration or information
+            about MAC authentication."
+        ::= { esMacAuthMIBGroups 1 }
+        
+    esMacAuthIfCfgGroup OBJECT-GROUP
+        OBJECTS {   
+            esMacAuthIfEnabled
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects provides the configuration or information
+            about MAC authentication on a per-interface basis."
+        ::= { esMacAuthMIBGroups 2 }
+   
+    esMacAuthNotifyCfgGroup OBJECT-GROUP
+        OBJECTS {   
+            esMacAuthNotifEnabled
+        }
+        STATUS current
+        DESCRIPTION 
+            "A collection of objects provides the configuration for notification 
+            of MAC authentication."
+        ::= { esMacAuthMIBGroups 3 }
+
+    esMacAuthNotificationGroup NOTIFICATION-GROUP
+        NOTIFICATIONS { 
+            esMacAuthLoggedSuccess,
+            esMacAuthLoggedFail,
+            esMacAuthLoggedAgesOut
+        }
+        STATUS current
+        DESCRIPTION
+           "The collection of notifications	used for monitoring the hosts under the 
+           control of MAC authentication."
+        ::= { esMacAuthMIBGroups 4 }
+END
